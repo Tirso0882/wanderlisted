@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Japan Travel Handbook</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: #e41e3f;
+            color: white;
+            border-radius: 5px;
+        }
+        h1, h2, h3, h4 {
+            color: #e41e3f;
+        }
+        .day-card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            padding: 20px;
+            transition: transform 0.2s;
+        }
+        .day-card:hover {
+            transform: translateY(-5px);
+        }
+        .highlight {
+            background-color: #fde6e9;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 5px solid #e41e3f;
+            margin: 15px 0;
+        }
+        .map-container {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .map-container iframe {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .phrase-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .phrase-table th, .phrase-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        .phrase-table th {
+            background-color: #e41e3f;
+            color: white;
+        }
+        .phrase-table tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        .tab {
+            overflow: hidden;
+            border: 1px solid #ccc;
+            background-color: #f1f1f1;
+            border-radius: 8px 8px 0 0;
+        }
+        .tab button {
+            background-color: inherit;
+            float: left;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            padding: 14px 16px;
+            transition: 0.3s;
+            font-size: 16px;
+        }
+        .tab button:hover {
+            background-color: #ddd;
+        }
+        .tab button.active {
+            background-color: #e41e3f;
+            color: white;
+        }
+        .tabcontent {
+            display: none;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            background-color: white;
+        }
+        .proposal-spot {
+            background-color: #fff0f5;
+            border: 2px dashed #e41e3f;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .tip-box {
+            background-color: #e9f7fe;
+            border-left: 5px solid #49b1e7;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 20px;
+            background-color: #333;
+            color: white;
+            border-radius: 5px;
+        }
+        @media print {
+            body {
+                background-color: white;
+                padding: 0;
+                max-width: 100%;
+            }
+            .day-card, .highlight, .map-container iframe, .tip-box, .proposal-spot {
+                box-shadow: none;
+                break-inside: avoid;
+            }
+            .tab, .tab button {
+                display: none;
+            }
+            .tabcontent {
+                display: block !important;
+                border: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Japan Travel Handbook</h1>
+        <h2>April 15-23, 2023</h2>
+        <p>A journey through historical sites, hidden gems, and cultural experiences</p>
+    </header>
+
+    <div class="tab">
+        <button class="tablinks" onclick="openTab(event, 'Itinerary')" id="defaultOpen">Itinerary</button>
+        <button class="tablinks" onclick="openTab(event, 'Maps')">Maps</button>
+        <button class="tablinks" onclick="openTab(event, 'Attractions')">Attractions</button>
+        <button class="tablinks" onclick="openTab(event, 'Phrases')">Japanese Phrases</button>
+        <button class="tablinks" onclick="openTab(event, 'Tips')">Travel Tips</button>
+        <button class="tablinks" onclick="openTab(event, 'Proposal')">Special Moment</button>
+    </div>
+
+    <div id="Itinerary" class="tabcontent">
+        <h2>7-Day Japan Itinerary</h2>
+        
+        <div class="day-card">
+            <h3>Day 1 (April 16): Tokyo Arrival & Orientation</h3>
+            <p><strong>Morning:</strong> Arrive at Narita International Airport, travel to hotel in Tokyo</p>
+            <p><strong>Afternoon:</strong> Meiji Shrine and Yoyogi Park (peaceful forest walk)</p>
+            <p><strong>Evening:</strong> Shibuya Crossing and dinner at a local izakaya</p>
+            <div class="highlight">
+                <p><strong>Cultural Experience:</strong> Visit a local tea shop for your first authentic matcha experience</p>
+            </div>
+        </div>
+
+        <div class="day-card">
+            <h3>Day 2 (April 17): Tokyo Historical Sites</h3>
+            <p><strong>Morning:</strong> Sensō-ji Temple in Asakusa, Tokyo's oldest temple</p>
+            <p><strong>Afternoon:</strong> Imperial Palace East Gardens</p>
+            <p><strong>Evening:</strong> Akihabara District exploration</p>
+            <div class="highlight">
+                <p><strong>Cultural Experience:</strong> Attend a traditional kendo demonstration at Yasukuni Shrine's Budokan</p>
+            </div>
+        </div>
+
+        <div class="day-card">
+            <h3>Day 3 (April 18): Tokyo to Kyoto</h3>
+            <p><strong>Morning:</strong> Shinkansen (bullet train) to Kyoto</p>
+            <p><strong>Afternoon:</strong> Check in at hotel, visit Higashiyama District</p>
+            <p><strong>Evening:</strong> Gion District for dinner and possible geisha sighting</p>
+            <div class="highlight">
+                <p><strong>Cultural Experience:</strong> Tea ceremony experience at traditional tea house</p>
+            </div>
+        </div>
+
+        <div class="day-card">
+            <h3>Day 4 (April 19): Kyoto's Ancient Temples</h3>
+            <p><strong>Morning:</strong> Kinkaku-ji (Golden Pavilion)</p>
+            <p><strong>Afternoon:</strong> Ryoan-ji Temple (famous rock garden) and Arashiyama Bamboo Grove</p>
+            <p><strong>Evening:</strong> Pontocho Alley for dinner</p>
+            <div class="highlight">
+                <p><strong>Cultural Experience:</strong> Zen meditation session at Ryoan-ji</p>
+            </div>
+        </div>
+
+        <div class="day-card">
+            <h3>Day 5 (April 20): Nara Day Trip</h3>
+            <p><strong>Morning:</strong> Train to Nara</p>
+            <p><strong>Afternoon:</strong> Nara Park with its friendly deer, Todai-ji Temple with the Great Buddha</p>
+            <p><strong>Evening:</strong> Return to Kyoto, dinner near Kyoto Station</p>
+            <div class="highlight">
+                <p><strong>Cultural Experience:</strong> Feed the sacred deer of Nara Park</p>
+            </div>
+            <div class="proposal-spot">
+                <p><strong>🌟 Perfect Proposal Location 🌟</strong></p>
+                <p>The serene Isuien Garden in Nara offers a beautiful traditional Japanese garden setting by a koi pond, away from crowds but with stunning natural beauty.</p>
+            </div>
+        </div>
+
+        <div class="day-card">
+            <h3>Day 6 (April 21): Hidden Kyoto</h3>
+            <p><strong>Morning:</strong> Fushimi Inari Shrine (arrive early to avoid crowds)</p>
+            <p><strong>Afternoon:</strong> Philosopher's Path walk, Ginkaku-ji (Silver Pavilion)</p>
+            <p><strong>Evening:</strong> Kiyomizu-dera Temple, illuminated in the evening</p>
+            <div class="highlight">
+                <p><strong>Cultural Experience:</strong> Sake tasting at a local brewery in Fushimi district</p>
+            </div>
+        </div>
+
+        <div class="day-card">
+            <h3>Day 7 (April 22): Hiroshima Day Trip</h3>
+            <p><strong>Morning:</strong> Early Shinkansen to Hiroshima</p>
+            <p><strong>Afternoon:</strong> Peace Memorial Park and Museum, Atomic Bomb Dome</p>
+            <p><strong>Evening:</strong> Ferry to Miyajima Island to see the floating torii gate, return to Kyoto</p>
+            <div class="highlight">
+                <p><strong>Cultural Experience:</strong> Fold a peace crane at the Children's Peace Monument</p>
+            </div>
+        </div>
+
+        <div class="day-card">
+            <h3>Day 8 (April 23): Departure</h3>
+            <p><strong>Morning:</strong> Last-minute shopping in Kyoto</p>
+            <p><strong>Afternoon:</strong> Shinkansen to Tokyo</p>
+            <p><strong>Evening:</strong> Flight from Narita Airport to Seattle</p>
+        </div>
+    </div>
+
+    <div id="Maps" class="tabcontent">
+        <h2>Maps & Transportation</h2>
+        
+        <h3>Tokyo Overview</h3>
+        <div class="map-container">
+            <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d207446.89543731728!2d139.6007844763889!3d35.67755357808727!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x60188b857628235d%3A0xcdd8aef709a2b520!2sTokyo%2C%20Japan!5e0!3m2!1sen!2sus!4v1650000000000!5m2!1sen!2sus" width="600" height="450" style="border:0;" allowfullscreen="" loading="lazy"></iframe>
+        </div>
+        
+        <h3>Kyoto Overview</h3>
+        <div class="map-container">
+            <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d104944.5328958342!2d135.7093612788685!3d35.01465453313662!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x6001a8d6cd3cc3f1%3A0xc0961d366bbb1d3d!2sKyoto%2C%20Japan!5e0!3m2!1sen!2sus!4v1650000000000!5m2!1sen!2sus" width="600" height="450" style="border:0;" allowfullscreen="" loading="lazy"></iframe>
+        </div>
+        
+        <h3>Nara Overview</h3>
+        <div class="map-container">
+            <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d52217.03351149382!2d135.7833543210938!3d34.68503399999999!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x6001a9c6ddff322f%3A0xb0a3e73d6f4072e!2sNara%2C%20Japan!5e0!3m2!1sen!2sus!4v1650000000000!5m2!1sen!2sus" width="600" height="450" style="border:0;" allowfullscreen="" loading="lazy"></iframe>
+        </div>
+
+        <h3>Transportation Tips</h3>
+        <div class="tip-box">
+            <h4>Japan Rail Pass</h4>
+            <p>Purchase a 7-day Japan Rail Pass before traveling to Japan (approximately $300 per person). This will cover your travel between Tokyo and Kyoto, day trips to Nara and Hiroshima, and many local JR trains.</p>
+        </div>
+        
+        <div class="tip-box">
+            <h4>IC Cards</h4>
+            <p>Get a PASMO or Suica card for easy access to subways, local buses, and even some convenience store purchases. You can load money onto these cards as needed.</p>
+        </div>
+        
+        <div class="tip-box">
+            <h4>Tokyo Subway</h4>
+            <p>The subway system is extensive but well-marked in English. Use Google Maps or a similar app for transit directions.</p>
+        </div>
+    </div>
+
+    <div id="Attractions" class="tabcontent">
+        <h2>Key Attractions</h2>
+        
+        <h3>Tokyo</h3>
+        <div class="day-card">
+            <h4>Meiji Shrine</h4>
+            <p>A peaceful shrine dedicated to Emperor Meiji and Empress Shoken, surrounded by a lush forest in the heart of Tokyo.</p>
+            <p><strong>Hours:</strong> Sunrise to sunset, daily</p>
+            <p><strong>Fee:</strong> Free admission to the main shrine</p>
+        </div>
+        
+        <div class="day-card">
+            <h4>Sensō-ji Temple</h4>
+            <p>Tokyo's oldest temple, founded in 628 AD. Walk through the famous Kaminarimon Gate and browse the traditional shops along Nakamise Street.</p>
+            <p><strong>Hours:</strong> 6:00 AM to 5:00 PM (Main hall)</p>
+            <p><strong>Fee:</strong> Free</p>
+        </div>
+        
+        <h3>Kyoto</h3>
+        <div class="day-card">
+            <h4>Fushimi Inari Shrine</h4>
+            <p>Famous for its thousands of vermilion torii gates winding up the mountainside. Early morning visits avoid crowds.</p>
+            <p><strong>Hours:</strong> Always open</p>
+            <p><strong>Fee:</strong> Free</p>
+            <p><strong>Tip:</strong> The full hike takes 2-3 hours, but even walking through the initial densely packed gates provides a great experience.</p>
+        </div>
+        
+        <div class="day-card">
+            <h4>Kinkaku-ji (Golden Pavilion)</h4>
+            <p>A stunning Zen temple covered in gold leaf, reflected in a serene pond surrounded by meticulous gardens.</p>
+            <p><strong>Hours:</strong> 9:00 AM to 5:00 PM</p>
+            <p><strong>Fee:</strong> ¥400</p>
+        </div>
+        
+        <div class="day-card">
+            <h4>Arashiyama Bamboo Grove</h4>
+            <p>A magical pathway through towering bamboo, creating a unique atmosphere as sunlight filters through the green canopy.</p>
+            <p><strong>Hours:</strong> Always open</p>
+            <p><strong>Fee:</strong> Free</p>
+            <p><strong>Tip:</strong> Visit early morning (before 8:00 AM) to avoid crowds and get better photos.</p>
+        </div>
+        
+        <h3>Nara</h3>
+        <div class="day-card">
+            <h4>Nara Park & Deer</h4>
+            <p>Home to over 1,000 free-roaming "sacred" deer that bow for crackers (available for purchase in the park).</p>
+            <p><strong>Hours:</strong> Always open</p>
+            <p><strong>Fee:</strong> Free (deer crackers cost ¥200)</p>
+        </div>
+        
+        <div class="day-card">
+            <h4>Todai-ji Temple</h4>
+            <p>Houses the Great Buddha (Daibutsu), one of Japan's largest bronze Buddha statues (15 meters tall), in the world's largest wooden building.</p>
+            <p><strong>Hours:</strong> 8:00 AM to 5:00 PM (April-October)</p>
+            <p><strong>Fee:</strong> ¥600</p>
+        </div>
+        
+        <div class="day-card">
+            <h4>Isuien Garden</h4>
+            <p>A hidden gem in Nara with beautiful traditional landscaping, ponds, and borrowed scenery of Todai-ji's pagoda in the distance.</p>
+            <p><strong>Hours:</strong> 9:30 AM to 4:30 PM</p>
+            <p><strong>Fee:</strong> ¥1,000</p>
+            <p><strong>Special Note:</strong> Perfect proposal location with peaceful atmosphere and beautiful natural settings.</p>
+        </div>
+        
+        <h3>Hiroshima</h3>
+        <div class="day-card">
+            <h4>Peace Memorial Park & Museum</h4>
+            <p>A sobering but important memorial to the victims of the atomic bombing, promoting peace and nuclear disarmament.</p>
+            <p><strong>Hours:</strong> 8:30 AM to 6:00 PM (March-July)</p>
+            <p><strong>Fee:</strong> ¥200 (museum)</p>
+        </div>
+        
+        <div class="day-card">
+            <h4>Miyajima Island & Itsukushima Shrine</h4>
+            <p>Famous for its "floating" torii gate, one of Japan's most iconic views. The island is also home to friendly deer.</p>
+            <p><strong>Hours:</strong> 6:30 AM to 6:00 PM (shrine)</p>
+            <p><strong>Fee:</strong> ¥300 (shrine)</p>
+            <p><strong>Note:</strong> Check tide times to see the gate "floating" at high tide.</p>
+        </div>
+    </div>
+
+    <div id="Phrases" class="tabcontent">
+        <h2>Essential Japanese Phrases</h2>
+        
+        <table class="phrase-table">
+            <tr>
+                <th>English</th>
+                <th>Japanese</th>
+                <th>Pronunciation</th>
+            </tr>
+            <tr>
+                <td>Hello</td>
+                <td>こんにちは</td>
+                <td>Kon-nichi-wa</td>
+            </tr>
+            <tr>
+                <td>Good morning</td>
+                <td>おはようございます</td>
+                <td>O-ha-yo go-za-i-mas</td>
+            </tr>
+            <tr>
+                <td>Good evening</td>
+                <td>こんばんは</td>
+                <td>Kon-ban-wa</td>
+            </tr>
+            <tr>
+                <td>Thank you</td>
+                <td>ありがとうございます</td>
+                <td>A-ri-ga-to go-za-i-mas</td>
+            </tr>
+            <tr>
+                <td>You're welcome</td>
+                <td>どういたしまして</td>
+                <td>Do-i-ta-shi-ma-shi-te</td>
+            </tr>
+            <tr>
+                <td>Excuse me</td>
+                <td>すみません</td>
+                <td>Su-mi-ma-sen</td>
+            </tr>
+            <tr>
+                <td>Yes</td>
+                <td>はい</td>
+                <td>Ha-i</td>
+            </tr>
+            <tr>
+                <td>No</td>
+                <td>いいえ</td>
+                <td>I-i-e</td>
+            </tr>
+            <tr>
+                <td>I don't understand</td>
+                <td>わかりません</td>
+                <td>Wa-ka-ri-ma-sen</td>
+            </tr>
+            <tr>
+                <td>Where is the bathroom?</td>
+                <td>トイレはどこですか？</td>
+                <td>To-i-re wa do-ko des-ka?</td>
+            </tr>
+            <tr>
+                <td>How much is this?</td>
+                <td>いくらですか？</td>
+                <td>I-ku-ra des-ka?</td>
+            </tr>
+            <tr>
+                <td>Delicious!</td>
+                <td>おいしい！</td>
+                <td>O-i-shi-i!</td>
+            </tr>
+            <tr>
+                <td>Cheers!</td>
+                <td>かんぱい！</td>
+                <td>Kan-pa-i!</td>
+            </tr>
+            <tr>
+                <td>Will you marry me?</td>
+                <td>結婚してください</td>
+                <td>Ke-kkon shi-te ku-da-sa-i</td>
+            </tr>
+        </table>
+    </div>
+
+    <div id="Tips" class="tabcontent">
+        <h2>Travel Tips</h2>
+        
+        <div class="day-card">
+            <h3>Money & Payments</h3>
+            <p>Japan is still largely a cash-based society, especially in smaller establishments.</p>
+            <ul>
+                <li>Bring cash and exchange some at the airport upon arrival</li>
+                <li>7-Eleven ATMs reliably accept foreign cards</li>
+                <li>Major hotels, department stores, and restaurants accept credit cards</li>
+                <li>Carry a coin purse – you'll accumulate many coins</li>
+            </ul>
+        </div>
+        
+        <div class="day-card">
+            <h3>Etiquette</h3>
+            <ul>
+                <li>Bow slightly when greeting people</li>
+                <li>Remove shoes when entering traditional accommodations, some restaurants, and temples</li>
+                <li>Do not tip (it's considered rude)</li>
+                <li>Stand on the left side of escalators in Tokyo (right side in Osaka/Kyoto)</li>
+                <li>Avoid eating while walking</li>
+                <li>Keep voice down on public transportation</li>
+                <li>When paying at shops, place money in the tray provided, not directly in hands</li>
+            </ul>
+        </div>
+        
+        <div class="day-card">
+            <h3>Connectivity</h3>
+            <ul>
+                <li>Rent a pocket WiFi device or get a data SIM upon arrival at the airport</li>
+                <li>Download offline maps before your trip</li>
+                <li>Install a translation app like Google Translate</li>
+                <li>Consider the Japan Transit Planner app for navigating trains</li>
+            </ul>
+        </div>
+        
+        <div class="day-card">
+            <h3>Food & Dining</h3>
+            <ul>
+                <li>Say "Itadakimasu" before eating (similar to "bon appétit")</li>
+                <li>Look for restaurants with plastic food displays if you can't read Japanese</li>
+                <li>Try conveyor belt sushi for affordable sushi options</li>
+                <li>Many restaurants have a "otōshi" or "table charge" with a small appetizer</li>
+                <li>Slurping noodles is considered a compliment to the chef</li>
+            </ul>
+        </div>
+        
+        <div class="day-card">
+            <h3>Budget Saving Tips</h3>
+            <ul>
+                <li>Convenience stores (konbini) like 7-Eleven, Lawson, and FamilyMart have quality, affordable food</li>
+                <li>Look for lunch sets ("teishoku") for better value than dinner</li>
+                <li>Consider staying at a ryokan (traditional inn) for one night rather than your entire stay</li>
+                <li>Use local buses in Kyoto (¥230 flat fare or ¥500 day pass) for efficient sightseeing</li>
+                <li>Take advantage of tax-free shopping (look for the sign) for purchases over ¥5,000</li>
+            </ul>
+        </div>
+    </div>
+
+    <div id="Proposal" class="tabcontent">
+        <h2>Special Moment Planning</h2>
+        
+        <div class="proposal-spot">
+            <h3>Isuien Garden in Nara - The Perfect Proposal Location</h3>
+            <p>The serene Isuien Garden is an ideal location for your proposal, combining natural beauty, privacy, and Japanese cultural significance.</p>
+            
+            <h4>Why Isuien Garden?</h4>
+            <ul>
+                <li>Less crowded than major tourist spots</li>
+                <li>Beautiful traditional Japanese garden with ponds and bridges</li>
+                <li>Peaceful atmosphere with the distant view of Todai-ji's pagoda</li>
+                <li>Represents the harmony and beauty of Japanese aesthetics</li>
+                <li>Several secluded spots perfect for an intimate moment</li>
+            </ul>
+            
+            <h4>Best Spots Within the Garden</h4>
+            <p><strong>Sansui-tei Teahouse Area:</strong> A beautiful wooden structure overlooking the pond with Mt. Wakakusa and Todai-ji in the background. This "borrowed scenery" concept is quintessentially Japanese.</p>
+            
+            <p><strong>Back Garden Bridge:</strong> A small arched bridge crossing over a narrow section of the pond, surrounded by maple trees. In April, you might catch early blooming flowers.</p>
+            
+            <h4>Timing</h4>
+            <p>Visit in the late afternoon when the lighting is golden and tourist numbers decrease. The garden closes at 4:30 PM, so aim to arrive by 2:30-3:00 PM to have time to explore and find the perfect spot.</p>
+            
+            <h4>Practical Tips</h4>
+            <ul>
+                <li>Entry fee: ¥1,000 per person</li>
+                <li>Address: 74 Suimoncho, Nara, 630-8208</li>
+                <li>10-minute walk from Kintetsu Nara Station</li>
+                <li>Consider having a small celebration afterward at one of the nearby traditional restaurants</li>
+                <li>Take some photos discreetly before proposing, or consider hiring a local photographer</li>
+            </ul>
+        </div>
+        
+        <div class="day-card">
+            <h3>Backup Proposal Locations</h3>
+            
+            <h4>Miyajima Island - Itsukushima Shrine</h4>
+            <p>At sunset, the "floating" torii gate creates a magical backdrop. Find a quiet spot on the beach away from the main crowd.</p>
+            
+            <h4>Arashiyama Bamboo Grove (Early Morning)</h4>
+            <p>If you arrive very early (before 7:30 AM), you might have this magical bamboo pathway almost to yourself, creating a surreal, peaceful environment.</p>
+            
+            <h4>Philosopher's Path in Kyoto</h4>
+            <p>This peaceful stone path alongside a canal lined with cherry trees is named for the philosopher Nishida Kitaro who used this path for daily meditation. In mid-April, you may catch late-blooming cherry blossoms.</p>
+        </div>
+    </div>
+
+    <footer>
+        <p>Created with love for your special journey to Japan</p>
+        <p>April 15-23, 2023</p>
+    </footer>
+
+    <script>
+        function openTab(evt, tabName) {
+            var i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tabcontent");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+            }
+            tablinks = document.getElementsByClassName("tablinks");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].className = tablinks[i].className.replace(" active", "");
+            }
+            document.getElementById(tabName).style.display = "block";
+            evt.currentTarget.className += " active";
+        }
+
+        // Get the element with id="defaultOpen" and click on it
+        document.getElementById("defaultOpen").click();
+    </script>
+</body>
+</html> 

@@ -1,0 +1,710 @@
+# Wanderlisted — Multi-Agent Travel Itinerary System Design
+
+> **Author:** Tirso Gomez
+> **Date:** March 2026
+> **Stack:** Python · LangChain · LangGraph · LangSmith
+> **Purpose:** A production-grade reference for building a multi-agent system that generates rich, personalised travel itineraries — and a learning roadmap for mastering multi-agent architecture patterns.
+
+---
+
+## 1. High-Level Narrative Overview
+
+### What We're Building
+
+Wanderlisted is a multi-agent orchestration system that accepts a natural-language travel request (e.g., *"Plan a 10-day trip to Japan for two people in April, budget $4,000 USD"*) and returns a fully structured, personalised travel handbook — including flights, hotels, day-by-day activities, weather context, cost summaries, safety advisories, and cultural tips.
+
+### Why Multi-Agent?
+
+A monolithic LLM cannot reliably generate accurate flight prices, live weather, real exchange rates, and detailed activity itineraries simultaneously. The hallucination risk is high, tool-calling becomes unwieldy, and the context window fills fast. Instead, we divide the problem into **focused specialist agents** — each with a narrow responsibility, managed inputs and outputs, and clear interaction contracts — coordinated by a supervisor graph that assembles them into a coherent whole.
+
+### The Core Insight
+
+> Think of Wanderlisted as a travel agency — not a single travel consultant. The supervisor is the account manager who takes the client brief and delegates to specialists: a flight desk, a hotels desk, a local experiences team, and a finance analyst. Each specialist does one job well and hands off structured results. The account manager synthesises everything into the final itinerary handbook.
+
+This pattern — a **supervisor-routed multi-agent graph** — is directly transferable to hundreds of other domains. Mastering it here means you can build the same architecture for medical triage, legal research, e-commerce product discovery, and more.
+
+### Technology Stack Fit
+
+| Layer | Technology | Role |
+|---|---|---|
+| **Agent intelligence** | LangChain (tools, structured output, LCEL chains) | Each specialist agent's core reasoning |
+| **Orchestration** | LangGraph (StateGraph, supervisor, sub-graphs, Send API) | Graph structure, routing, parallelism, memory |
+| **Observability** | LangSmith (tracing, evaluation, prompt versioning) | Debug, evaluate quality, monitor production |
+| **State persistence** | LangGraph Checkpointer (SQLite → Postgres) | Memory across turns, HITL, time travel |
+
+---
+
+## 2. Agent-by-Agent Evaluation
+
+Each tool or capability below is evaluated as: **standalone agent** or **tool within an agent**, based on complexity of reasoning required, state ownership, interactivity, and re-usability.
+
+---
+
+### 2.1 FlightSearchAgent ✅ Standalone Agent
+
+**Purpose:** Searches for available flights between an origin and destination for given dates and passenger count.
+
+**Value it adds:** Flight data is dynamic, structured, and meaningfully complex — round-trips, layovers, airline preferences, cabin class, fare rules, baggage. A dedicated agent can reason over multiple search results and rank or filter them against user preferences.
+
+**Required inputs:**
+- `origin_iata` (string) — departure airport code
+- `destination_iata` (string) — arrival airport code
+- `departure_date` (ISO 8601)
+- `return_date` (ISO 8601, optional)
+- `passengers` (int)
+- `cabin_class` (string: economy / business)
+- `budget_ceiling_usd` (float, optional)
+
+**Required outputs:**
+- `flight_options` (list of structured `FlightOption` Pydantic objects: airline, flight number, price, duration, stops, booking link)
+- `recommended_option` (single best match with reasoning)
+
+**Tools / APIs:** Amadeus Flight Offers Search API · Skyscanner API · Tavily web search (fallback)
+
+**Interacts with:**
+- `IATALookupTool` — resolves city/airport names to IATA codes before calling the API
+- `BudgetAgent` — passes prices for cost roll-up
+- `FlightBookingAgent` — hands off selected `FlightOption` for booking
+
+**Should it be a separate agent?** **Yes.** Flight search requires iterative tool calls (search → filter → rank), structured output schemas, and potential human-in-the-loop review of results. Its state is self-contained.
+
+---
+
+### 2.2 FlightBookingAgent ✅ Standalone Agent (Phase 3+, HITL Required)
+
+**Purpose:** Books the selected flight using traveller details and payment information.
+
+**Value it adds:** Booking is a **high-stakes, irreversible action**. It must be a separate agent gated behind a mandatory human-in-the-loop interrupt (`interrupt_before=["booking_action"]`) so the user confirms before any real-world write happens.
+
+**Required inputs:**
+- `selected_flight` (`FlightOption` from FlightSearchAgent)
+- `traveller_details` (name, passport, DOB)
+- `payment_token` (securely injected at runtime — never in state)
+
+**Required outputs:**
+- `booking_confirmation` (confirmation number, e-ticket link, PNR)
+- `booking_status` (confirmed / failed / pending)
+
+**Tools / APIs:** Amadeus Flight Orders API · Airline booking APIs
+
+**Interacts with:**
+- `FlightSearchAgent` — consumes its output
+- `Supervisor` — must interrupt before executing
+
+**Security note:** Payment credentials must **never** be stored in LangGraph state (checkpointer persistence). Inject via `RunnableConfig` at call-time using `configurable` fields and rotate tokens per session.
+
+**Should it be a separate agent?** **Yes, and deliberately deferred.** Its irreversible side-effects and security requirements justify isolation. Build phases 1–2 without it; introduce it with a HITL gate in Phase 3.
+
+---
+
+### 2.3 HotelSearchAgent ✅ Standalone Agent
+
+**Purpose:** Searches for available hotels in the destination city for the given dates, filtering by budget and preferences.
+
+**Value it adds:** Hotel search involves nuanced preference matching (location vs. price, amenity filtering, neighbourhood character) and produces structured results that feed the cost summary and day-by-day itinerary. Separating it allows parallel execution with flight search.
+
+**Required inputs:**
+- `destination_city` (string)
+- `check_in_date` / `check_out_date` (ISO 8601)
+- `guests` (int)
+- `budget_per_night_usd` (float)
+- `preferences` (list: "central", "historic", "quiet", "boutique", etc.)
+
+**Required outputs:**
+- `hotel_options` (list of structured `HotelOption` Pydantic objects)
+- `recommended_option` (with reasoning)
+
+**Tools / APIs:** Amadeus Hotel Search API · Booking.com API · Tavily web search (fallback)
+
+**Interacts with:**
+- `BudgetAgent` — passes hotel total cost
+- `ActivitiesAgent` — provides neighbourhood context to help plan nearby activities
+
+**Should it be a separate agent?** **Yes.** Parallel with FlightSearchAgent via LangGraph fan-out (`Send` API or parallel edges). Both can run simultaneously after the `user_context_node`.
+
+---
+
+### 2.4 WeatherAgent ✅ Standalone Agent (lightweight)
+
+**Purpose:** Retrieves weather forecasts and historical climate data for the destination across the travel dates.
+
+**Value it adds:** Weather data shapes the entire itinerary — outdoor activities, packing advice, clothing tips, and risk advisories. Without it, the system generates generic recommendations.
+
+**Required inputs:**
+- `destination_city` (string)
+- `travel_dates` (list of ISO 8601 dates)
+
+**Required outputs:**
+- `daily_weather` (list of `DayWeather`: date, temp range, conditions, precipitation probability)
+- `climate_summary` (two-sentence narrative)
+- `packing_recommendations` (list of items)
+
+**Tools / APIs:** OpenWeatherMap API · Weather.gov · Tavily (historical climate context)
+
+**Interacts with:**
+- `ActivitiesAgent` — weather context used to schedule indoor/outdoor activities appropriately
+- `ItineraryAssemblerAgent` — injects weather notes per day
+
+**Should it be a separate agent?** **Yes, but keep it slim.** A single-node ReAct agent with tool access is sufficient. It does not need complex reasoning — just structured tool calls and formatted output.
+
+---
+
+### 2.5 CurrencyAgent ✅ Standalone Agent (lightweight)
+
+**Purpose:** Retrieves current exchange rates between the user's home currency and destination currencies, and provides spending-power context.
+
+**Value it adds:** Without real exchange rates, budget calculations are meaningless. It also enriches the itinerary with practical spending tips (e.g., tipping culture, cash vs. card norm).
+
+**Required inputs:**
+- `home_currency` (ISO 4217, e.g., "USD")
+- `destination_currency` (ISO 4217, e.g., "JPY")
+- `budget_usd` (float)
+
+**Required outputs:**
+- `exchange_rate` (float)
+- `budget_local_currency` (float)
+- `spending_tips` (list of strings)
+- `last_updated` (ISO 8601 timestamp)
+
+**Tools / APIs:** Open Exchange Rates API · Frankfurter API (free) · Tavily (spending culture context)
+
+**Interacts with:**
+- `BudgetAgent` — provides the rate used for all conversions
+
+**Should it be a separate agent?** **Yes**, but this is a candidate for a **single-node agent** rather than a full sub-graph. Since it makes one deterministic tool call and returns structured data, it can be implemented as a simple LangChain chain (`prompt | model.with_structured_output(CurrencyResult)`) invoked as a tool node within the supervisor.
+
+---
+
+### 2.6 ActivitiesAgent ✅ Standalone Agent
+
+**Purpose:** Generates a curated list of day-by-day activities, restaurants, cultural experiences, and hidden gems based on the destination, travel style, weather, and interests.
+
+**Value it adds:** This is the **richest creative agent** in the system. It synthesises destination knowledge, user preferences, and contextual data (weather, neighbourhood, cultural calendar) into a compelling human experience narrative. This is where the most LLM reasoning power should be invested.
+
+**Required inputs:**
+- `destination` (city or region)
+- `travel_dates` (list)
+- `travel_style` (list: "cultural", "adventure", "relaxation", "foodie", etc.)
+- `interests` (free text)
+- `weather_context` (`daily_weather` from WeatherAgent)
+- `hotel_neighbourhood` (string from HotelSearchAgent)
+- `budget_per_day_usd` (float from BudgetAgent)
+
+**Required outputs:**
+- `day_plans` (list of `DayPlan`: date, morning/afternoon/evening activities, restaurants, cultural notes, estimated costs)
+- `must_see` (shortlist of top highlights)
+- `hidden_gems` (shortlist of under-the-radar recommendations)
+
+**Tools / APIs:** Tavily web search · Google Places API · Foursquare API · Wikipedia (cultural context via LangChain WikipediaLoader)
+
+**Interacts with:**
+- `WeatherAgent` — consumes weather to shape outdoor/indoor scheduling
+- `SafetyAgent` — safety flags can suppress certain activities or add advisories
+- `ItineraryAssemblerAgent` — provides the core content of each day
+
+**Should it be a separate agent?** **Yes, and this is the most complex agent.** It benefits from a ReAct loop: search → evaluate result → decide to search further or generate plan. Consider a **sub-graph** with its own `ActivitiesState` to keep the message history clean.
+
+---
+
+### 2.7 SafetyAgent ✅ Standalone Agent (cross-cutting concern)
+
+**Purpose:** Retrieves up-to-date travel advisories, health requirements (vaccinations, visa), local safety tips, and emergency contacts for the destination.
+
+**Value it adds:** Safety information is non-negotiable and should never be omitted. It adds credibility and genuine user value. Its outputs are injected into every relevant section of the final handbook.
+
+**Required inputs:**
+- `destination_country` (ISO 3166-1 alpha-2)
+- `home_country` (for visa context)
+- `travel_dates` (for seasonal health/event context)
+
+**Required outputs:**
+- `advisory_level` (string: "safe" / "exercise caution" / "reconsider" / "do not travel")
+- `visa_requirements` (string)
+- `health_requirements` (list: vaccinations, medications)
+- `emergency_contacts` (police, ambulance, embassy)
+- `local_safety_tips` (list)
+- `natural_disaster_risk` (string, seasonal)
+
+**Tools / APIs:** US State Department Travel Advisories API · UK FCDO API · CDC Traveler's Health · Tavily web search
+
+**Interacts with:**
+- `ActivitiesAgent` — flags unsafe activities or areas
+- `ItineraryAssemblerAgent` — safety section injected into final output
+- `Supervisor` — if advisory level is "do not travel", supervisor should interrupt and alert the user
+
+**Should it be a separate agent?** **Yes**, but its outputs are **injected into every other agent's context** as a cross-cutting concern. Run it early and in parallel with FlightSearchAgent and HotelSearchAgent. Never let activities be planned without first running SafetyAgent.
+
+---
+
+### 2.8 BudgetAgent ✅ Standalone Agent
+
+**Purpose:** Aggregates cost estimates from all other agents, applies exchange rates, and produces a comprehensive budget breakdown with projections.
+
+**Value it adds:** Closing the budget loop is what transforms a collection of agent outputs into a coherent, trustworthy plan. The user asked for a `$4,000` trip — BudgetAgent tells them definitively whether the assembled plan is within budget and where to adjust.
+
+**Required inputs:**
+- `flight_cost_usd` (from FlightSearchAgent)
+- `hotel_cost_usd` (from HotelSearchAgent)
+- `activity_costs_usd` (from ActivitiesAgent)
+- `daily_meal_budget_usd` (from user preferences)
+- `exchange_rate_data` (from CurrencyAgent)
+- `total_budget_usd` (from original user request)
+
+**Required outputs:**
+- `budget_breakdown` (dict: flights, hotels, activities, meals, transport, misc)
+- `total_estimated_usd` (float)
+- `total_estimated_local` (float)
+- `under_over_budget` (float — positive = under, negative = over)
+- `saving_recommendations` (list, if over budget)
+
+**Tools / APIs:** No external APIs needed. Pure calculation + LLM for narrative recommendations. Consider `with_structured_output(BudgetSummary)`.
+
+**Interacts with:**
+- All agents (final aggregation point)
+- `ItineraryAssemblerAgent` — budget summary section injects into the final output
+
+**Should it be a separate agent?** **Yes**, but it is a **fan-in node** — it runs after all cost-bearing agents complete. It does not need to be a ReAct loop; a single LLM chain call with structured output is sufficient.
+
+---
+
+### 2.9 IATALookupTool — ⚠️ Tool, Not an Agent
+
+**Purpose:** Resolves city or airport names (e.g., "Tokyo" → `NRT` / `HND`) to IATA codes required by flight APIs.
+
+**Value it adds:** Flight APIs require IATA codes; users don't think in IATA codes. Without this, the FlightSearchAgent would fail on natural-language inputs.
+
+**Should it be a separate agent?** **No.** This is a pure lookup — deterministic, stateless, and sub-second. Implement it as a `@tool`-decorated function bound to `FlightSearchAgent`. It involves zero reasoning. Creating an agent for it would add latency and complexity with no benefit. Backed by the Amadeus Airport & City Search API or a static IATA code dictionary with Tavily fallback.
+
+---
+
+## 3. Architecture & Orchestration Plan
+
+### 3.1 Orchestration Model: Hierarchical Supervisor Graph
+
+The recommended architecture is a **supervisor-routed multi-agent graph** implemented in LangGraph, with sub-graphs for the most complex agents.
+
+```
+                         ┌─────────────────────────────┐
+                         │     TravelSupervisorGraph    │
+                         │                             │
+     [Human Request] ──► │  user_context_node          │
+                         │         │                   │
+                         │         ▼                   │
+                         │  ┌─────────────┐            │
+                         │  │  Supervisor │            │
+                         │  │    LLM      │            │
+                         │  └──────┬──────┘            │
+                         │         │ routes            │
+                         │    ┌────┼────┐              │
+                         │    ▼    ▼    ▼              │
+                         │  [S]  [W]  [H]  (parallel)  │
+                         │  [F]               [C]       │
+                         │    │    │    │    │          │
+                         │    ▼    ▼    ▼    ▼          │
+                         │    └────┴────┴────┘          │
+                         │         │ fan-in             │
+                         │         ▼                    │
+                         │    ActivitiesAgent           │
+                         │         │                    │
+                         │         ▼                    │
+                         │     BudgetAgent              │
+                         │         │                    │
+                         │         ▼                    │
+                         │  ItineraryAssembler          │
+                         │         │                    │
+                         │         ▼                    │
+                         │   [Final Handbook]           │
+                         └─────────────────────────────┘
+
+Legend: [S]=SafetyAgent [W]=WeatherAgent [H]=HotelSearchAgent
+        [F]=FlightSearchAgent [C]=CurrencyAgent
+```
+
+### 3.2 State Management
+
+Use a **single `TravelState` TypedDict** at the parent graph level, with `Annotated` reducers on keys written by parallel agents. Sub-agents have private `*State` schemas that only surface their outputs to the parent.
+
+```
+TravelState:
+  # Input
+  user_request: str
+  destination: str
+  origin: str
+  travel_dates: list[str]
+  budget_usd: float
+  preferences: dict
+
+  # Intermediate (written by parallel agents, reducers applied)
+  flight_options: list[FlightOption]           # overwrite
+  hotel_options: list[HotelOption]             # overwrite
+  daily_weather: list[DayWeather]              # overwrite
+  exchange_rate_data: CurrencyResult           # overwrite
+  safety_report: SafetyReport                  # overwrite
+  agent_errors: Annotated[list, add]           # accumulate failures
+
+  # Sequential outputs
+  day_plans: list[DayPlan]
+  budget_summary: BudgetSummary
+  final_handbook: str
+
+  # Control
+  supervisor_next: str                         # routing decision
+  human_feedback: str                          # HITL injections
+```
+
+### 3.3 Parallel Execution Strategy
+
+After `user_context_node` parses and validates the request, five agents run **in parallel** using LangGraph's fan-out pattern:
+
+```python
+# Fan-out: all five start simultaneously
+builder.add_edge("user_context_node", "safety_agent")
+builder.add_edge("user_context_node", "weather_agent")
+builder.add_edge("user_context_node", "flight_search_agent")
+builder.add_edge("user_context_node", "hotel_search_agent")
+builder.add_edge("user_context_node", "currency_agent")
+
+# Fan-in: activities only starts when all five complete
+builder.add_edge("safety_agent",       "activities_agent")
+builder.add_edge("weather_agent",      "activities_agent")
+builder.add_edge("flight_search_agent","activities_agent")
+builder.add_edge("hotel_search_agent", "activities_agent")
+builder.add_edge("currency_agent",     "activities_agent")
+```
+
+This mirrors the Research Assistant sub-graph pattern from LangGraph Module 4, achieving significant latency reduction. Each agent runs for ~5–15 seconds in parallel rather than ~50–75 seconds sequentially.
+
+### 3.4 Supervisor Routing Logic
+
+The `Supervisor LLM` node uses `model.with_structured_output(NextAction)` to decide routing at key decision points:
+
+- **Route to HITL** if `safety_report.advisory_level == "do not travel"` → interrupt with user warning
+- **Route to HITL** if `budget_summary.under_over_budget < -500` → offer to adjust (fewer nights, economy flights)
+- **Route to FlightBookingAgent** only if user explicitly requests booking
+- **Route to END** once `ItineraryAssembler` produces the final handbook
+
+### 3.5 Failure Handling and Fallbacks
+
+| Failure scenario | Handling strategy |
+|---|---|
+| Flight API timeout | Retry once; on second failure, populate `flight_options` with Tavily-scraped estimates and flag as "approximate" |
+| Hotel API returns 0 results | Relax budget constraint by 20% and retry; if still empty, return top 3 Airbnb-style options via web search |
+| Weather API unavailable | Use historical monthly averages from a static data file; annotate output as "historical estimate" |
+| Safety API unavailable | Default to US State Department advisory page via Tavily scrape |
+| Agent poison/hallucination detected | Each agent output is validated against its Pydantic schema before being written to state. Schema validation failure routes to a `correction_node` that retries with a stricter prompt |
+| LLM rate limit | Exponential backoff handled at the `BaseChatModel` level via LangChain retry logic |
+
+LangGraph's `interrupt_before` and `NodeInterrupt` are used as the last-resort safety valve before any write to `TravelState.final_handbook`.
+
+### 3.6 LangSmith Integration
+
+LangSmith provides three layers of value:
+
+**Layer 1 — Tracing (development + production)**
+- Set `LANGSMITH_TRACING=true` — LangGraph auto-traces every node, sub-graph, tool call, and LLM invocation
+- Each run is tagged with `thread_id` (maps to one user session) and `user_id`
+- Every agent's internal ReAct loop is visible as a collapsible sub-trace
+- Token usage and latency per node are surfaced automatically
+
+**Layer 2 — Evaluation (CI/CD quality gate)**
+- Create a **golden dataset** in LangSmith: 20–30 representative travel requests with reference outputs
+- Evaluators:
+  - Heuristic: Does the final handbook contain all required sections? (structural completeness score)
+  - Heuristic: Is the total estimated cost within 15% of a manually verified estimate? (budget accuracy)
+  - LLM-as-Judge: Does the itinerary match the user's stated travel style and interests? (semantic alignment, 1–10)
+  - LLM-as-Judge: Is the safety section complete and accurate for the destination? (safety coverage, 1–10)
+- Run `evaluate()` on every PR to `main` before deployment
+
+**Layer 3 — Prompt Engineering Lifecycle**
+- Store all agent system prompts as versioned LangSmith Hub prompts
+- Pull prompts at runtime: `hub.pull("wanderlisted/activities-agent-system")`
+- Run pairwise A/B experiments when changing prompts to measure quality regression/improvement before rollout
+
+---
+
+## 4. Phased Development Roadmap
+
+This roadmap is explicitly **learning-driven** — each phase teaches a reusable pattern you will recognise in hundreds of future systems.
+
+---
+
+### Phase 1 — Single-Agent Foundation (Weeks 1–2)
+
+**Learning objective:** Master the core LangChain + LangGraph primitives: tools, ReAct loops, state, and tracing.
+
+**What to build:**
+- A single `TravelResearchAgent` that accepts a natural language request and returns a plain-text itinerary
+- Use `MessagesState` as the state schema
+- Bind `TavilySearch` and `WikipediaLoader` as tools
+- Compile with `MemorySaver` for conversation history
+- Enable LangSmith tracing from day one (`LANGSMITH_TRACING=true`)
+
+**How it contributes:**
+- You internalise the **ReAct loop pattern** (Reason → Act → Observe → Reason) that every future agent uses
+- You understand how `add_messages` reducer and `MessagesState` work at the mechanical level
+- You see in LangSmith traces exactly what the LLM is doing at each step
+
+**Expected outcome:**
+A working agent that can answer "What should I do in Kyoto for 3 days?" with a reasonable narrative — even if costs and bookings are absent.
+
+**How to test/measure progress:**
+- Manually evaluate 5 diverse travel requests
+- Confirm every tool call appears in LangSmith traces
+- Confirm conversation history persists across turns within a thread
+
+---
+
+### Phase 2 — Structured Outputs and Specialist Agents (Weeks 3–4)
+
+**Learning objective:** Understand `with_structured_output`, Pydantic schemas, and building self-contained specialist agents.
+
+**What to build:**
+- `WeatherAgent`, `CurrencyAgent`, and `SafetyAgent` (the three simplest specialists)
+- Define `DayWeather`, `CurrencyResult`, and `SafetyReport` as Pydantic models
+- Each agent is a single-node graph with `with_structured_output` forcing validated JSON
+- All three agents are individually testable in isolation
+- Begin creating your LangSmith golden dataset with 10 test cases
+
+**How it contributes:**
+- You learn that **structured output is the key interface contract** between agents — it's what makes composition possible
+- You see how Pydantic validation catches hallucinated or malformed data before it corrupts downstream agents
+- You practice designing clean input/output schemas, which is the hardest design skill in multi-agent systems
+
+**Expected outcome:**
+Three independently callable agents that return validated, typed Python objects. A 10-example LangSmith dataset. First automated evaluation run.
+
+**How to test/measure progress:**
+- All three agents pass Pydantic schema validation on 20 test inputs
+- LangSmith `evaluate()` runs successfully against the golden dataset
+- Portfolio: can you predict what parameters each agent needs before writing code?
+
+---
+
+### Phase 3 — Multi-Agent Orchestration with Supervisor (Weeks 5–7)
+
+**Learning objective:** Build a supervisor-routed multi-agent graph, manage shared state, and handle fan-in/fan-out parallelism.
+
+**What to build:**
+- Add `FlightSearchAgent` and `HotelSearchAgent` (with IATA lookup tool)
+- Build the `TravelSupervisorGraph` with `TravelState`
+- Implement the parallel fan-out (5 agents simultaneously) and fan-in (ActivitiesAgent waits for all)
+- Implement `ActivitiesAgent` as a sub-graph with its own `ActivitiesState`
+- Implement `BudgetAgent` as the final fan-in aggregation node
+- Wire `ItineraryAssemblerAgent` as the final synthesis step
+
+**How it contributes:**
+- You learn the **supervisor pattern** — the single most reusable orchestration pattern in multi-agent systems
+- You learn how `Annotated` reducers prevent `InvalidUpdateError` in parallel branches
+- You experience the **emergent behaviour** that happens when agents pass structured data to each other
+- You understand when sub-graphs are justified (ActivitiesAgent) vs. overkill (CurrencyAgent)
+
+**Expected outcome:**
+End-to-end generation of a structured travel plan (all sections, validated costs, day-by-day activities) for any major city. Parallel agents reducing total latency to under 30 seconds.
+
+**How to test/measure progress:**
+- Measure wall-clock latency: sequential baseline vs. parallel execution (expect 3–5x speedup)
+- LangSmith trace must show all 5 parallel agents as sibling spans
+- Budget accuracy evaluator passes on 80% of golden dataset examples
+
+---
+
+### Phase 4 — Human-in-the-Loop, Safety, and State Editing (Weeks 8–10)
+
+**Learning objective:** Implement approval workflows, dynamic breakpoints, and state editing — the patterns that make agents safe in production.
+
+**What to build:**
+- Add `interrupt_before=["flight_booking_action"]` gate before any external write
+- Implement `interrupt()` inside SupervisorNode to alert user when safety advisory is "do not travel"
+- Implement `interrupt()` when budget is overspent by >$500 with three alternative scenarios
+- Build a `HumanFeedbackNode` that allows the user to edit the analyst-generated day plans before final assembly
+- Add time travel demo: show how to fork execution from a saved checkpoint to try an alternative destination
+
+**How it contributes:**
+- You internalise the principle: **agents that touch the real world must have human gates**
+- You learn that `update_state()` + `as_node=` is how you inject external context into a running graph
+- You see how checkpointers make graphs **auditable and reversible** — critical for production trust
+
+**Expected outcome:**
+A full conversation-style agent that pauses at key decisions, accepts user corrections, and never books anything without confirmation. LangSmith traces show interrupt events clearly.
+
+**How to test/measure progress:**
+- Manually walk through 3 scenarios: budget overrun, safety advisory, user modifies itinerary
+- Confirm via `graph.get_state_history()` that all checkpoints are present and replayable
+- Confirm payment credentials never appear in any LangSmith trace
+
+---
+
+### Phase 5 — Long-Term Memory, Deployment, and Production Monitoring (Weeks 11–14)
+
+**Learning objective:** Add user profiles, cross-session memory, deploy to LangGraph Cloud, and set up production evaluation / online monitoring with LangSmith.
+
+**What to build:**
+- Integrate `InMemoryStore` (or `PostgresStore` in production) to store user travel profiles: preferred airlines, dietary restrictions, past trips, loyalty numbers
+- Implement a `MemoryAgent` that reads/writes profile data and injects it into the supervisor's `user_context_node`
+- Deploy the graph to LangGraph Cloud (or self-hosted via Docker) with `langgraph.json` config
+- Integrate with LangGraph Agent Chat UI for a live demo
+- Set up LangSmith online evaluation rules: flag any run where the handbook is missing a required section; alert on latency > 60 seconds
+- Run pairwise A/B experiments: two versions of the `ActivitiesAgent` system prompt — evaluate which produces higher user satisfaction scores
+
+**How it contributes:**
+- You learn the **full LangGraph lifecycle**: from notebook prototype to deployed cloud service
+- You understand the difference between short-term memory (checkpointer) and long-term memory (store) — one of the most misunderstood distinctions in agentic systems
+- You experience LangSmith as a **production reliability tool**, not just a development debugger
+
+**Expected outcome:**
+A fully deployed, streamed, stateful travel agent that remembers user preferences across sessions, can be monitored in real time, and can be improved via systematic prompt experiments.
+
+**How to test/measure progress:**
+- Cross-session memory: user says "same airlines as last trip" — agent retrieves without re-asking
+- LangGraph Cloud deployment: generate itinerary via SDK client, not just local `graph.invoke()`
+- Production monitoring: one LangSmith alert rule fires correctly on a deliberately malformed test input
+
+---
+
+## 5. Improved Itinerary Output Specification
+
+### 5.1 What the Japan Handbook Got Right
+
+The `docs/japan_travel_handbook.html` demonstrates genuine craft: tabbed navigation, print-safe CSS, embedded Google Maps, day cards with hover effects, highlighted cultural experiences, a phrasebook table, and a memorable "Special Moment" proposal section. The visual design language (red accent `#e41e3f`, card shadows, responsive max-width) is coherent and pleasant.
+
+### 5.2 What to Improve
+
+| Current limitation | Improved approach |
+|---|---|
+| Static, human-authored HTML | Dynamically generated from agent-produced structured data (Jinja2 template + `TravelState`) |
+| No cost breakdown | Dedicated **Budget Summary** section with a visual cost breakdown table (flights, hotels, activities, misc) |
+| No weather context per day | `DayWeather` data injected into every day card: temperature range, conditions emoji, packing tip |
+| Safety info buried or absent | Persistent **Safety & Visa** banner at the top; per-section advisories where relevant |
+| Currency/spending context absent | **Spending Guide** section: exchange rate, equivalent local amounts, cash/card tips, tipping culture |
+| No structured booking links | Each recommended flight/hotel card has a direct booking link and estimated price |
+| Tabs hide content from print | Print stylesheet renders all tabs inline (already partially done — but extend to all sections) |
+| No progress indicator | For multi-city trips: a visual timeline/route bar at the top showing city → city transitions |
+| Single HTML file, no portability | Export options: PDF, Markdown, JSON (machine-readable for downstream tools) |
+| No personalisation hook | User name, trip title, and profile preferences (dietary, mobility) injected into relevant sections |
+
+### 5.3 Proposed Structure (Output Spec)
+
+```
+outputs/
+  handbook.html           ← Primary output (rich, tabbed, print-safe)
+  handbook.md             ← Markdown fallback (paste into Notion/Obsidian)
+  handbook.json           ← Machine-readable TravelState dump (for future re-processing)
+```
+
+**HTML Handbook Sections:**
+
+```
+┌─────────────────────────────────────────────────┐
+│  HEADER: Trip name, dates, traveller(s), budget  │
+│  SAFETY BANNER: Advisory level + visa summary    │
+│  ROUTE BAR: Origin → City1 → City2 → Origin      │
+├─────────────────────────────────────────────────┤
+│  TAB 1: ITINERARY                               │
+│    ├── Day card (date, day number)               │
+│    │     ├── Weather badge (🌤 18–24°C, 10% rain)│
+│    │     ├── Morning / Afternoon / Evening       │
+│    │     ├── Restaurant recommendation           │
+│    │     ├── Cultural experience (highlighted)  │
+│    │     ├── Estimated daily cost (USD + local)  │
+│    │     └── Safety advisory (if applicable)    │
+│    └── (repeats per day)                        │
+├─────────────────────────────────────────────────┤
+│  TAB 2: FLIGHTS & TRANSPORT                     │
+│    ├── Outbound flight card (airline, times, $$) │
+│    ├── Return flight card                        │
+│    ├── In-destination transport tips            │
+│    └── Airport → Hotel transfer guide           │
+├─────────────────────────────────────────────────┤
+│  TAB 3: HOTELS                                  │
+│    ├── Each hotel card (name, neighbourhood,    │
+│    │     stars, price/night, check-in/out,      │
+│    │     amenities, booking link)               │
+│    └── Map embed (neighbourhood overview)       │
+├─────────────────────────────────────────────────┤
+│  TAB 4: BUDGET SUMMARY                          │
+│    ├── Visual table: Budget vs. Estimate        │
+│    ├── Category breakdown (% pie chart or bars) │
+│    ├── Daily spending guide (local currency)    │
+│    └── Saving tips (if over budget)             │
+├─────────────────────────────────────────────────┤
+│  TAB 5: MAPS & PLACES                           │
+│    ├── City overview maps (Google Maps embeds)  │
+│    ├── Attraction list with coordinates         │
+│    └── Walking route suggestions per day        │
+├─────────────────────────────────────────────────┤
+│  TAB 6: SAFETY & HEALTH                        │
+│    ├── Advisory level badge (colour-coded)      │
+│    ├── Visa requirements                        │
+│    ├── Health requirements (vaccines, meds)     │
+│    ├── Emergency contacts                       │
+│    └── Natural disaster / seasonal risks        │
+├─────────────────────────────────────────────────┤
+│  TAB 7: CULTURE & LANGUAGE                     │
+│    ├── Phrasebook table (English / Local)       │
+│    ├── Cultural etiquette tips                  │
+│    ├── Tipping guide                            │
+│    └── Religious/social customs                 │
+├─────────────────────────────────────────────────┤
+│  TAB 8: PACKING LIST                           │
+│    ├── Weather-driven recommendations          │
+│    ├── Activity-specific items                  │
+│    └── Documents checklist                      │
+└─────────────────────────────────────────────────┘
+  FOOTER: Generated by Wanderlisted · LangSmith run ID
+          (links back to LangSmith trace for debugging)
+```
+
+### 5.4 Design System Updates
+
+| Element | Current | Proposed |
+|---|---|---|
+| Colour accent | Hard-coded `#e41e3f` | CSS variable `--accent` driven by destination theme (cherry blossom pink for Japan, golden amber for Italy, ocean teal for Greece) |
+| Typography | System font | Google Fonts: `Inter` (body) + `Playfair Display` (headers) |
+| Day weather | Not present | Weather badge component: emoji + temp range + condition in a pill shape |
+| Budget numbers | Not present | Colour-coded: green if under budget, amber if within 10%, red if over |
+| Safety banner | Not present | Sticky banner at top; colour matches advisory level (green/yellow/orange/red) |
+| Print layout | Partial | Full print stylesheet: page breaks between days, no tabs, all sections inline |
+| Mobile | Partially responsive | Full mobile-first redesign: day cards stack, tabs become accordion, maps load lazily |
+| Accessibility | None | ARIA labels, keyboard-navigable tabs, `prefers-reduced-motion` CSS rule |
+
+### 5.5 Generation Pipeline
+
+```
+TravelState (validated Python objects)
+        │
+        ▼
+ItineraryAssemblerAgent
+  - Jinja2 template rendering
+  - Injects all structured data into HTML sections
+  - Applies destination-theme CSS variable
+        │
+        ▼
+handbook.html   ←── Primary deliverable
+handbook.md     ←── Via html2text (lightweight Markdown conversion)
+handbook.json   ←── json.dumps(travel_state) with indentation
+```
+
+The assembler is the only agent that does not call external APIs. It is a pure synthesis and rendering node — fast, deterministic, and cheap to re-run if the template changes.
+
+---
+
+## Architecture Patterns Captured Here (Reuse in Future Systems)
+
+One of the goals of this document is to help you recognise patterns transferable to other domains. Here is a map:
+
+| Pattern | Where Used Here | Where It Generalises |
+|---|---|---|
+| Supervisor-router | `TravelSupervisorGraph` routing between specialists | Any domain with multiple specialists: medical triage, legal discovery, e-commerce search |
+| Fan-out / fan-in | 5 parallel agents feeding ActivitiesAgent | Parallel data gathering: competitive intelligence, portfolio analysis |
+| Sub-graph encapsulation | `ActivitiesAgent` as nested graph | Any agent whose internal state must not pollute parent state |
+| Structured output contracts | Every agent returns a Pydantic model | Anywhere two agents communicate — the schema IS the API |
+| Human-in-the-loop gate | Before booking, before over-budget output | Any write to the real world: email sends, payments, database writes |
+| Fault isolation reducers | `agent_errors: Annotated[list, add]` | Collecting partial failures without stopping the graph |
+| LLM-as-Judge evaluation | Itinerary quality assessment | Any subjective output without a ground truth label |
+| Cross-session memory store | User travel profile | Any system that should improve with repeated use: personal assistants, CRMs |
+| Thread-scoped checkpointing | Per-user conversation history | Any conversational agent |
+| LangSmith prompt versioning | Activities and safety prompts on Hub | Production systems where prompt quality is a first-class engineering concern |
+
+---
+
+Wanderlisted · March 2026*
