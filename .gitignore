@@ -213,3 +213,6 @@ notes.txt
 docs/
 # LangGraph API runtime state
 .langgraph_api/
+
+# Generated eval cache
+scripts/.eval_cache.json
