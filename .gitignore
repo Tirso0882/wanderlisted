@@ -211,3 +211,5 @@ notes.txt
 
 # Docs
 docs/
+# LangGraph API runtime state
+.langgraph_api/
