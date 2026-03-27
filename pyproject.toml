@@ -1,0 +1,26 @@
+[project]
+name = "wanderlisted"
+version = "0.2.0"
+description = "Multi-agent AI travel itinerary planner"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "integration: tests that call live external APIs (deselect with -m 'not integration')",
+]
+filterwarnings = [
+    "ignore::UserWarning",
+    "ignore:'asyncio.iscoroutinefunction' is deprecated:DeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["src/api/*"]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+fail_under = 80
