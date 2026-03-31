@@ -1,0 +1,266 @@
+{
+  "trip_title": "10 Days in Japan",
+  "traveller_names": [
+    "Alice",
+    "Bob"
+  ],
+  "origin_city": "New York",
+  "destinations": [
+    "tokyo",
+    "kyoto"
+  ],
+  "start_date": "2026-04-10",
+  "end_date": "2026-04-20",
+  "total_budget_usd": 4000.0,
+  "travel_style": "mid-range",
+  "group_type": "couple",
+  "dietary_restrictions": [],
+  "accessibility_needs": [],
+  "route_cities": [
+    "New York",
+    "Tokyo",
+    "Kyoto",
+    "Tokyo",
+    "New York"
+  ],
+  "route_transport": [
+    "flight",
+    "shinkansen",
+    "train",
+    "flight"
+  ],
+  "flights": [
+    {
+      "outbound": [
+        {
+          "carrier": "ANA",
+          "flight_number": "NH 110",
+          "departure_airport": "JFK",
+          "arrival_airport": "NRT",
+          "departure_time": "2026-04-10 11:00",
+          "arrival_time": "2026-04-11 14:30",
+          "duration_minutes": 810,
+          "cabin_class": "economy",
+          "stops": 0
+        }
+      ],
+      "inbound": [
+        {
+          "carrier": "ANA",
+          "flight_number": "NH 109",
+          "departure_airport": "NRT",
+          "arrival_airport": "JFK",
+          "departure_time": "2026-04-20 17:00",
+          "arrival_time": "2026-04-20 16:30",
+          "duration_minutes": 780,
+          "cabin_class": "economy",
+          "stops": 0
+        }
+      ],
+      "total_price_usd": 1784.0,
+      "currency": "USD",
+      "booking_url": ""
+    }
+  ],
+  "hotels": [
+    {
+      "name": "Hotel Gracery Shinjuku",
+      "star_rating": 4,
+      "neighbourhood": "Kabukicho, Shinjuku",
+      "price_per_night_usd": 140.0,
+      "total_price_usd": 560.0,
+      "room_type": "Deluxe Twin",
+      "bed_type": "2 Twin Beds",
+      "check_in": "2026-04-11",
+      "check_out": "2026-04-15",
+      "amenities": [
+        "WiFi",
+        "Restaurant",
+        "Coin Laundry"
+      ],
+      "cancellation_policy": "",
+      "booking_url": "",
+      "latitude": 0.0,
+      "longitude": 0.0
+    }
+  ],
+  "days": [
+    {
+      "day_number": 1,
+      "date": "2026-04-11",
+      "city": "Tokyo",
+      "weather": {
+        "date": "2026-04-11",
+        "condition": "Partly Cloudy",
+        "emoji": "⛅",
+        "temp_low_c": 14.0,
+        "temp_high_c": 21.0,
+        "rain_probability_pct": 20,
+        "packing_tip": "Light layers and a compact umbrella"
+      },
+      "time_blocks": [
+        {
+          "period": "morning",
+          "activities": [
+            {
+              "name": "Meiji Shrine",
+              "category": "temple",
+              "rating": 4.6,
+              "review_count": 12340,
+              "price_level": "Free",
+              "address": "1-1 Yoyogikamizonocho, Shibuya",
+              "description": "Tokyo's most famous Shinto shrine set in a forest.",
+              "website_url": "",
+              "google_maps_url": "https://maps.google.com/?cid=meiji",
+              "photo_urls": [],
+              "opening_hours": [],
+              "latitude": 0.0,
+              "longitude": 0.0,
+              "estimated_cost_usd": 0.0,
+              "estimated_duration_minutes": 90
+            }
+          ],
+          "restaurant": null,
+          "transit": [
+            {
+              "mode": "walk",
+              "from_place": "Hotel",
+              "to_place": "Meiji Shrine",
+              "distance_text": "0.9 km",
+              "duration_text": "12 min",
+              "transit_line": "",
+              "instructions": ""
+            }
+          ],
+          "subtotal_usd": 0.0
+        },
+        {
+          "period": "evening",
+          "activities": [],
+          "restaurant": {
+            "name": "Ichiran Ramen Shibuya",
+            "category": "ramen",
+            "rating": 4.3,
+            "review_count": 5678,
+            "price_level": "$$",
+            "address": "1-22-7 Jinnan, Shibuya",
+            "description": "",
+            "website_url": "",
+            "google_maps_url": "",
+            "photo_urls": [],
+            "opening_hours": [],
+            "latitude": 0.0,
+            "longitude": 0.0,
+            "estimated_cost_usd": 12.0,
+            "estimated_duration_minutes": 60
+          },
+          "transit": [],
+          "subtotal_usd": 0.0
+        }
+      ],
+      "cultural_tip": "At Meiji Shrine, bow once before entering the torii gate. Walk on the sides — the centre path is for the deity.",
+      "daily_cost_usd": 85.0,
+      "walking_km": 4.2
+    }
+  ],
+  "budget_flights": 1784.0,
+  "budget_accommodation": 980.0,
+  "budget_transport": 106.0,
+  "budget_meals": 320.0,
+  "budget_activities": 150.0,
+  "budget_misc": 80.0,
+  "budget_total": 3420.0,
+  "budget_per_person": 1710.0,
+  "budget_summary": "",
+  "safety": {
+    "advisory_level": "green",
+    "advisory_summary": "Japan — Level 1: Exercise Normal Precautions",
+    "visa_requirements": "Visa-free for US citizens (90 days)",
+    "health_requirements": [
+      "No mandatory vaccinations",
+      "Tap water safe"
+    ],
+    "emergency_numbers": {
+      "Police": "110",
+      "Ambulance": "119"
+    },
+    "languages": [
+      "Japanese"
+    ],
+    "currency_name": "Yen",
+    "currency_symbol": "¥",
+    "currency_code": "JPY",
+    "timezones": [
+      "UTC+9"
+    ],
+    "seasonal_risks": []
+  },
+  "culture": {
+    "phrases": [
+      {
+        "english": "Hello",
+        "local": "こんにちは",
+        "romanized": "Konnichiwa"
+      },
+      {
+        "english": "Thank you",
+        "local": "ありがとう",
+        "romanized": "Arigatō"
+      },
+      {
+        "english": "Excuse me",
+        "local": "すみません",
+        "romanized": "Sumimasen"
+      }
+    ],
+    "etiquette_tips": [
+      "Bow when greeting",
+      "Remove shoes when entering temples and ryokans",
+      "Never tip — it can be considered rude"
+    ],
+    "tipping_guide": "Tipping is not customary in Japan and may be refused.",
+    "dining_customs": [
+      "Slurping noodles is polite",
+      "Say itadakimasu before eating"
+    ],
+    "religious_customs": [],
+    "dress_code_notes": []
+  },
+  "packing": [
+    {
+      "item": "Light layers",
+      "reason": "14–24°C range",
+      "category": "clothing",
+      "essential": true
+    },
+    {
+      "item": "Compact rain jacket",
+      "reason": "Rain on days 3, 5",
+      "category": "clothing",
+      "essential": true
+    },
+    {
+      "item": "Passport",
+      "reason": "Valid until Oct 2027",
+      "category": "documents",
+      "essential": true
+    },
+    {
+      "item": "Portable WiFi",
+      "reason": "¥900/day at airport",
+      "category": "tech",
+      "essential": true
+    },
+    {
+      "item": "Clean socks",
+      "reason": "Shoe removal at temples",
+      "category": "activities",
+      "essential": true
+    }
+  ],
+  "exchange_rate": 153.42,
+  "local_currency_code": "JPY",
+  "theme_accent_color": "#c0395a",
+  "generated_at": "",
+  "langsmith_run_id": ""
+}
