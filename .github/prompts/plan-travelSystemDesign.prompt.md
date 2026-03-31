@@ -561,130 +561,780 @@ A fully deployed, streamed, stateful travel agent that remembers user preference
 
 ---
 
-## 5. Improved Itinerary Output Specification
+## 5. Itinerary Output — Comprehensive Specification
+
+> **Goal:** Transform raw agent outputs (text blobs from 9+ agents) into a polished, interactive, data-rich travel handbook that feels like a premium product — not an LLM dump. Every piece of data the tools already fetch should surface visually.
+
+---
 
 ### 5.1 What the Japan Handbook Got Right
 
-The `docs/japan_travel_handbook.html` demonstrates genuine craft: tabbed navigation, print-safe CSS, embedded Google Maps, day cards with hover effects, highlighted cultural experiences, a phrasebook table, and a memorable "Special Moment" proposal section. The visual design language (red accent `#e41e3f`, card shadows, responsive max-width) is coherent and pleasant.
+The `outputs/japan_itinerary_v2.html` demonstrates genuine craft: tabbed navigation, print-safe CSS, embedded Google Maps, day cards with hover effects, highlighted cultural experiences, a phrasebook table, and a memorable "Special Moment" proposal section. The visual design language (red accent `#e41e3f`, card shadows, responsive max-width) is coherent and pleasant. These strengths are carried forward.
 
-### 5.2 What to Improve
+---
 
-| Current limitation | Improved approach |
-|---|---|
-| Static, human-authored HTML | Dynamically generated from agent-produced structured data (Jinja2 template + `TravelState`) |
-| No cost breakdown | Dedicated **Budget Summary** section with a visual cost breakdown table (flights, hotels, activities, misc) |
-| No weather context per day | `DayWeather` data injected into every day card: temperature range, conditions emoji, packing tip |
-| Safety info buried or absent | Persistent **Safety & Visa** banner at the top; per-section advisories where relevant |
-| Currency/spending context absent | **Spending Guide** section: exchange rate, equivalent local amounts, cash/card tips, tipping culture |
-| No structured booking links | Each recommended flight/hotel card has a direct booking link and estimated price |
-| Tabs hide content from print | Print stylesheet renders all tabs inline (already partially done — but extend to all sections) |
-| No progress indicator | For multi-city trips: a visual timeline/route bar at the top showing city → city transitions |
-| Single HTML file, no portability | Export options: PDF, Markdown, JSON (machine-readable for downstream tools) |
-| No personalisation hook | User name, trip title, and profile preferences (dietary, mobility) injected into relevant sections |
+### 5.2 Gap Analysis — Available Data vs. What Gets Rendered
 
-### 5.3 Proposed Structure (Output Spec)
+The current tools already fetch far more data than the output consumes. This table maps every API field to its intended role in the new handbook.
+
+| API / Tool | Data fields **already fetched** but **not rendered** | New output role |
+|---|---|---|
+| **Google Places (activities.py)** | `photos[]` (photo URLs), `currentOpeningHours`, `editorialSummary`, `websiteUri`, `googleMapsUri`, `priceLevel` | Photo carousel per activity card; "Open now" badge; price $–$$$$ pill; one-tap Google Maps deep link |
+| **Google Maps — Directions** | Step-by-step directions with transit line names, vehicle types | Per-day collapsible "Getting Around" panel with transit icons & walking/driving time between stops |
+| **Google Maps — Distance Matrix** | Origin→destination duration/distance pairs | Visual proximity badges on day cards ("12 min walk from hotel"), inter-city transit time in route bar |
+| **Google Maps — Route Optimisation** | `optimizedIntermediateWaypointIndex`, per-leg distance/duration | Auto-sequenced day plan (stops reordered for minimal backtracking); total walking km per day |
+| **Amadeus Flights** | Carrier code, flight #, segment details, layover info, baggage policy hints | Multi-segment flight timeline (visual bar); layover duration callout; carrier logo via Logo API |
+| **Amadeus Hotels** | Room type (beds, bed type, category), check-in/check-out, full offer JSON | Room-type pill, bed icon, policy summary (cancellation, breakfast included) |
+| **OpenWeatherMap** | 3-hourly raw data (aggregated to daily) | Hourly mini-chart on day cards; "best time to visit outdoor activity" note |
+| **REST Countries (safety.py)** | Languages, currency name + symbol, timezones, population | Language badge in header; currency quick-ref sticky bar; timezone diff from origin |
+| **ExchangeRate API** | Rate + last-updated timestamp | Live conversion widget in budget tab; "your $1 = ¥XXX" quick reference |
+| **Pinecone RAG** | Section names, relevance scores, chunked guide text | Cultural tips injected contextually into the day they're relevant to (e.g., shrine etiquette on temple-visit day) |
+| **Budget Calculator** | `BudgetBreakdown` (itemised Pydantic model) | Per-day micro-budget tracker + cumulative running total chart |
+
+---
+
+### 5.3 Structured Output Models (New Pydantic Schemas)
+
+Before the handbook can be template-rendered, every agent must return structured data — not free text. Define these in `src/models/`:
+
+```python
+# src/models/itinerary.py
+
+class FlightSegment(BaseModel):
+    carrier: str                        # "NH" → resolved to "ANA"
+    flight_number: str                  # "NH 110"
+    departure_airport: str              # "JFK"
+    arrival_airport: str                # "NRT"
+    departure_time: datetime            # 2026-04-10T11:00
+    arrival_time: datetime              # 2026-04-11T14:30
+    duration_minutes: int               # 930
+    cabin_class: str = "economy"
+    stops: int = 0
+
+class FlightOption(BaseModel):
+    outbound: list[FlightSegment]       # multi-segment for layovers
+    inbound: list[FlightSegment]
+    total_price_usd: float
+    currency: str = "USD"
+    booking_url: str = ""               # deep link if available
+
+class HotelOption(BaseModel):
+    name: str
+    star_rating: int                    # 1–5
+    neighbourhood: str
+    price_per_night_usd: float
+    total_price_usd: float
+    room_type: str                      # "Deluxe King"
+    bed_type: str                       # "1 King Bed"
+    check_in: date
+    check_out: date
+    amenities: list[str] = []           # ["WiFi", "Pool", "Breakfast"]
+    cancellation_policy: str = ""
+    booking_url: str = ""
+    latitude: float = 0.0
+    longitude: float = 0.0
+
+class PlaceCard(BaseModel):
+    """Unified model for activities, restaurants, and attractions."""
+    name: str
+    category: str                       # "temple", "ramen", "museum"
+    rating: float | None = None
+    review_count: int = 0
+    price_level: str = ""               # "$", "$$", "$$$", "$$$$"
+    address: str = ""
+    description: str = ""               # editorialSummary
+    website_url: str = ""
+    google_maps_url: str = ""
+    photo_urls: list[str] = []          # up to 3 photo URLs
+    opening_hours: list[str] = []       # ["Mon: 9:00–17:00", ...]
+    latitude: float = 0.0
+    longitude: float = 0.0
+    estimated_cost_usd: float = 0.0     # per-person estimate
+    estimated_duration_minutes: int = 60
+
+class TransitStep(BaseModel):
+    mode: str                           # "walk", "transit", "drive"
+    from_place: str
+    to_place: str
+    distance_text: str                  # "1.2 km"
+    duration_text: str                  # "14 min"
+    transit_line: str = ""              # "JR Yamanote Line"
+    instructions: str = ""              # turn-by-turn summary
+
+class DayWeather(BaseModel):
+    date: date
+    condition: str                      # "Partly Cloudy"
+    emoji: str                          # "⛅"
+    temp_low_c: float
+    temp_high_c: float
+    rain_probability_pct: int
+    sunrise: str = ""
+    sunset: str = ""
+    uv_index: int = 0
+    packing_tip: str = ""               # "Bring a light rain jacket"
+
+class TimeBlock(BaseModel):
+    """A single block within a day (morning/afternoon/evening)."""
+    period: str                         # "morning", "afternoon", "evening"
+    activities: list[PlaceCard]
+    restaurant: PlaceCard | None = None
+    transit: list[TransitStep] = []     # how to get between stops
+    subtotal_usd: float = 0.0
+
+class DayPlan(BaseModel):
+    day_number: int
+    date: date
+    city: str
+    weather: DayWeather
+    time_blocks: list[TimeBlock]
+    cultural_tip: str = ""              # RAG-injected contextual tip
+    daily_cost_usd: float = 0.0
+    walking_km: float = 0.0            # total walking for the day
+    optimised_stop_order: list[str] = [] # from Route Optimisation API
+
+class SafetyInfo(BaseModel):
+    advisory_level: str                 # "green", "yellow", "orange", "red"
+    advisory_summary: str
+    visa_requirements: str
+    health_requirements: list[str]      # ["Hepatitis A vaccine recommended"]
+    emergency_numbers: dict[str, str]   # {"Police": "110", "Ambulance": "119"}
+    languages: list[str]
+    currency_name: str
+    currency_symbol: str
+    currency_code: str
+    timezones: list[str]
+    seasonal_risks: list[str] = []
+
+class CultureGuide(BaseModel):
+    phrases: list[dict[str, str]]       # [{"english": "Thank you", "local": "ありがとう", "romanized": "Arigatō"}]
+    etiquette_tips: list[str]
+    tipping_guide: str
+    dining_customs: list[str]
+    religious_customs: list[str] = []
+    dress_code_notes: list[str] = []
+
+class PackingItem(BaseModel):
+    item: str
+    reason: str                         # "Rainy days 3, 5, 7"
+    category: str                       # "clothing", "documents", "tech", "health"
+    essential: bool = True
+
+class TripHandbook(BaseModel):
+    """Top-level structured output — the complete handbook data."""
+    # Header
+    trip_title: str                     # "10 Days in Japan"
+    traveller_names: list[str]
+    origin_city: str
+    destinations: list[str]
+    start_date: date
+    end_date: date
+    total_budget_usd: float
+    travel_style: str                   # "mid-range"
+    group_type: str                     # "couple"
+    dietary_restrictions: list[str] = []
+    accessibility_needs: list[str] = []
+
+    # Route
+    route_cities: list[str]             # ["New York", "Tokyo", "Kyoto", "Osaka", "New York"]
+    route_transport: list[str]          # ["flight", "shinkansen", "train", "flight"]
+
+    # Core content
+    flights: list[FlightOption]
+    hotels: list[HotelOption]
+    days: list[DayPlan]
+    budget: BudgetBreakdown             # existing model
+    safety: SafetyInfo
+    culture: CultureGuide
+    packing: list[PackingItem]
+
+    # Metadata
+    exchange_rate: float                # 1 USD = X local
+    local_currency_code: str
+    theme_accent_color: str = "#e41e3f" # CSS colour, destination-driven
+    generated_at: datetime
+    langsmith_run_id: str = ""
+```
+
+**Key design decision:** Every agent's structured output feeds `TripHandbook`. The assembler template never needs to parse free text.
+
+---
+
+### 5.4 Proposed Handbook Structure (Sections & Wireframe)
 
 ```
 outputs/
-  handbook.html           ← Primary output (rich, tabbed, print-safe)
+  handbook.html           ← Primary output (rich, interactive, print-safe)
   handbook.md             ← Markdown fallback (paste into Notion/Obsidian)
-  handbook.json           ← Machine-readable TravelState dump (for future re-processing)
+  handbook.json           ← Machine-readable TripHandbook dump
+  handbook.pdf            ← Auto-generated via weasyprint (optional)
 ```
 
-**HTML Handbook Sections:**
+**HTML Handbook Layout:**
 
 ```
-┌─────────────────────────────────────────────────┐
-│  HEADER: Trip name, dates, traveller(s), budget  │
-│  SAFETY BANNER: Advisory level + visa summary    │
-│  ROUTE BAR: Origin → City1 → City2 → Origin      │
-├─────────────────────────────────────────────────┤
-│  TAB 1: ITINERARY                               │
-│    ├── Day card (date, day number)               │
-│    │     ├── Weather badge (🌤 18–24°C, 10% rain)│
-│    │     ├── Morning / Afternoon / Evening       │
-│    │     ├── Restaurant recommendation           │
-│    │     ├── Cultural experience (highlighted)  │
-│    │     ├── Estimated daily cost (USD + local)  │
-│    │     └── Safety advisory (if applicable)    │
-│    └── (repeats per day)                        │
-├─────────────────────────────────────────────────┤
-│  TAB 2: FLIGHTS & TRANSPORT                     │
-│    ├── Outbound flight card (airline, times, $$) │
-│    ├── Return flight card                        │
-│    ├── In-destination transport tips            │
-│    └── Airport → Hotel transfer guide           │
-├─────────────────────────────────────────────────┤
-│  TAB 3: HOTELS                                  │
-│    ├── Each hotel card (name, neighbourhood,    │
-│    │     stars, price/night, check-in/out,      │
-│    │     amenities, booking link)               │
-│    └── Map embed (neighbourhood overview)       │
-├─────────────────────────────────────────────────┤
-│  TAB 4: BUDGET SUMMARY                          │
-│    ├── Visual table: Budget vs. Estimate        │
-│    ├── Category breakdown (% pie chart or bars) │
-│    ├── Daily spending guide (local currency)    │
-│    └── Saving tips (if over budget)             │
-├─────────────────────────────────────────────────┤
-│  TAB 5: MAPS & PLACES                           │
-│    ├── City overview maps (Google Maps embeds)  │
-│    ├── Attraction list with coordinates         │
-│    └── Walking route suggestions per day        │
-├─────────────────────────────────────────────────┤
-│  TAB 6: SAFETY & HEALTH                        │
-│    ├── Advisory level badge (colour-coded)      │
-│    ├── Visa requirements                        │
-│    ├── Health requirements (vaccines, meds)     │
-│    ├── Emergency contacts                       │
-│    └── Natural disaster / seasonal risks        │
-├─────────────────────────────────────────────────┤
-│  TAB 7: CULTURE & LANGUAGE                     │
-│    ├── Phrasebook table (English / Local)       │
-│    ├── Cultural etiquette tips                  │
-│    ├── Tipping guide                            │
-│    └── Religious/social customs                 │
-├─────────────────────────────────────────────────┤
-│  TAB 8: PACKING LIST                           │
-│    ├── Weather-driven recommendations          │
-│    ├── Activity-specific items                  │
-│    └── Documents checklist                      │
-└─────────────────────────────────────────────────┘
-  FOOTER: Generated by Wanderlisted · LangSmith run ID
-          (links back to LangSmith trace for debugging)
+┌─────────────────────────────────────────────────────────────────────┐
+│  HERO HEADER                                                        │
+│  ┌─────────────────────────────────────────────────────────────────┐│
+│  │  "10 Days in Japan"                                             ││
+│  │  April 10–20, 2026 · 2 travellers · Mid-range · $4,000 budget  ││
+│  │  🇯🇵 Japanese · ¥ Yen · UTC+9 (13h ahead of EST)               ││
+│  │  💱 $1 USD = ¥153.42 (as of Mar 31, 2026)                      ││
+│  └─────────────────────────────────────────────────────────────────┘│
+│                                                                     │
+│  SAFETY BANNER (sticky, colour-coded by advisory level)             │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │ 🟢 Japan — Level 1: Exercise Normal Precautions · Visa-free  │   │
+│  │    90 days · No special vaccinations required                 │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+│  INTERACTIVE ROUTE BAR                                              │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │ NYC ✈──12h30──▶ Tokyo ──🚄 2h15──▶ Kyoto ──🚃 50m──▶ Osaka │   │
+│  │                              ──✈──11h45──▶ NYC              │   │
+│  │  [Distance Matrix durations injected from Google APIs]       │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  TAB 1: 📅 ITINERARY  (default view)                               │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │  DAY 1 — Thu, Apr 10 · Tokyo                    [expand ▾]  │    │
+│  │  ┌───────────────────────────────────────────────────────┐  │    │
+│  │  │ WEATHER: ⛅ 14–21°C · 20% rain · UV 5                │  │    │
+│  │  │ PACKING TIP: "Light layers; bring a compact umbrella" │  │    │
+│  │  └───────────────────────────────────────────────────────┘  │    │
+│  │                                                              │    │
+│  │  🌅 MORNING                                                  │    │
+│  │  ┌───────────────────────────────────────────────────────┐  │    │
+│  │  │ ✈ Arrive NRT 14:30 · Transfer to hotel               │  │    │
+│  │  │  └─ 🚃 Narita Express → Shinjuku (80 min, ¥3,250)    │  │    │
+│  │  │     [Step-by-step from Directions API]                │  │    │
+│  │  └───────────────────────────────────────────────────────┘  │    │
+│  │                                                              │    │
+│  │  🌆 AFTERNOON                                                │    │
+│  │  ┌─────────────────────────────┐┌────────────────────────┐  │    │
+│  │  │ [PHOTO]                     ││ Meiji Shrine            │  │    │
+│  │  │ places.photos[0]            ││ ⭐ 4.6 (12,340 reviews) │  │    │
+│  │  │ (Google Places Photo URL)   ││ 🏷 Free · ⏱ 90 min     │  │    │
+│  │  │                             ││ 📍 1-1 Yoyogikamizonocho│  │    │
+│  │  │                             ││ 🕐 Open: 05:00–18:00   │  │    │
+│  │  │                             ││ 🚶 12 min from hotel    │  │    │
+│  │  │                             ││ [📍 Maps] [🌐 Website]  │  │    │
+│  │  └─────────────────────────────┘└────────────────────────┘  │    │
+│  │                                                              │    │
+│  │  🌙 EVENING                                                  │    │
+│  │  ┌─────────────────────────────┐┌────────────────────────┐  │    │
+│  │  │ [PHOTO]                     ││ 🍽 Ichiran Ramen         │  │    │
+│  │  │ restaurant photo            ││ ⭐ 4.3 · $$ · Ramen     │  │    │
+│  │  │                             ││ ~$12 per person          │  │    │
+│  │  │                             ││ 🕐 Open: 24 hours       │  │    │
+│  │  │                             ││ 🚶 5 min walk           │  │    │
+│  │  │                             ││ ⚠ Dietary: ✓ available  │  │    │
+│  │  └─────────────────────────────┘└────────────────────────┘  │    │
+│  │                                                              │    │
+│  │  💡 CULTURAL TIP (from RAG):                                 │    │
+│  │  "At Meiji Shrine, bow once before entering the torii gate.  │    │
+│  │   Walk on the sides — the centre path is for the deity."     │    │
+│  │                                                              │    │
+│  │  📊 DAY COST: $85 USD (¥13,023) · 🚶 4.2 km walked          │    │
+│  │  📈 Running total: $285 / $4,000 (7.1% of budget)           │    │
+│  │                                                              │    │
+│  │  ▸ GETTING AROUND (collapsible)                              │    │
+│  │  ┌───────────────────────────────────────────────────────┐  │    │
+│  │  │ Hotel → Meiji Shrine: 🚶 12 min (0.9 km)             │  │    │
+│  │  │ Meiji Shrine → Harajuku: 🚶 5 min (0.3 km)           │  │    │
+│  │  │ Harajuku → Ichiran Shibuya: 🚃 8 min (JR Yamanote)   │  │    │
+│  │  │ Ichiran → Hotel: 🚶 7 min (0.5 km)                   │  │    │
+│  │  │ [Optimised order by Google Route Optimisation API]     │  │    │
+│  │  └───────────────────────────────────────────────────────┘  │    │
+│  └──────────────────────────────────────────────────────────────┘    │
+│  (repeats for each day)                                             │
+│                                                                     │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  TAB 2: ✈ FLIGHTS & TRANSPORT                                      │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  OUTBOUND — Apr 10                                            │   │
+│  │  ┌────────────────────────────────────────────────────────┐  │   │
+│  │  │  [Carrier Logo]  ANA NH 110                             │  │   │
+│  │  │  JFK 11:00 ————————————— 14:30+1 NRT                  │  │   │
+│  │  │  ⏱ 13h 30m · Economy · Non-stop                        │  │   │
+│  │  │  💰 $892 USD per person                                 │  │   │
+│  │  │  🧳 2×23kg checked + 7kg carry-on                      │  │   │
+│  │  │  [Visual flight timeline bar]                           │  │   │
+│  │  └────────────────────────────────────────────────────────┘  │   │
+│  │                                                               │   │
+│  │  RETURN — Apr 20                                              │   │
+│  │  (same layout)                                                │   │
+│  │                                                               │   │
+│  │  INTER-CITY TRANSPORT                                         │   │
+│  │  ┌────────────────────────────────────────────────────────┐  │   │
+│  │  │  🚄 Tokyo → Kyoto · Shinkansen Nozomi                  │  │   │
+│  │  │  Apr 14 · 08:33 → 10:48 · 2h 15m · ¥13,320 (~$87)    │  │   │
+│  │  │  [Visual route bar with intermediate stops]             │  │   │
+│  │  └────────────────────────────────────────────────────────┘  │   │
+│  │                                                               │   │
+│  │  AIRPORT TRANSFERS (from Directions API)                      │   │
+│  │  ┌────────────────────────────────────────────────────────┐  │   │
+│  │  │  NRT → Hotel Gracery Shinjuku                           │  │   │
+│  │  │  Option A: 🚃 Narita Express · 80 min · ¥3,250         │  │   │
+│  │  │  Option B: 🚌 Airport Limousine · 100 min · ¥3,200     │  │   │
+│  │  │  Option C: 🚕 Taxi · 60–90 min · ¥20,000+              │  │   │
+│  │  │  [Step-by-step directions expandable]                   │  │   │
+│  │  └────────────────────────────────────────────────────────┘  │   │
+│  │                                                               │   │
+│  │  TRANSPORT PASSES & TIPS (from RAG)                           │   │
+│  │  • JR Pass (7-day): ¥50,000 — worth it for Tokyo→Kyoto+     │   │
+│  │  • IC Card (Suica/Pasmo): tap-and-go for trains, buses,      │   │
+│  │    vending machines. Get at any station.                       │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  TAB 3: 🏨 HOTELS                                                   │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  For each hotel:                                              │   │
+│  │  ┌────────┐ Hotel Gracery Shinjuku ★★★★                     │   │
+│  │  │ [MAP]  │ 📍 Kabukicho, Shinjuku                           │   │
+│  │  │ embed  │ 🛏 Deluxe Twin · 2 beds                          │   │
+│  │  │        │ 📅 Apr 10–14 (4 nights) · $140/night             │   │
+│  │  │        │ 💰 Total: $560 USD                                │   │
+│  │  │        │ ✅ WiFi · 🍳 Breakfast · 🏊 Pool · ♿ Accessible  │   │
+│  │  │        │ 📋 Free cancellation until Apr 8                  │   │
+│  │  │        │ [🔗 Book Now]                                     │   │
+│  │  └────────┘                                                   │   │
+│  │                                                               │   │
+│  │  NEIGHBOURHOOD OVERVIEW MAP (Google Maps embed)               │   │
+│  │  ┌────────────────────────────────────────────────────────┐  │   │
+│  │  │ Embedded map with hotel pin + nearby restaurant/       │  │   │
+│  │  │ attraction pins from Places API (lat/lng data)         │  │   │
+│  │  └────────────────────────────────────────────────────────┘  │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  TAB 4: 💰 BUDGET SUMMARY                                           │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  BUDGET OVERVIEW                                              │   │
+│  │  ┌──────────────────────────────────────────────┐            │   │
+│  │  │  Total Budget: $4,000 · Estimated: $3,420     │            │   │
+│  │  │  Remaining: $580 (14.5%) ← green bar          │            │   │
+│  │  │  Per person: $1,710                            │            │   │
+│  │  └──────────────────────────────────────────────┘            │   │
+│  │                                                               │   │
+│  │  CATEGORY BREAKDOWN (CSS-only stacked bar chart)              │   │
+│  │  ┌──────────────────────────────────────────────┐            │   │
+│  │  │ ✈ Flights      $1,784  52.2%  ████████████▏  │            │   │
+│  │  │ 🏨 Hotels       $  980  28.7%  ███████▏      │            │   │
+│  │  │ 🍽 Meals        $  320   9.4%  ██▍           │            │   │
+│  │  │ 🎯 Activities   $  150   4.4%  █▏            │            │   │
+│  │  │ 🚃 Transport    $  106   3.1%  ▊             │            │   │
+│  │  │ 📦 Misc         $   80   2.3%  ▌             │            │   │
+│  │  │ ────────────────────────────────              │            │   │
+│  │  │ 💰 TOTAL       $3,420 100.0%                  │            │   │
+│  │  └──────────────────────────────────────────────┘            │   │
+│  │                                                               │   │
+│  │  DAILY SPENDING TRACKER (running total)                       │   │
+│  │  ┌──────────────────────────────────────────────┐            │   │
+│  │  │  Day 1: $85 · Day 2: $120 · Day 3: $95 ...   │            │   │
+│  │  │  [Sparkline / mini bar chart per day]          │            │   │
+│  │  │  [Cumulative line graph vs. budget ceiling]    │            │   │
+│  │  └──────────────────────────────────────────────┘            │   │
+│  │                                                               │   │
+│  │  CURRENCY QUICK-REFERENCE                                     │   │
+│  │  ┌──────────────────────────────────────────────┐            │   │
+│  │  │  💱 $1 USD = ¥153.42 (from ExchangeRate API)  │            │   │
+│  │  │  Common amounts: $10 = ¥1,534 · $50 = ¥7,671  │            │   │
+│  │  │  💳 Cards accepted widely in cities            │            │   │
+│  │  │  💴 Cash needed for: shrines, small shops,     │            │   │
+│  │  │     vending machines, some restaurants          │            │   │
+│  │  │  🏧 7-Eleven ATMs accept international cards   │            │   │
+│  │  └──────────────────────────────────────────────┘            │   │
+│  │                                                               │   │
+│  │  OVER-BUDGET RECOVERY (conditional — shown only if needed)    │   │
+│  │  "You're $220 (5.5%) over budget. Suggestions:               │   │
+│  │   • Switch hotel nights 5–7 to a 3★ ($80 saved)             │   │
+│  │   • Replace taxi Day 3 with metro ($35 saved)                │   │
+│  │   • Skip Teamlab Borderless ($32/person saved)"              │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  TAB 5: 🗺 MAPS & ROUTES                                            │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  PER-CITY INTERACTIVE MAP (Google Maps embed)                 │   │
+│  │  ┌────────────────────────────────────────────────────────┐  │   │
+│  │  │ Embedded Google Map with markers for:                   │  │   │
+│  │  │  🔵 Hotel    🔴 Attractions    🟢 Restaurants           │  │   │
+│  │  │  🟡 Transport hubs                                      │  │   │
+│  │  │  All lat/lng from Places API + Hotels API               │  │   │
+│  │  │  Clickable markers → link to Google Maps deep link      │  │   │
+│  │  └────────────────────────────────────────────────────────┘  │   │
+│  │                                                               │   │
+│  │  PER-DAY ROUTE MAP                                            │   │
+│  │  ┌────────────────────────────────────────────────────────┐  │   │
+│  │  │  Day 1 Route (from Route Optimisation API):             │  │   │
+│  │  │  Hotel → Meiji Shrine → Harajuku → Shibuya Crossing    │  │   │
+│  │  │       → Ichiran Ramen → Hotel                           │  │   │
+│  │  │  Total: 6.2 km · 🚶 4.2 km walking + 🚃 2.0 km train  │  │   │
+│  │  │  [Google Maps Directions embed with polyline]           │  │   │
+│  │  └────────────────────────────────────────────────────────┘  │   │
+│  │                                                               │   │
+│  │  GETTING THERE OVERVIEW                                       │   │
+│  │  ┌────────────────────────────────────────────────────────┐  │   │
+│  │  │  [Distance Matrix output — all inter-city pairs]        │  │   │
+│  │  │  Tokyo ↔ Kyoto: 🚄 2h15m (476 km)                      │  │   │
+│  │  │  Kyoto ↔ Osaka: 🚃 50m (43 km)                         │  │   │
+│  │  │  Osaka ↔ KIX Airport: 🚃 70m (46 km)                   │  │   │
+│  │  └────────────────────────────────────────────────────────┘  │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  TAB 6: 🛡 SAFETY & HEALTH                                          │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  ADVISORY (colour-coded card from REST Countries data)        │   │
+│  │  ┌────────────────────────────────────────────────────────┐  │   │
+│  │  │ 🟢 Level 1: Exercise Normal Precautions                 │  │   │
+│  │  │ Japan is one of the safest travel destinations.         │  │   │
+│  │  └────────────────────────────────────────────────────────┘  │   │
+│  │                                                               │   │
+│  │  ENTRY REQUIREMENTS                                           │   │
+│  │  • Visa: Visa-free for US citizens (90 days)                  │   │
+│  │  • Passport: Valid 6+ months beyond travel dates              │   │
+│  │  • COVID: No requirements as of March 2026                    │   │
+│  │                                                               │   │
+│  │  HEALTH                                                       │   │
+│  │  • No mandatory vaccinations                                  │   │
+│  │  • Recommended: Hepatitis A, routine vaccines up to date      │   │
+│  │  • Tap water is safe to drink throughout Japan                │   │
+│  │  • Pharmacies (ドラッグストア): Matsumoto Kiyoshi everywhere  │   │
+│  │                                                               │   │
+│  │  EMERGENCY CONTACTS                                           │   │
+│  │  ┌────────────────────────────────────────────────────────┐  │   │
+│  │  │  🚨 Police: 110 · 🚑 Ambulance/Fire: 119               │  │   │
+│  │  │  🏥 English helpline: 03-5285-8181 (AMDA)              │  │   │
+│  │  │  🇺🇸 US Embassy Tokyo: 03-3224-5000                    │  │   │
+│  │  └────────────────────────────────────────────────────────┘  │   │
+│  │                                                               │   │
+│  │  NATURAL HAZARDS & SEASONAL RISKS                             │   │
+│  │  • Earthquake-prone: know hotel evacuation routes             │   │
+│  │  • Typhoon season: Jun–Oct (your April dates are safe)        │   │
+│  │  • Download: Japan Official Travel App + NHK World for alerts │   │
+│  │                                                               │   │
+│  │  ACCESSIBILITY (conditional — shown when needs specified)     │   │
+│  │  • Wheelchair access ratings per activity (from Places API)   │   │
+│  │  • Accessible transit routes highlighted in day plans         │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  TAB 7: 🎌 CULTURE & LANGUAGE                                       │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  PHRASEBOOK (from RAG — destination_guides)                   │   │
+│  │  ┌────────────────────────────────────────────────────────┐  │   │
+│  │  │  English        │ Local          │ Romanized            │  │   │
+│  │  │  Hello          │ こんにちは      │ Konnichiwa           │  │   │
+│  │  │  Thank you      │ ありがとう      │ Arigatō              │  │   │
+│  │  │  Excuse me      │ すみません      │ Sumimasen            │  │   │
+│  │  │  How much?      │ いくらですか？  │ Ikura desu ka?       │  │   │
+│  │  │  Where is...?   │ ...はどこですか│ ...wa doko desu ka?  │  │   │
+│  │  │  Delicious!     │ おいしい！      │ Oishii!              │  │   │
+│  │  │  Check please   │ お会計          │ O-kaikei             │  │   │
+│  │  └────────────────────────────────────────────────────────┘  │   │
+│  │                                                               │   │
+│  │  ETIQUETTE (from RAG)                                         │   │
+│  │  • 🏯 Shrines & Temples: Bow before entering, walk on sides  │   │
+│  │  • 🍜 Dining: Slurping noodles is polite; no tipping         │   │
+│  │  • 🚃 Transit: No phone calls on trains; offer seats          │   │
+│  │  • 👞 Shoes: Remove at temples, ryokans, some restaurants     │   │
+│  │  • 🎁 Gifts: Use both hands to give/receive                   │   │
+│  │                                                               │   │
+│  │  DIETARY GUIDE (conditional — shown for restrictions)         │   │
+│  │  • "Vegetarian in Japan: look for shojin ryori (temple        │   │
+│  │     cuisine). Warning: dashi stock contains bonito flakes."   │   │
+│  │  • Restaurant cards with dietary icons (✓/✗ per restriction)  │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  TAB 8: 🧳 PACKING LIST (weather-driven + activity-aware)           │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  Auto-generated from DayWeather + activities + safety         │   │
+│  │                                                               │   │
+│  │  👔 CLOTHING (driven by temp range across all days)           │   │
+│  │  ☑ Light layers (14–24°C expected)                            │   │
+│  │  ☑ Compact rain jacket (rain on days 3, 5, 7)                │   │
+│  │  ☑ Comfortable walking shoes (avg 5 km/day)                   │   │
+│  │  ☑ Temple-appropriate: cover shoulders + knees                │   │
+│  │                                                               │   │
+│  │  📄 DOCUMENTS                                                 │   │
+│  │  ☑ Passport (valid until Oct 2027 — ✓ OK)                    │   │
+│  │  ☑ Travel insurance printout                                  │   │
+│  │  ☑ Hotel confirmations (offline copy)                         │   │
+│  │  ☑ Flight e-tickets                                           │   │
+│  │                                                               │   │
+│  │  📱 TECH                                                      │   │
+│  │  ☑ Power adapter: Type A/B (same as US — no adapter needed)  │   │
+│  │  ☑ Portable WiFi / eSIM (¥900/day at airport)                 │   │
+│  │  ☑ Offline Google Maps for Tokyo, Kyoto, Osaka                │   │
+│  │                                                               │   │
+│  │  💊 HEALTH                                                    │   │
+│  │  ☑ Personal medications                                       │   │
+│  │  ☑ Motion sickness tablets (Shinkansen, if sensitive)         │   │
+│  │                                                               │   │
+│  │  💴 MONEY                                                     │   │
+│  │  ☑ Cash: ¥30,000 for first 3 days (~$195)                    │   │
+│  │  ☑ Credit card with no foreign transaction fees               │   │
+│  │  ☑ IC card (buy at airport — rechargeable transit pass)       │   │
+│  │                                                               │   │
+│  │  🎌 ACTIVITIES-SPECIFIC                                       │   │
+│  │  ☑ Socks without holes (shoe removal at temples!)             │   │
+│  │  ☑ Small towel (onsen etiquette)                              │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  FOOTER                                                             │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  Generated by Wanderlisted · March 31, 2026                   │   │
+│  │  Powered by LangChain + LangGraph + LangSmith                │   │
+│  │  🔗 LangSmith trace: https://smith.langchain.com/runs/abc123 │   │
+│  │  📤 Export: [HTML] [Markdown] [JSON] [PDF]                    │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-### 5.4 Design System Updates
+---
 
-| Element | Current | Proposed |
+### 5.5 New Features Powered by Google APIs
+
+These features are **already possible** with the tools in `src/tools/` — they just need to be wired into the output:
+
+#### 5.5.1 Activity Photo Cards (Google Places Photos)
+
+The `search_activities` tool already fetches `photos[]` and builds URLs via `_photo_url()`. Surface these as visual cards:
+
+```html
+<!-- Activity card with Places API photo -->
+<div class="activity-card">
+  <img src="{{ activity.photo_urls[0] }}"
+       alt="{{ activity.name }}"
+       loading="lazy"
+       class="activity-photo" />
+  <div class="activity-info">
+    <h4>{{ activity.name }}</h4>
+    <span class="rating-pill">⭐ {{ activity.rating }}/5 ({{ activity.review_count }} reviews)</span>
+    <span class="price-pill">{{ activity.price_level }}</span>
+    <p class="description">{{ activity.description[:150] }}</p>
+    <div class="hours">🕐 {{ activity.opening_hours[0] if activity.opening_hours else "Hours not listed" }}</div>
+    <div class="action-links">
+      <a href="{{ activity.google_maps_url }}" target="_blank">📍 Open in Maps</a>
+      <a href="{{ activity.website_url }}" target="_blank">🌐 Website</a>
+    </div>
+  </div>
+</div>
+```
+
+#### 5.5.2 Per-Day Route Optimisation (Google Routes API)
+
+The `optimize_day_route` tool already returns optimal stop ordering. Show this in each day card:
+
+```
+Original order: Hotel → Tokyo Tower → Senso-ji → Meiji Shrine → Imperial Palace
+Optimised:      Hotel → Meiji Shrine → Imperial Palace → Senso-ji → Tokyo Tower
+                Saves 45 min + 3.2 km of backtracking
+```
+
+Visualise as a numbered route with distance/duration between each stop.
+
+#### 5.5.3 Transit Directions Panel (Google Directions API)
+
+The `get_directions` tool returns step-by-step directions with transit line names and vehicle types. Render as a collapsible panel per day:
+
+```
+🚶 Walk 3 min to Shinjuku Station (South Exit)
+🚃 JR Yamanote Line → Harajuku (2 stops, 4 min)
+🚶 Walk 8 min to Meiji Shrine entrance
+```
+
+#### 5.5.4 Distance Matrix Proximity Badges
+
+The `get_distance_matrix` tool can compute hotel-to-attraction distances in bulk. Show as badges:
+
+```
+🏨→🏯 Meiji Shrine: 12 min walk
+🏨→🗼 Tokyo Tower: 25 min by transit
+🏨→⛩ Senso-ji: 35 min by transit
+```
+
+#### 5.5.5 Neighbourhood Maps with Multi-Marker Embeds
+
+Using lat/lng from Places API and Hotels API, build Google Maps Static API or embed URLs with all markers for a given city/day:
+
+```html
+<iframe
+  src="https://www.google.com/maps/embed/v1/place?key={{ api_key }}&q={{ hotel.latitude }},{{ hotel.longitude }}&zoom=14"
+  loading="lazy"
+  class="neighbourhood-map">
+</iframe>
+```
+
+For richer multi-marker maps, use a Static Maps URL with custom markers:
+
+```
+https://maps.googleapis.com/maps/api/staticmap?
+  size=800x400&
+  markers=color:blue|label:H|{{ hotel.lat }},{{ hotel.lng }}&
+  markers=color:red|label:1|{{ activity1.lat }},{{ activity1.lng }}&
+  markers=color:red|label:2|{{ activity2.lat }},{{ activity2.lng }}&
+  markers=color:green|label:R|{{ restaurant.lat }},{{ restaurant.lng }}&
+  key={{ api_key }}
+```
+
+---
+
+### 5.6 Design System
+
+| Element | Current | New |
 |---|---|---|
-| Colour accent | Hard-coded `#e41e3f` | CSS variable `--accent` driven by destination theme (cherry blossom pink for Japan, golden amber for Italy, ocean teal for Greece) |
-| Typography | System font | Google Fonts: `Inter` (body) + `Playfair Display` (headers) |
-| Day weather | Not present | Weather badge component: emoji + temp range + condition in a pill shape |
-| Budget numbers | Not present | Colour-coded: green if under budget, amber if within 10%, red if over |
-| Safety banner | Not present | Sticky banner at top; colour matches advisory level (green/yellow/orange/red) |
-| Print layout | Partial | Full print stylesheet: page breaks between days, no tabs, all sections inline |
-| Mobile | Partially responsive | Full mobile-first redesign: day cards stack, tabs become accordion, maps load lazily |
-| Accessibility | None | ARIA labels, keyboard-navigable tabs, `prefers-reduced-motion` CSS rule |
+| Theme colour | Hard-coded `#e41e3f` | CSS variable `--accent` auto-set by destination: cherry-blossom pink (Japan), terracotta (Italy), ocean teal (Greece), desert gold (Morocco), sage green (New Zealand) |
+| Typography | System font | Google Fonts: `Inter` 400/500/600 (body) + `Playfair Display` 700 (headings) |
+| Day weather | Absent | Weather badge pill: emoji + temp range + rain % + UV index. Colour: blue (cold), amber (warm), red (hot) |
+| Budget tracking | Aggregate only | Colour-coded: 🟢 under budget (>10% remaining), 🟡 tight (<10% remaining), 🔴 over budget. Running total sparkline chart |
+| Safety banner | Absent | Sticky top banner, auto-coloured by advisory level |
+| Activity cards | Text only | Photo + metadata card (rating, price, hours, maps link, description) from Places API |
+| Transit directions | Absent | Collapsible per-day panel with mode icons (🚶🚃🚕), transit line names, durations |
+| Route maps | Static embeds | Per-day route maps with numbered markers + polyline from Route Optimisation |
+| Print layout | Partial | Full print stylesheet: page breaks between days, force all tabs inline, hide interactive elements, generate QR codes for booking links |
+| Mobile | Partially responsive | Mobile-first: tabs → accordion, photo cards → swipeable carousel, maps → lazy-loaded, sticky budget bar at bottom |
+| Accessibility | None | WCAG 2.1 AA: ARIA labels, `role="tablist"`, keyboard navigation, `prefers-reduced-motion`, `prefers-color-scheme: dark`, minimum 4.5:1 contrast ratios |
+| Dark mode | None | `@media (prefers-color-scheme: dark)` with adjusted palette, reduced-brightness photos, dark map tiles |
+| Dietary indicators | Not shown | Per-restaurant icons: 🥬 vegetarian, 🌾 gluten-free, ☪ halal, 🕐 kosher — based on `dietary_restrictions` from user profile |
+| Proximity badges | Not shown | "12 min walk from hotel" on each activity card, from Distance Matrix API |
 
-### 5.5 Generation Pipeline
+---
+
+### 5.7 Generation Pipeline
 
 ```
-TravelState (validated Python objects)
+TravelAgentState (accumulated agent outputs)
         │
         ▼
-ItineraryAssemblerAgent
-  - Jinja2 template rendering
-  - Injects all structured data into HTML sections
-  - Applies destination-theme CSS variable
-        │
-        ▼
-handbook.html   ←── Primary deliverable
-handbook.md     ←── Via html2text (lightweight Markdown conversion)
-handbook.json   ←── json.dumps(travel_state) with indentation
+  ┌─────────────────────────────────┐
+  │  StructuredOutputParser          │  Each agent returns Pydantic models
+  │  - FlightsAgent → FlightOption   │  (via llm.with_structured_output)
+  │  - HotelsAgent → HotelOption     │
+  │  - ActivitiesAgent → PlaceCard   │
+  │  - WeatherAgent → DayWeather     │
+  │  - etc.                          │
+  └────────────┬────────────────────┘
+               │
+               ▼
+  ┌─────────────────────────────────┐
+  │  ItineraryAssemblerAgent         │  Pure synthesis node (no API calls)
+  │  1. Validate all structured data │
+  │  2. Build TripHandbook model     │
+  │  3. Select destination theme     │
+  │  4. Inject RAG cultural tips     │
+  │     into relevant day cards      │
+  │  5. Compute per-day costs        │
+  │  6. Generate packing list from   │
+  │     weather + activities data    │
+  └────────────┬────────────────────┘
+               │
+               ▼
+  ┌─────────────────────────────────┐
+  │  TemplateRenderer                │  Jinja2 template engine
+  │  - handbook_template.html.j2     │
+  │  - Renders TripHandbook → HTML   │
+  │  - Inlines all CSS (single-file) │
+  │  - Photo URLs → <img> tags       │
+  │  - lat/lng → map embeds          │
+  │  - Transit steps → route panels  │
+  └────────────┬────────────────────┘
+               │
+               ├──► handbook.html     (primary deliverable)
+               ├──► handbook.md       (via markdownify — Notion/Obsidian ready)
+               ├──► handbook.json     (json.dumps(TripHandbook.model_dump()))
+               └──► handbook.pdf      (optional — via weasyprint)
 ```
 
-The assembler is the only agent that does not call external APIs. It is a pure synthesis and rendering node — fast, deterministic, and cheap to re-run if the template changes.
+**Template location:** `src/agent/templates/handbook_template.html.j2`
+
+**Key design decisions:**
+- All CSS is **inlined** in a single `<style>` block — the HTML file must be fully self-contained and shareable as an email attachment
+- Photos use `loading="lazy"` to avoid blocking initial render
+- Maps use `loading="lazy"` on `<iframe>` elements
+- Google Places photo URLs are **not cached** — they expire after a session, which is acceptable for a generated-once handbook
+- The template uses **zero JavaScript dependencies** — only vanilla JS for tab switching and accordion toggles
+- Print stylesheet uses `@media print` to force all tabs visible, hide interactive elements, and insert page breaks
+- Markdown export strips HTML to clean Markdown via `markdownify` library (lightweight, no Pandoc dependency)
+
+**New dependencies:**
+```
+jinja2>=3.1          # Template engine
+markdownify>=0.13    # HTML → Markdown
+weasyprint>=62       # HTML → PDF (optional, heavyweight)
+```
+
+---
+
+### 5.8 Agent-to-Template Data Contract
+
+Every field in the Jinja2 template maps to a specific agent and tool:
+
+| Template section | Agent source | Tool(s) that produce the data | Structured model |
+|---|---|---|---|
+| Hero header | SupervisorAgent (user profile extraction) | — | `TripHandbook` top-level fields |
+| Safety banner | DestinationAgent | `get_safety_info` (REST Countries) | `SafetyInfo` |
+| Route bar | TransportationAgent | `get_distance_matrix` (Google Maps) | `route_cities` + `route_transport` |
+| Day cards — activities | ActivitiesAgent | `search_activities` (Google Places) | `PlaceCard` (with `photo_urls`, `opening_hours`, `google_maps_url`) |
+| Day cards — restaurants | RestaurantsAgent | `search_places_nearby`, `search_places_text` (Google Places) | `PlaceCard` (with dietary compatibility flags) |
+| Day cards — weather | DestinationAgent | `get_weather` (OpenWeatherMap) | `DayWeather` |
+| Day cards — transit | TransportationAgent | `get_directions` (Google Directions) | `TransitStep` |
+| Day cards — route order | ItineraryAgent | `optimize_day_route` (Google Routes) | `DayPlan.optimised_stop_order` |
+| Day cards — proximity | ItineraryAgent | `get_distance_matrix` (Google Maps) | Distance values injected into `PlaceCard` or `TransitStep` |
+| Day cards — cultural tip | DestinationAgent | `search_destination_guides` (Pinecone RAG) | `DayPlan.cultural_tip` |
+| Day cards — daily cost | BudgetAgent | `calculate_budget` | `DayPlan.daily_cost_usd` |
+| Flights tab | FlightsAgent | `search_flights` (Amadeus) | `FlightOption` + `FlightSegment` |
+| Hotels tab | HotelsAgent | `search_hotels` (Amadeus) | `HotelOption` |
+| Budget tab | BudgetAgent | `calculate_budget`, `convert_currency` | `BudgetBreakdown` + exchange rate |
+| Maps tab | ItineraryAgent + TransportationAgent | `get_distance_matrix`, `optimize_day_route` (Google Routes/Maps) | lat/lng from all `PlaceCard` + `HotelOption` |
+| Safety tab | DestinationAgent | `get_safety_info`, RAG | `SafetyInfo` |
+| Culture tab | DestinationAgent | RAG (`search_destination_guides`) | `CultureGuide` |
+| Packing tab | ItineraryAssemblerAgent (derived) | Weather + activities + safety data | `PackingItem[]` |
+| Currency reference | BudgetAgent | `convert_currency` (ExchangeRate API) | `TripHandbook.exchange_rate` |
+
+---
+
+### 5.9 Personalisation Hooks
+
+User profile data (extracted by supervisor) should visibly affect the output:
+
+| Profile field | How it changes the handbook |
+|---|---|
+| `travel_style = "budget"` | Budget tab shows saving tips prominently; hotels sorted by price ascending; activities prioritise free/cheap options |
+| `travel_style = "luxury"` | Premium hotel photos featured; fine-dining restaurants highlighted; activities include exclusive experiences |
+| `group_type = "family"` | Family-friendly activity badges; kid meal pricing; stroller-accessible transit routes; nap-time gaps in schedule |
+| `group_type = "couple"` | Romantic restaurant picks highlighted; "Special Moment" section (like the Japan handbook); evening-weighted schedules |
+| `dietary_restrictions = ["vegetarian"]` | Per-restaurant dietary compatibility icons; "Vegetarian guide for [country]" section from RAG; alert on restaurants with limited options |
+| `accessibility_needs = ["wheelchair"]` | Transit directions prefer step-free routes; activities flag wheelchair accessibility; hotels show accessible room types |
+| `traveller_names` | Names in hero header; personalised packing list ("Don't forget Sarah's medication") |
+
+---
+
+### 5.10 Export Formats
+
+| Format | Method | Use case |
+|---|---|---|
+| **HTML** (primary) | Jinja2 render → single self-contained `.html` file | Share via email, open anywhere, print from browser |
+| **Markdown** | `markdownify` conversion from HTML | Paste into Notion, Obsidian, Bear, Logseq |
+| **JSON** | `TripHandbook.model_dump_json(indent=2)` | Machine-readable for downstream tools, re-import into Wanderlisted for edits |
+| **PDF** | `weasyprint` (optional) | Offline reference, especially useful when travelling without connectivity |
+
+All four formats are generated from the same `TripHandbook` Pydantic model — single source of truth.
 
 ---
 
