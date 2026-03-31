@@ -1,0 +1,54 @@
+logging:
+  level: INFO
+  log_format: "%(asctime)s  %(levelname)-8s  %(name)s  %(message)s"
+  datefmt: "%H:%M:%S"
+  use_colors: true
+
+  console:
+    enabled: true
+    level: INFO
+
+  file:
+    enabled: true
+    base_path: "logs"
+    level: DEBUG
+
+# ── RAG / Chunker ────────────────────────────────────────────────────────
+rag:
+  chunk_size: 2000
+  chunk_overlap: 200
+  min_chunk_size: 200
+  max_section_size: 3000
+
+# ── Routing ──────────────────────────────────────────────────────────────
+routing:
+  # Agents that run concurrently in the parallel dispatch phase
+  parallel_agents:
+    - FlightsAgent
+    - HotelsAgent
+    - DestinationAgent
+    - RestaurantsAgent
+    - ActivitiesAgent
+    - TransportationAgent
+
+  # Agents that run sequentially after the parallel phase (order matters)
+  sequential_agents:
+    - BudgetAgent
+    - ItineraryAgent
+
+# ── Tool timeouts (seconds) ──────────────────────────────────────────────
+timeouts:
+  google_maps: 15
+  directions: 15
+  distance_matrix: 15
+  routes: 25
+  flights: 30
+  hotels: 30
+  weather: 10
+  currency: 10
+
+# ── API ──────────────────────────────────────────────────────────────────
+api:
+  version: "2.0.0"
+  cors_origins:
+    - "http://localhost:3000"
