@@ -1,10 +1,7 @@
-import os
-
-from dotenv import load_dotenv
 from langchain.agents import create_agent
-from langchain_openai import AzureChatOpenAI
 from langgraph.checkpoint.memory import InMemorySaver
 
+from src.agent.llm import get_llm
 from src.tools.activities import search_activities
 from src.tools.budget import calculate_budget
 from src.tools.currency import convert_currency
@@ -16,17 +13,10 @@ from src.tools.safety import get_safety_info
 from src.tools.weather import get_weather
 from src.agent.prompts import TRAVEL_AGENT_SYSTEM_PROMPT
 
-load_dotenv()
-
 
 def create_travel_agent():
     """Create and return the travel agent with LangGraph checkpointer."""
-    llm = AzureChatOpenAI(
-        azure_deployment=os.environ["AZURE_OPENAI_DEPLOYMENT_NAME"],
-        azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
-        api_key=os.environ["AZURE_OPENAI_API_KEY"],
-        api_version=os.environ.get("AZURE_OPENAI_API_VERSION", "2024-02-01"),
-    )
+    llm = get_llm()
 
     tools = [
         lookup_iata_code,
