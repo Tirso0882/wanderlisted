@@ -10,8 +10,9 @@ Usage:
     python scripts/eval_rag.py            # run all 5 strategies
     python scripts/eval_rag.py --no-cache # ignore cached embeddings
 
-Requires Azure OpenAI embeddings (AZURE_OPENAI_* env vars).
-Does NOT write anything to Pinecone — runs fully locally.
+Notes:
+- Requires Azure OpenAI embeddings (AZURE_OPENAI_* env vars).
+- Does NOT write anything to Pinecone — runs fully locally.
 
 Embeddings are cached in scripts/.eval_cache.json so re-runs are fast.
 """
@@ -37,6 +38,7 @@ import re
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_experimental.text_splitter import SemanticChunker
+from src.rag.chunker import DocumentChunker
 
 GUIDES_DIR = Path(__file__).resolve().parents[1] / "knowledge_base" / "destination_guides"
 CACHE_FILE = Path(__file__).parent / ".eval_cache.json"
@@ -409,6 +411,21 @@ def main():
     print(f"    {stats_e['count']} chunks | avg={stats_e['avg']} min={stats_e['min']} max={stats_e['max']} stdev={stats_e['stdev']}")
     store_e = SimpleVectorStore(chunks_e, embeddings)
     results.append((evaluate(store_e, "E: Page-level (NVIDIA)"), stats_e, store_e))
+
+    # ── Strategy F ───────────────────────────────────────────────────────
+    print("\n[F] DocumentChunker (section + merge/subsplit + metadata)")
+    dc = DocumentChunker(
+        logger_name="eval.chunker",
+        default_chunk_size=2000,
+        default_chunk_overlap=200,
+        min_chunk_size=200,
+        max_section_size=3000,
+    )
+    chunks_f = dc.chunk_documents(docs)
+    stats_f = chunk_stats(chunks_f)
+    print(f"    {stats_f['count']} chunks | avg={stats_f['avg']} min={stats_f['min']} max={stats_f['max']} stdev={stats_f['stdev']}")
+    store_f = SimpleVectorStore(chunks_f, embeddings)
+    results.append((evaluate(store_f, "F: DocumentChunker"), stats_f, store_f))
 
     # ── Summary table ────────────────────────────────────────────────────
     print("\n\n" + "=" * 70)
