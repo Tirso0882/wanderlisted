@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,27 +13,40 @@
 :root {
   --accent: {{ handbook.theme_accent_color }};
   --accent-light: {{ handbook.theme_accent_color }}22;
+  --hero-from: {{ handbook.hero_gradient_from }};
+  --hero-to: {{ handbook.hero_gradient_to }};
+  --safe-green: #16a34a;
+  --warning-amber: #d97706;
+  --danger-red: #dc2626;
+  --radius: 12px;
+}
+[data-theme="light"] {
   --bg: #f8f7f4;
   --card-bg: #ffffff;
   --text: #1a1a1a;
   --text-muted: #6b7280;
   --border: #e5e5e5;
-  --safe-green: #16a34a;
-  --warning-amber: #d97706;
-  --danger-red: #dc2626;
-  --radius: 12px;
   --shadow: 0 2px 8px rgba(0,0,0,0.06);
   --shadow-hover: 0 4px 16px rgba(0,0,0,0.10);
+  --transit-bg: #f0f9ff;
+  --transit-border: #bae6fd;
+  --cultural-tip-bg: #fdf4ff;
+  --currency-bg: #fffbeb;
+  --currency-border: #fde68a;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0f0f0f;
-    --card-bg: #1a1a1a;
-    --text: #e5e5e5;
-    --text-muted: #9ca3af;
-    --border: #333;
-    --shadow: 0 2px 8px rgba(0,0,0,0.3);
-  }
+[data-theme="dark"] {
+  --bg: #0f0f0f;
+  --card-bg: #1a1a1a;
+  --text: #e5e5e5;
+  --text-muted: #9ca3af;
+  --border: #333;
+  --shadow: 0 2px 8px rgba(0,0,0,0.3);
+  --shadow-hover: 0 4px 20px rgba(0,0,0,0.4);
+  --transit-bg: #1e293b;
+  --transit-border: #334155;
+  --cultural-tip-bg: #2d1f3d;
+  --currency-bg: #422006;
+  --currency-border: #713f12;
 }
 body {
   font-family: 'Inter', system-ui, sans-serif;
@@ -50,13 +63,45 @@ a:hover { text-decoration: underline; }
 
 /* ─── Header ───────────────────────────────────────────────────────── */
 .hero {
-  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 70%, #000));
+  background: linear-gradient(135deg, var(--hero-from), var(--hero-to));
   color: #fff;
   padding: 48px 32px;
   border-radius: 0 0 var(--radius) var(--radius);
   margin-bottom: 8px;
   text-align: center;
+  position: relative;
+  overflow: hidden;
 }
+.hero::before {
+  content: '{{ handbook.hero_emoji }}';
+  position: absolute;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 5rem;
+  opacity: 0.15;
+  pointer-events: none;
+}
+/* ─── Theme Toggle ─────────────────────────────────────────────────── */
+.theme-toggle {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.1rem;
+  box-shadow: var(--shadow);
+  transition: background 0.2s, border-color 0.2s;
+}
+.theme-toggle:hover { box-shadow: var(--shadow-hover); }
 .hero h1 { font-size: 2.2rem; margin-bottom: 8px; }
 .hero .subtitle { font-size: 1rem; opacity: 0.9; margin-bottom: 16px; }
 .hero-pills { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
@@ -228,30 +273,24 @@ a:hover { text-decoration: underline; }
 
 /* ─── Transit Panel ────────────────────────────────────────────────── */
 .transit-panel {
-  background: #f0f9ff;
-  border: 1px solid #bae6fd;
+  background: var(--transit-bg);
+  border: 1px solid var(--transit-border);
   border-radius: 8px;
   padding: 12px 16px;
   margin-top: 10px;
   font-size: 0.85rem;
-}
-@media (prefers-color-scheme: dark) {
-  .transit-panel { background: #1e293b; border-color: #334155; }
 }
 .transit-step { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
 .transit-icon { font-size: 1rem; width: 24px; text-align: center; }
 
 /* ─── Cultural Tip ─────────────────────────────────────────────────── */
 .cultural-tip {
-  background: #fdf4ff;
+  background: var(--cultural-tip-bg);
   border-left: 3px solid var(--accent);
   padding: 12px 16px;
   border-radius: 0 8px 8px 0;
   margin-top: 12px;
   font-size: 0.88rem;
-}
-@media (prefers-color-scheme: dark) {
-  .cultural-tip { background: #2d1f3d; }
 }
 
 /* ─── Day Footer ───────────────────────────────────────────────────── */
@@ -327,6 +366,43 @@ a:hover { text-decoration: underline; }
   border-radius: 6px;
   font-size: 0.78rem;
 }
+.hotel-photo {
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: var(--radius) var(--radius) 0 0;
+  margin: -20px -20px 16px -20px;
+  width: calc(100% + 40px);
+}
+.hotel-photos-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.hotel-photos-row img {
+  height: 120px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.hotel-map-embed {
+  width: 100%;
+  height: 200px;
+  border: 0;
+  border-radius: 8px;
+  margin-top: 12px;
+}
+/* ─── Day Route Map ────────────────────────────────────────────── */
+.day-route-map {
+  width: 100%;
+  height: 260px;
+  border: 0;
+  border-radius: var(--radius);
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
 
 /* ─── Budget ───────────────────────────────────────────────────────── */
 .budget-overview {
@@ -372,14 +448,11 @@ a:hover { text-decoration: underline; }
 
 /* ─── Currency Quick Ref ───────────────────────────────────────────── */
 .currency-box {
-  background: #fffbeb;
-  border: 1px solid #fde68a;
+  background: var(--currency-bg);
+  border: 1px solid var(--currency-border);
   border-radius: var(--radius);
   padding: 16px 20px;
   font-size: 0.9rem;
-}
-@media (prefers-color-scheme: dark) {
-  .currency-box { background: #422006; border-color: #713f12; }
 }
 
 /* ─── Safety ───────────────────────────────────────────────────────── */
@@ -488,6 +561,9 @@ footer a { margin: 0 8px; }
 </style>
 </head>
 <body>
+
+<!-- ═══ THEME TOGGLE ══════════════════════════════════════════ -->
+<button class="theme-toggle" id="theme-toggle" aria-label="Toggle light/dark mode" title="Toggle light/dark mode">🌙</button>
 
 <!-- ═══ HERO HEADER ═══════════════════════════════════════════ -->
 <header class="hero">
@@ -667,6 +743,11 @@ footer a { margin: 0 8px; }
         {% if day.cultural_tip %}
         <div class="cultural-tip">💡 <strong>Cultural Tip:</strong> {{ day.cultural_tip }}</div>
         {% endif %}
+
+        {# ── Day Route Map ── #}
+        {% if day.route_map_url %}
+        <iframe src="{{ day.route_map_url }}" class="day-route-map" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade" title="Day {{ day.day_number }} route map"></iframe>
+        {% endif %}
       </div>
 
       {# ── Day Footer ── #}
@@ -746,6 +827,17 @@ footer a { margin: 0 8px; }
     {% if handbook.hotels %}
     {% for hotel in handbook.hotels %}
     <div class="hotel-card">
+      {% if hotel.photo_urls %}
+      {% if hotel.photo_urls | length == 1 %}
+      <img src="{{ hotel.photo_urls[0] }}" alt="{{ hotel.name }}" loading="lazy" class="hotel-photo">
+      {% else %}
+      <div class="hotel-photos-row">
+        {% for photo in hotel.photo_urls[:4] %}
+        <img src="{{ photo }}" alt="{{ hotel.name }}" loading="lazy">
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endif %}
       <h3>{{ hotel.name }}</h3>
       {% if hotel.star_rating %}
       <div class="hotel-stars">{{ "★" * hotel.star_rating }}{{ "☆" * (5 - hotel.star_rating) }}</div>
@@ -767,7 +859,21 @@ footer a { margin: 0 8px; }
       </div>
       {% endif %}
       {% if hotel.booking_url %}
-      <p style="margin-top:10px"><a href="{{ hotel.booking_url }}" target="_blank" rel="noopener">🔗 Book Now</a></p>
+      <p style="margin-top:10px"><a href="{{ hotel.booking_url }}" target="_blank" rel="noopener">🔗 Book Now</a>
+      {% if hotel.google_maps_url %} · <a href="{{ hotel.google_maps_url }}" target="_blank" rel="noopener">📍 Maps</a>{% endif %}
+      {% if hotel.website_url %} · <a href="{{ hotel.website_url }}" target="_blank" rel="noopener">🌐 Website</a>{% endif %}
+      </p>
+      {% elif hotel.google_maps_url or hotel.website_url %}
+      <p style="margin-top:10px">
+      {% if hotel.google_maps_url %}<a href="{{ hotel.google_maps_url }}" target="_blank" rel="noopener">📍 Maps</a>{% endif %}
+      {% if hotel.website_url %} · <a href="{{ hotel.website_url }}" target="_blank" rel="noopener">🌐 Website</a>{% endif %}
+      </p>
+      {% endif %}
+      {% if hotel.description %}
+      <p class="hotel-detail" style="margin-top:8px">{{ hotel.description[:200] }}</p>
+      {% endif %}
+      {% if hotel.map_embed_url %}
+      <iframe src="{{ hotel.map_embed_url }}" class="hotel-map-embed" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade" title="Map of {{ hotel.name }}"></iframe>
       {% endif %}
     </div>
     {% endfor %}
@@ -858,13 +964,30 @@ footer a { margin: 0 8px; }
     <div style="margin-bottom:20px">
       <h3 style="margin-bottom:8px">📍 {{ dest | title }}</h3>
       <iframe
-        src="https://www.google.com/maps/embed/v1/place?key=GOOGLE_MAPS_API_KEY&q={{ dest | urlencode }}&zoom=12"
+        src="https://www.google.com/maps/embed/v1/place?key={{ google_maps_api_key }}&q={{ dest | urlencode }}&zoom=12"
         width="100%" height="350" style="border:0;border-radius:var(--radius)"
         loading="lazy" allowfullscreen
         referrerpolicy="no-referrer-when-downgrade"
         title="Map of {{ dest }}">
       </iframe>
     </div>
+    {% endfor %}
+    {% endif %}
+
+    {# ── Per-Day Route Maps ── #}
+    {% set route_days = handbook.days | selectattr('route_map_url') | list %}
+    {% if route_days %}
+    <h3 style="margin-top:20px;margin-bottom:8px">🚶 Daily Routes</h3>
+    {% for day in route_days %}
+    {% if day.route_map_url %}
+    <div style="margin-bottom:18px">
+      <h4>Day {{ day.day_number }}{% if day.title %} — {{ day.title }}{% endif %}</h4>
+      <iframe src="{{ day.route_map_url }}" width="100%" height="320"
+        style="border:0;border-radius:var(--radius)" loading="lazy" allowfullscreen
+        referrerpolicy="no-referrer-when-downgrade"
+        title="Day {{ day.day_number }} route"></iframe>
+    </div>
+    {% endif %}
     {% endfor %}
     {% endif %}
 
@@ -1059,6 +1182,42 @@ document.querySelector('.tab-list')?.addEventListener('keydown', function(e) {
   tabs[next].focus();
   tabs[next].click();
 });
+
+// ─── Light / Dark Theme Toggle ───────────────────────────────
+(function() {
+  const html = document.documentElement;
+  const btn = document.getElementById('theme-toggle');
+  const STORAGE_KEY = 'wanderlisted-theme';
+
+  function applyTheme(theme) {
+    html.setAttribute('data-theme', theme);
+    btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+    btn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+  }
+
+  // Determine initial theme: localStorage > OS preference > light
+  const stored = localStorage.getItem(STORAGE_KEY);
+  if (stored === 'dark' || stored === 'light') {
+    applyTheme(stored);
+  } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    applyTheme('dark');
+  } else {
+    applyTheme('light');
+  }
+
+  btn.addEventListener('click', function() {
+    const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    applyTheme(next);
+    localStorage.setItem(STORAGE_KEY, next);
+  });
+
+  // Listen for OS theme changes (only if user hasn't manually overridden)
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+    if (!localStorage.getItem(STORAGE_KEY)) {
+      applyTheme(e.matches ? 'dark' : 'light');
+    }
+  });
+})();
 </script>
 </body>
 </html>
