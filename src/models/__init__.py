@@ -26,7 +26,7 @@ class BudgetBreakdown(BaseModel):
     summary: str = Field(default="", description="Brief text summary of the budget")
 
 
-from src.models.itinerary import (  # noqa: E402
+from src.models.itinerary import ( # noqa: E402
     DayPlan,
     DayWeather,
     FlightOption,

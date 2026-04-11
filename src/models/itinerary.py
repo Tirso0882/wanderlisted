@@ -24,6 +24,8 @@ class FlightSegment(BaseModel):
     duration_minutes: int = 0
     cabin_class: str = "economy"
     stops: int = 0
+    origin_country: str = ""
+    destination_country: str = ""
 
 
 class FlightOption(BaseModel):
@@ -32,6 +34,8 @@ class FlightOption(BaseModel):
     total_price_usd: float = 0
     currency: str = "USD"
     booking_url: str = ""
+    skyscanner_url: str = ""
+    google_flights_url: str = ""
 
 
 # ── Hotels ───────────────────────────────────────────────────────────────
@@ -49,8 +53,17 @@ class HotelOption(BaseModel):
     amenities: list[str] = Field(default_factory=list)
     cancellation_policy: str = ""
     booking_url: str = ""
+    booking_com_url: str = ""
+    google_hotels_url: str = ""
     latitude: float = 0.0
     longitude: float = 0.0
+    photo_urls: list[str] = Field(default_factory=list)
+    google_maps_url: str = ""
+    website_url: str = ""
+    description: str = ""
+    distance_from_center_km: float = 0.0
+    nearby_attractions: list[str] = Field(default_factory=list)
+    map_embed_url: str = ""  # Maps Embed API place URL
 
 
 # ── Places (activities, restaurants, attractions) ────────────────────────
@@ -78,13 +91,15 @@ class PlaceCard(BaseModel):
 # ── Transit ──────────────────────────────────────────────────────────────
 
 class TransitStep(BaseModel):
-    mode: str = ""  # "walk", "transit", "drive"
+    mode: str = ""  # "walk", "transit", "drive", "train", "bus", "ferry"
     from_place: str = ""
     to_place: str = ""
     distance_text: str = ""
     duration_text: str = ""
     transit_line: str = ""
     instructions: str = ""
+    booking_url: str = ""
+    fare_estimate_usd: float = 0.0
 
 
 # ── Weather ──────────────────────────────────────────────────────────────
@@ -120,12 +135,14 @@ class DayPlan(BaseModel):
     cultural_tip: str = ""
     daily_cost_usd: float = 0.0
     walking_km: float = 0.0
+    route_map_url: str = ""  # Maps Embed API directions URL for the day's route
 
 
 # ── Safety ───────────────────────────────────────────────────────────────
 
 class SafetyInfo(BaseModel):
-    advisory_level: str = "green"
+    advisory_level: str = "green"  # "green", "yellow", "orange", "red"
+    advisory_level_num: int = 1     # 1-4
     advisory_summary: str = ""
     visa_requirements: str = ""
     health_requirements: list[str] = Field(default_factory=list)
@@ -136,6 +153,9 @@ class SafetyInfo(BaseModel):
     currency_code: str = ""
     timezones: list[str] = Field(default_factory=list)
     seasonal_risks: list[str] = Field(default_factory=list)
+    natural_hazards: list[str] = Field(default_factory=list)
+    safety_tips: list[str] = Field(default_factory=list)
+    embassy_info: str = ""
 
 
 # ── Culture ──────────────────────────────────────────────────────────────
@@ -147,6 +167,43 @@ class CultureGuide(BaseModel):
     dining_customs: list[str] = Field(default_factory=list)
     religious_customs: list[str] = Field(default_factory=list)
     dress_code_notes: list[str] = Field(default_factory=list)
+    # Enhanced fields
+    festivals: list[dict[str, str]] = Field(default_factory=list)   # [{name, date, description}]
+    food_specialties: list[str] = Field(default_factory=list)
+    local_customs: list[dict[str, str]] = Field(default_factory=list)  # [{context, custom, tip}]
+    music_and_arts: list[str] = Field(default_factory=list)
+    etiquette_cards: list[dict[str, str]] = Field(default_factory=list)  # [{title, icon, items: str (newline-separated)}]
+
+
+# ── Currency Exchange ────────────────────────────────────────────────────
+
+class CurrencyExchangeLocation(BaseModel):
+    name: str = ""
+    address: str = ""
+    google_maps_url: str = ""
+    rating: float | None = None
+    notes: str = ""  # e.g. "Better rates than airport", "Open 24h"
+
+
+# ── Local Tips & Apps ────────────────────────────────────────────────────
+
+class LocalTipsApps(BaseModel):
+    must_have_apps: list[dict[str, str]] = Field(default_factory=list)  # [{name, purpose, platform, url}]
+    sim_card_info: str = ""
+    wifi_info: str = ""
+    transport_cards: list[dict[str, str]] = Field(default_factory=list)  # [{name, cost, where_to_buy, notes}]
+    power_adapter: str = ""
+    useful_websites: list[dict[str, str]] = Field(default_factory=list)  # [{name, url, description}]
+
+
+# ── Emergency & Health ───────────────────────────────────────────────────
+
+class EmergencyInfo(BaseModel):
+    hospitals: list[PlaceCard] = Field(default_factory=list)
+    pharmacies: list[PlaceCard] = Field(default_factory=list)
+    insurance_notes: str = ""
+    medical_phrases: list[dict[str, str]] = Field(default_factory=list)  # [{english, local, romanized}]
+    vaccination_tips: list[str] = Field(default_factory=list)
 
 
 # ── Packing ──────────────────────────────────────────────────────────────
@@ -156,6 +213,8 @@ class PackingItem(BaseModel):
     reason: str = ""
     category: str = ""  # "clothing", "documents", "tech", "health", "money"
     essential: bool = True
+    weather_context: str = ""  # e.g. "60% rain on Day 3"
+    activity_context: str = ""  # e.g. "Temple visits on Day 2"
 
 
 # ── Top-level handbook ───────────────────────────────────────────────────
@@ -201,9 +260,18 @@ class TripHandbook(BaseModel):
     culture: CultureGuide = Field(default_factory=CultureGuide)
     packing: list[PackingItem] = Field(default_factory=list)
 
+    # Extended sections (populated when agents run enhanced searches)
+    currency_exchange_locations: list[CurrencyExchangeLocation] = Field(default_factory=list)
+    local_tips: LocalTipsApps = Field(default_factory=LocalTipsApps)
+    emergency_info: EmergencyInfo = Field(default_factory=EmergencyInfo)
+
     # Metadata
     exchange_rate: float = 0
     local_currency_code: str = ""
     theme_accent_color: str = "#e41e3f"
+    hero_gradient_from: str = "#e41e3f"
+    hero_gradient_to: str = "#b01028"
+    hero_emoji: str = "✈️"
+    season: str = ""  # spring / summer / autumn / winter
     generated_at: str = ""
     langsmith_run_id: str = ""

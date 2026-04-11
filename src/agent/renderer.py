@@ -8,6 +8,8 @@ template into HTML.  Also produces Markdown and JSON exports.
 from __future__ import annotations
 
 import json
+import os
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -34,7 +36,97 @@ logger = AppLogger(logger_name="agent.renderer", level="DEBUG")
 
 _TEMPLATE_DIR = Path(__file__).resolve().parent / "templates"
 
-# Destination → accent colour mapping
+
+@dataclass
+class SeasonPalette:
+    accent: str
+    gradient_from: str
+    gradient_to: str
+    hero_emoji: str
+
+
+# (destination_slug, season) → SeasonPalette
+_SEASON_PALETTES: dict[tuple[str, str], SeasonPalette] = {
+    # Japan
+    ("japan",  "spring"): SeasonPalette("#c0395a", "#f4b8c8", "#c0395a", "🌸"),
+    ("tokyo",  "spring"): SeasonPalette("#c0395a", "#f4b8c8", "#c0395a", "🌸"),
+    ("kyoto",  "spring"): SeasonPalette("#b5375a", "#f0b0c2", "#b5375a", "🌸"),
+    ("osaka",  "spring"): SeasonPalette("#c0395a", "#f4b8c8", "#c0395a", "🌸"),
+    ("japan",  "summer"): SeasonPalette("#1a7a3a", "#2e9e52", "#145f2e", "🎋"),
+    ("tokyo",  "summer"): SeasonPalette("#1a7a3a", "#2e9e52", "#145f2e", "🎋"),
+    ("japan",  "autumn"): SeasonPalette("#c44a20", "#e8723a", "#8b2500", "🍁"),
+    ("tokyo",  "autumn"): SeasonPalette("#c44a20", "#e8723a", "#8b2500", "🍁"),
+    ("japan",  "winter"): SeasonPalette("#1e3a8a", "#3b6fd4", "#0d1e5c", "❄️"),
+    ("tokyo",  "winter"): SeasonPalette("#1e3a8a", "#3b6fd4", "#0d1e5c", "❄️"),
+    # France / Paris
+    ("france", "spring"): SeasonPalette("#2c5f8a", "#5b9fd4", "#1a3a5f", "🌷"),
+    ("paris",  "spring"): SeasonPalette("#2c5f8a", "#5b9fd4", "#1a3a5f", "🌷"),
+    ("france", "summer"): SeasonPalette("#1e3a8a", "#4a7fc1", "#0d2050", "☀️"),
+    ("paris",  "summer"): SeasonPalette("#1e3a8a", "#4a7fc1", "#0d2050", "☀️"),
+    ("france", "autumn"): SeasonPalette("#c47820", "#e6a23c", "#8b4513", "🍂"),
+    ("paris",  "autumn"): SeasonPalette("#c47820", "#e6a23c", "#8b4513", "🍂"),
+    ("france", "winter"): SeasonPalette("#2c5f8a", "#4a7fc1", "#1a3360", "⛄"),
+    ("paris",  "winter"): SeasonPalette("#2c5f8a", "#4a7fc1", "#1a3360", "⛄"),
+    # Italy / Rome
+    ("italy",  "spring"): SeasonPalette("#c4793a", "#e0986a", "#8b4e1c", "🌹"),
+    ("rome",   "spring"): SeasonPalette("#c4793a", "#e0986a", "#8b4e1c", "🌹"),
+    ("italy",  "summer"): SeasonPalette("#c4793a", "#f5a623", "#8b4513", "🍕"),
+    ("rome",   "summer"): SeasonPalette("#c4793a", "#f5a623", "#8b4513", "🍕"),
+    ("italy",  "autumn"): SeasonPalette("#8b4513", "#c0692c", "#5c2e00", "🍂"),
+    ("rome",   "autumn"): SeasonPalette("#8b4513", "#c0692c", "#5c2e00", "🍂"),
+    ("italy",  "winter"): SeasonPalette("#c4793a", "#e0986a", "#8b4e1c", "🎄"),
+    ("rome",   "winter"): SeasonPalette("#c4793a", "#e0986a", "#8b4e1c", "🎄"),
+    # Spain / Barcelona
+    ("spain",     "spring"): SeasonPalette("#c43a3a", "#e87070", "#8b1a1a", "🌺"),
+    ("barcelona", "spring"): SeasonPalette("#c43a3a", "#e87070", "#8b1a1a", "🌺"),
+    ("spain",     "summer"): SeasonPalette("#e67e22", "#f3a23c", "#a0541a", "🌊"),
+    ("barcelona", "summer"): SeasonPalette("#e67e22", "#f3a23c", "#a0541a", "🌊"),
+    ("spain",     "autumn"): SeasonPalette("#c43a3a", "#e06060", "#8b1a1a", "🍷"),
+    ("barcelona", "autumn"): SeasonPalette("#c43a3a", "#e06060", "#8b1a1a", "🍷"),
+    # UK / London
+    ("uk",     "spring"): SeasonPalette("#1e3a5f", "#4a7fc1", "#0d1e3a", "🌷"),
+    ("london", "spring"): SeasonPalette("#1e3a5f", "#4a7fc1", "#0d1e3a", "🌷"),
+    ("uk",     "summer"): SeasonPalette("#1e3a5f", "#4a90d9", "#0d1e3a", "⛅"),
+    ("london", "summer"): SeasonPalette("#1e3a5f", "#4a90d9", "#0d1e3a", "⛅"),
+    ("uk",     "autumn"): SeasonPalette("#4a2c2a", "#8b5e3c", "#2c1a18", "🍂"),
+    ("london", "autumn"): SeasonPalette("#4a2c2a", "#8b5e3c", "#2c1a18", "🍂"),
+    ("uk",     "winter"): SeasonPalette("#1e3a5f", "#4a7fc1", "#0d2050", "❄️"),
+    ("london", "winter"): SeasonPalette("#1e3a5f", "#4a7fc1", "#0d2050", "❄️"),
+    # Morocco / Marrakech
+    ("morocco",   "spring"): SeasonPalette("#b87a2b", "#e0a843", "#7a5020", "🌺"),
+    ("marrakech", "spring"): SeasonPalette("#b87a2b", "#e0a843", "#7a5020", "🌺"),
+    ("morocco",   "summer"): SeasonPalette("#b87a2b", "#f5b942", "#7a5020", "☀️"),
+    ("marrakech", "summer"): SeasonPalette("#b87a2b", "#f5b942", "#7a5020", "☀️"),
+    ("morocco",   "winter"): SeasonPalette("#b87a2b", "#d4953a", "#7a5020", "🌙"),
+    ("marrakech", "winter"): SeasonPalette("#b87a2b", "#d4953a", "#7a5020", "🌙"),
+    # Egypt / Cairo
+    ("egypt", "spring"): SeasonPalette("#b8860b", "#daa520", "#8b6508", "🌅"),
+    ("cairo", "spring"): SeasonPalette("#b8860b", "#daa520", "#8b6508", "🌅"),
+    ("egypt", "summer"): SeasonPalette("#b8860b", "#f5c342", "#8b6508", "☀️"),
+    ("cairo", "summer"): SeasonPalette("#b8860b", "#f5c342", "#8b6508", "☀️"),
+    ("egypt", "autumn"): SeasonPalette("#b8860b", "#d4a020", "#8b6508", "🏛"),
+    ("cairo", "autumn"): SeasonPalette("#b8860b", "#d4a020", "#8b6508", "🏛"),
+    ("egypt", "winter"): SeasonPalette("#b8860b", "#c5981e", "#8b6508", "🌙"),
+    ("cairo", "winter"): SeasonPalette("#b8860b", "#c5981e", "#8b6508", "🌙"),
+    # Turkey / Istanbul
+    ("turkey",   "spring"): SeasonPalette("#a0342e", "#d45f59", "#6b1f1b", "🌷"),
+    ("istanbul", "spring"): SeasonPalette("#a0342e", "#d45f59", "#6b1f1b", "🌷"),
+    ("turkey",   "summer"): SeasonPalette("#a0342e", "#c55050", "#6b1f1b", "☀️"),
+    ("istanbul", "summer"): SeasonPalette("#a0342e", "#c55050", "#6b1f1b", "☀️"),
+    ("turkey",   "autumn"): SeasonPalette("#a0342e", "#c24848", "#6b1f1b", "🍂"),
+    ("istanbul", "autumn"): SeasonPalette("#a0342e", "#c24848", "#6b1f1b", "🍂"),
+    # Colombia / Bogotá / Medellín / Cartagena
+    ("colombia",   "spring"): SeasonPalette("#e8b81a", "#f5d03c", "#a07e08", "🌻"),
+    ("bogota",     "spring"): SeasonPalette("#e8b81a", "#f5d03c", "#a07e08", "🌻"),
+    ("medellin",   "spring"): SeasonPalette("#e86a1a", "#f5923c", "#a04408", "🌺"),
+    ("cartagena",  "summer"): SeasonPalette("#1a8a8a", "#2eaec0", "#0d5a5a", "🏖"),
+    # Mexico
+    ("mexico",      "spring"): SeasonPalette("#2e7a3e", "#4aab5e", "#1e5228", "🌵"),
+    ("mexico_city", "summer"): SeasonPalette("#2e7a3e", "#4aab5e", "#1e5228", "🌮"),
+    ("cancun",      "summer"): SeasonPalette("#1a7a8a", "#2eaec0", "#0d4e5c", "🏖"),
+}
+
+# Fallback single-colour map (for unmapped destination+season combos)
 _DESTINATION_THEMES: dict[str, str] = {
     "japan": "#c0395a",
     "tokyo": "#c0395a",
@@ -91,13 +183,41 @@ def _weather_emoji(condition: str) -> str:
     return "🌤"
 
 
-def _pick_accent(destinations: list[str]) -> str:
-    """Pick a theme accent colour based on destination names."""
+def _get_season(start_date_str: str) -> str:
+    """Derive meteorological season from start date string (YYYY-MM-DD or similar)."""
+    if not start_date_str:
+        return "summer"
+    try:
+        month = datetime.fromisoformat(start_date_str[:10]).month
+    except (ValueError, TypeError):
+        return "summer"
+    if month in (3, 4, 5):
+        return "spring"
+    if month in (6, 7, 8):
+        return "summer"
+    if month in (9, 10, 11):
+        return "autumn"
+    return "winter"
+
+
+def _pick_palette(destinations: list[str], season: str) -> SeasonPalette:
+    """Pick a seasonal colour palette for the given destinations."""
     for dest in destinations:
         slug = dest.lower().strip()
+        key = (slug, season)
+        if key in _SEASON_PALETTES:
+            return _SEASON_PALETTES[key]
+        # Try any season as a base for the destination's brand colour
+        for s in ("summer", "spring", "autumn", "winter"):
+            if (slug, s) in _SEASON_PALETTES:
+                p = _SEASON_PALETTES[(slug, s)]
+                return SeasonPalette(p.accent, p.accent, p.gradient_to, p.hero_emoji)
+        # Final fallback: use legacy single-colour map
         if slug in _DESTINATION_THEMES:
-            return _DESTINATION_THEMES[slug]
-    return _DESTINATION_THEMES["default"]
+            accent = _DESTINATION_THEMES[slug]
+            return SeasonPalette(accent, accent, accent + "cc", "✈️")
+    default = _DESTINATION_THEMES["default"]
+    return SeasonPalette(default, default, "#b01028", "✈️")
 
 
 class HandbookRenderer:
@@ -125,6 +245,9 @@ class HandbookRenderer:
         """
         components = state.get("itinerary_components", {})
         destinations = state.get("destinations", [])
+        start_date = state.get("start_date", "")
+        season = _get_season(start_date)
+        palette = _pick_palette(destinations, season)
 
         handbook = TripHandbook(
             destinations=destinations,
@@ -132,7 +255,11 @@ class HandbookRenderer:
             group_type=state.get("group_type", ""),
             dietary_restrictions=state.get("dietary_restrictions", []),
             accessibility_needs=state.get("accessibility_needs", []),
-            theme_accent_color=_pick_accent(destinations),
+            theme_accent_color=palette.accent,
+            hero_gradient_from=palette.gradient_from,
+            hero_gradient_to=palette.gradient_to,
+            hero_emoji=palette.hero_emoji,
+            season=season,
             generated_at=datetime.now().strftime("%B %d, %Y at %H:%M"),
             langsmith_run_id=run_id,
         )
@@ -171,7 +298,11 @@ class HandbookRenderer:
 
     def render_html(self, handbook: TripHandbook) -> str:
         """Render TripHandbook to a self-contained HTML string."""
-        return self._template.render(handbook=handbook)
+        # Google Maps Embed API key is intentionally passed to the client-side
+        # Maps iframe — this key should be restricted by HTTP Referrer in Google
+        # Cloud Console (not a secret; Maps Embed API is designed for public URLs).
+        maps_key = os.environ.get("GOOGLE_MAPS_API_KEY", "")
+        return self._template.render(handbook=handbook, google_maps_api_key=maps_key)
 
     def render_markdown(self, handbook: TripHandbook) -> str:
         """Render TripHandbook to Markdown."""
