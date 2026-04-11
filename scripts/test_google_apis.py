@@ -197,7 +197,7 @@ def main():
     print(f"\n{BOLD}🗺  Wanderlisted — Google Maps API Test Suite{RESET}")
     print(f"   Key: {key[:8]}...{key[-4:]}")
     print(f"   Test location: {TEST_ADDRESS} ({TEST_LATLNG})")
-    print(f"   Enabled APIs: 7 (Geocoding, Places New, Directions, Distance Matrix, Routes, Time Zone, Maps Embed)")
+    print("   Enabled APIs: 7 (Geocoding, Places New, Directions, Distance Matrix, Routes, Time Zone, Maps Embed)")
 
     tests = [
         ("Geocoding API",        "_geocode()",            test_geocoding),
@@ -234,13 +234,13 @@ def main():
         print(f"  {GREEN}{BOLD}{passed}/{total} — ALL PASSED ✅{RESET}")
 
     print(f"\n{YELLOW}  API → Agent mapping:{RESET}")
-    print(f"  Geocoding        → internal _geocode() helper (address→coords)")
-    print(f"  Places (New)     → RestaurantsAgent, ActivitiesAgent, HotelsAgent")
-    print(f"  Directions       → TransportationAgent (step-by-step transit)")
-    print(f"  Distance Matrix  → TransportationAgent, ItineraryAgent")
-    print(f"  Routes           → TransportationAgent, ItineraryAgent (route optimisation)")
-    print(f"  Time Zone        → DestinationAgent (local timezone info)")
-    print(f"  Maps Embed       → Handbook HTML template (map iframes)\n")
+    print("  Geocoding        → internal _geocode() helper (address→coords)")
+    print("  Places (New)     → RestaurantsAgent, ActivitiesAgent, HotelsAgent")
+    print("  Directions       → TransportationAgent (step-by-step transit)")
+    print("  Distance Matrix  → TransportationAgent, ItineraryAgent")
+    print("  Routes           → TransportationAgent, ItineraryAgent (route optimisation)")
+    print("  Time Zone        → DestinationAgent (local timezone info)")
+    print("  Maps Embed       → Handbook HTML template (map iframes)\n")
 
     sys.exit(1 if failed else 0)
 

@@ -7,7 +7,6 @@ template into HTML.  Also produces Markdown and JSON exports.
 
 from __future__ import annotations
 
-import json
 import os
 from dataclasses import dataclass
 from datetime import datetime
@@ -18,17 +17,6 @@ from jinja2 import Environment, FileSystemLoader
 
 from custom_logging import AppLogger
 from src.models.itinerary import (
-    CultureGuide,
-    DayPlan,
-    DayWeather,
-    FlightOption,
-    FlightSegment,
-    HotelOption,
-    PackingItem,
-    PlaceCard,
-    SafetyInfo,
-    TimeBlock,
-    TransitStep,
     TripHandbook,
 )
 

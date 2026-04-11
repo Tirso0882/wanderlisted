@@ -1,6 +1,5 @@
 """Tests for HITL (Human-in-the-Loop) state and interrupt gate logic."""
 
-from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
 from src.agent.state import TravelAgentState
 

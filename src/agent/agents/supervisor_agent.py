@@ -1,6 +1,5 @@
 """Supervisor agent that routes queries to specialized sub-agents via LLM."""
 
-from typing import Optional
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field

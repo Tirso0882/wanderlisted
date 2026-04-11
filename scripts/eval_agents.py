@@ -38,10 +38,10 @@ os.environ.setdefault("LANGSMITH_TRACING", "true")
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from langsmith import Client
-from langsmith import evaluate
+from langsmith import Client  # noqa: E402
+from langsmith import evaluate  # noqa: E402
 
-from src.evaluation.evaluators import (
+from src.evaluation.evaluators import (  # noqa: E402
     correct_destination,
     correct_tool_routing,
     valid_routing_decision,
@@ -57,7 +57,7 @@ from src.evaluation.evaluators import (
     response_relevancy,
     faithfulness,
 )
-from src.evaluation.golden_dataset import GOLDEN_DATASET
+from src.evaluation.golden_dataset import GOLDEN_DATASET  # noqa: E402
 
 DATASET_NAME = "Wanderlisted Travel Planning Golden Dataset"
 RAG_DATASET_NAME = "Wanderlisted RAG Golden Dataset"
@@ -893,7 +893,7 @@ def run_evaluation(
             metadata=metadata,
         )
 
-    print(f"\nDone. View results at https://smith.langchain.com")
+    print("\nDone. View results at https://smith.langchain.com")
 
 
 def main():

@@ -19,7 +19,6 @@ Embeddings are cached in scripts/.eval_cache.json so re-runs are fast.
 
 import hashlib
 import json
-import math
 import os
 import statistics
 import sys
@@ -479,7 +478,7 @@ def main():
                  wildly in length (some 200 chars, some 5000+).
     """))
 
-    print(f"  Re-run without cache:  python scripts/eval_rag.py --no-cache")
+    print("  Re-run without cache:  python scripts/eval_rag.py --no-cache")
     print(f"  Cached embeddings at:  {CACHE_FILE}\n")
 
 

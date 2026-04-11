@@ -3,7 +3,7 @@
 import pytest
 from langchain_core.documents import Document
 
-from src.rag.chunker import DocumentChunker, SECTION_NAMES
+from src.rag.chunker import DocumentChunker
 
 
 # ── Fixtures ─────────────────────────────────────────────────────────────

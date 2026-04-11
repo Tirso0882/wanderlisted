@@ -10,7 +10,7 @@ Wraps any LangChain ``Embeddings`` backend with:
 
 import os
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 from langchain_core.embeddings import Embeddings as BaseEmbeddings

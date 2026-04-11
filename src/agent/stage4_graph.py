@@ -35,12 +35,12 @@ Usage:
 import asyncio
 import os
 import re
-from typing import Any, Literal
+from typing import Any
 
 from langchain.agents import create_agent
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langgraph.graph import StateGraph, START, END
-from langgraph.types import interrupt, Command
+from langgraph.types import interrupt
 from langsmith import traceable
 
 from src.agent.llm import get_llm
@@ -48,7 +48,6 @@ from src.agent.state import TravelAgentState
 from src.agent.prompts import (
     SYNTHESIZE_SYSTEM_PROMPT,
     TRIAGE_SYSTEM_PROMPT,
-    HANDBOOK_ASSEMBLY_PROMPT,
 )
 from src.models import BudgetBreakdown
 from src.models.itinerary import (

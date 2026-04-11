@@ -48,6 +48,8 @@ jobs:
           PINECONE_INDEX_NAME: "test"
           AZURE_OPENAI_API_KEY: "test"
           AZURE_OPENAI_ENDPOINT: "https://test.openai.azure.com"
+          AZURE_OPENAI_DEPLOYMENT_NAME: "test"
+          AZURE_OPENAI_API_VERSION: "2024-12-01-preview"
           TAVILY_API_KEY: "test"
 
   # ──────────────────────────────────────────────────────────────────
@@ -73,6 +75,8 @@ jobs:
           PINECONE_INDEX_NAME: "test"
           AZURE_OPENAI_API_KEY: "test"
           AZURE_OPENAI_ENDPOINT: "https://test.openai.azure.com"
+          AZURE_OPENAI_DEPLOYMENT_NAME: "test"
+          AZURE_OPENAI_API_VERSION: "2024-12-01-preview"
           TAVILY_API_KEY: "test"
 
   # ──────────────────────────────────────────────────────────────────
@@ -99,6 +103,8 @@ jobs:
           PINECONE_INDEX_NAME: "test"
           AZURE_OPENAI_API_KEY: "test"
           AZURE_OPENAI_ENDPOINT: "https://test.openai.azure.com"
+          AZURE_OPENAI_DEPLOYMENT_NAME: "test"
+          AZURE_OPENAI_API_VERSION: "2024-12-01-preview"
           TAVILY_API_KEY: "test"
 
   # ──────────────────────────────────────────────────────────────────

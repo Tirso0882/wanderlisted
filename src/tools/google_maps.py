@@ -13,7 +13,6 @@ All calls go through a single API key read from GOOGLE_MAPS_API_KEY.
 Each tool is stateless and safe to use inside any subagent.
 """
 
-import json
 import os
 import time
 from typing import Optional
@@ -186,7 +185,7 @@ def _format_place(place: dict) -> str:
         f"  Website: {website}" if website else None,
         f"  Photo: {photo_url}" if photo_url else None,
     ]
-    return "\n".join(l for l in lines if l)
+    return "\n".join(line for line in lines if line)
 
 
 # ── Places API (New) ────────────────────────────────────────────────────

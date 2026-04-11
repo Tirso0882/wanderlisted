@@ -2,7 +2,6 @@
 
 import json
 
-import httpx
 import respx
 from httpx import Response
 

@@ -4,10 +4,9 @@ Tests each node function in isolation by injecting mock dependencies
 (LLM, executors, supervisor_agent) via keyword arguments.
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
-import pytest
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langgraph.graph import END
 
 from src.agent.stage4_graph import (
@@ -26,8 +25,6 @@ from src.agent.stage4_graph import (
     # HITL gate nodes
     safety_review_node,
     budget_review_node,
-    human_review_node,
-    # Routing functions
     route_after_triage,
     route_after_supervisor,
     route_after_parallel,
@@ -35,9 +32,6 @@ from src.agent.stage4_graph import (
     route_after_budget,
     route_after_budget_review,
     route_after_human_review,
-    # Constants
-    PARALLEL_AGENTS,
-    AGENT_TO_NODE,
 )
 
 

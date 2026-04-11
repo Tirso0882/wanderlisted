@@ -24,3 +24,10 @@ omit = ["src/api/*"]
 show_missing = true
 skip_empty = true
 fail_under = 80
+
+[tool.ruff.lint]
+ignore = ["E501"]                 # Line length handled by formatter, not linter
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]        # Re-exports in package __init__ files
+"scripts/*" = ["E402"]          # Scripts use sys.path / load_dotenv before imports

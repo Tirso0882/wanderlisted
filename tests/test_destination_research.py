@@ -1,7 +1,7 @@
 """Tests for src/tools/destination_research.py — composite research tool."""
 
 import time
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 import respx

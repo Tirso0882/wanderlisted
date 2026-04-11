@@ -2,7 +2,6 @@
 
 import asyncio
 import os
-import sys
 
 from dotenv import load_dotenv
 
@@ -145,12 +144,12 @@ async def main():
     print("=" * 60)
     print("  SUMMARY")
     print("=" * 60)
-    print(f"  Offline tools:  2/2 ✓")
-    print(f"  API tools:      3/3 ✓  (weather, currency, safety)")
+    print("  Offline tools:  2/2 ✓")
+    print("  API tools:      3/3 ✓  (weather, currency, safety)")
     if not has_amadeus:
-        print(f"  Amadeus:        SKIPPED — add keys to .env")
+        print("  Amadeus:        SKIPPED — add keys to .env")
     if not has_google:
-        print(f"  Google Places:  SKIPPED — add key to .env")
+        print("  Google Places:  SKIPPED — add key to .env")
     print()
 
 

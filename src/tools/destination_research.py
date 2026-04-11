@@ -5,7 +5,6 @@ to web search is a **code-level guarantee**, not a prompt suggestion.
 Includes a TTL cache for Tavily results to control API costs.
 """
 
-import asyncio
 import hashlib
 import time
 from typing import Optional
@@ -14,7 +13,6 @@ from langchain_core.tools import tool
 
 from custom_logging import AppLogger
 from src.tools.destination_rag import (
-    _HIGH_CONFIDENCE,
     search_destination_guides,
 )
 from src.tools.web_search import _tavily_search

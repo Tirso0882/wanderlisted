@@ -1,6 +1,5 @@
 """Tests for src/rag/embeddings.py — EmbeddingConfig + EmbeddingGenerator."""
 
-import os
 from unittest.mock import MagicMock, patch
 
 import pytest

@@ -1,6 +1,6 @@
 """Tests for LangSmith evaluators in src/evaluation/evaluators.py."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from src.evaluation.evaluators import (
     correct_destination,

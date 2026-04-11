@@ -1,8 +1,6 @@
 """Tests for src/rag/indexer.py — vector index building + staleness detection."""
 
 import json
-import os
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
