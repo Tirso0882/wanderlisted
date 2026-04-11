@@ -1,15 +1,21 @@
 """Google Maps Platform tools for Wanderlisted travel agent.
 
-Wraps Places API, Directions API, Distance Matrix API, Routes API,
-and Route Optimization API.  All calls go through a single API key
-read from the GOOGLE_MAPS_API_KEY environment variable.
+Enabled APIs (7):
+  - Geocoding API          → _geocode() helper (address ↔ lat/lng)
+  - Places API (New)       → search_places_nearby, search_places_text
+  - Directions API         → get_directions
+  - Distance Matrix API    → get_distance_matrix
+  - Routes API             → compute_route, optimize_day_route
+  - Time Zone API          → get_timezone
+  - Maps Embed API         → used directly in handbook_template.html.j2 iframes
 
-Each tool is safe to use inside any subagent — they are stateless
-and return serialised text/JSON results.
+All calls go through a single API key read from GOOGLE_MAPS_API_KEY.
+Each tool is stateless and safe to use inside any subagent.
 """
 
 import json
 import os
+import time
 from typing import Optional
 from urllib.parse import urlencode
 
@@ -33,9 +39,90 @@ def _api_key() -> str:
     return key
 
 
+def places_photo_url(photo_name: str, max_height: int = 400) -> str:
+    """Convert a Places API (New) photo reference to a displayable image URL.
+
+    Args:
+        photo_name: Full photo resource name, e.g.
+            ``places/ChIJ.../photos/AU_ZVE...``
+        max_height: Maximum image height in pixels.
+
+    Returns:
+        URL string that serves the photo directly.
+    """
+    key = _api_key()
+    return (
+        f"https://places.googleapis.com/v1/{photo_name}/media"
+        f"?maxHeightPx={max_height}&key={key}"
+    )
+
+
+def directions_embed_url(
+    origin: str,
+    destination: str,
+    waypoints: list[str] | None = None,
+    mode: str = "walking",
+) -> str:
+    """Build a Maps Embed API directions URL showing a route with blue line.
+
+    Args:
+        origin: Starting point (address or lat,lng).
+        destination: End point.
+        waypoints: Optional intermediate stops.
+        mode: Travel mode — walking, driving, transit, bicycling.
+
+    Returns:
+        Embeddable iframe ``src`` URL.
+    """
+    key = _api_key()
+    params: dict[str, str] = {
+        "key": key,
+        "origin": origin,
+        "destination": destination,
+        "mode": mode,
+    }
+    if waypoints:
+        params["waypoints"] = "|".join(waypoints)
+    return f"https://www.google.com/maps/embed/v1/directions?{urlencode(params)}"
+
+
+def lookup_place_photo(place_name: str, city: str = "") -> str | None:
+    """Quick Places text search to fetch the first photo URL for a place.
+
+    Returns a displayable image URL or None if unavailable.
+    This is a lightweight call requesting only displayName + photos.
+    """
+    key = _api_key()
+    query = f"{place_name} {city}".strip()
+    try:
+        resp = httpx.post(
+            "https://places.googleapis.com/v1/places:searchText",
+            headers={
+                "Content-Type": "application/json",
+                "X-Goog-Api-Key": key,
+                "X-Goog-FieldMask": "places.displayName,places.photos",
+            },
+            json={"textQuery": query, "maxResultCount": 1},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        places = resp.json().get("places", [])
+        if places:
+            photos = places[0].get("photos", [])
+            if photos:
+                ref = photos[0].get("name", "")
+                if ref:
+                    return places_photo_url(ref)
+    except Exception:
+        pass
+    return None
+
+
 def _format_place(place: dict) -> str:
-    """Format a single Places API result into readable text."""
+    """Format a single Places API (New) result into readable text."""
     name = place.get("name", place.get("displayName", {}).get("text", "Unknown"))
+    if isinstance(name, dict):
+        name = name.get("text", "Unknown")
     addr = place.get("formatted_address", place.get("formattedAddress", ""))
     rating = place.get("rating", "N/A")
     total_ratings = place.get("user_ratings_total", place.get("userRatingCount", 0))
@@ -45,13 +132,59 @@ def _format_place(place: dict) -> str:
                  "PRICE_LEVEL_VERY_EXPENSIVE": "$$$$"}.get(str(price), str(price) if price else "N/A")
     status = place.get("business_status", place.get("businessStatus", ""))
     types = ", ".join(place.get("types", [])[:4])
+
+    # Location coordinates
+    loc = place.get("location", {})
+    lat = loc.get("latitude", "")
+    lng = loc.get("longitude", "")
+    coords = f"{lat},{lng}" if lat and lng else ""
+
+    # Google Maps link
+    maps_uri = place.get("googleMapsUri", "")
+
+    # Website
+    website = place.get("websiteUri", "")
+
+    # Editorial summary
+    summary = place.get("editorialSummary", {})
+    if isinstance(summary, dict):
+        summary = summary.get("text", "")
+
+    # Opening hours
+    hours_obj = place.get("currentOpeningHours", place.get("regularOpeningHours", {}))
+    hours_text = ""
+    if isinstance(hours_obj, dict):
+        weekday = hours_obj.get("weekdayDescriptions", [])
+        if weekday:
+            hours_text = weekday[0]  # Show first day as sample
+
+    # Photo reference (first photo)
+    photos = place.get("photos", [])
+    photo_ref = ""
+    if photos and isinstance(photos[0], dict):
+        photo_ref = photos[0].get("name", "")
+
+    # Build displayable photo URL from the reference
+    photo_url = ""
+    if photo_ref:
+        try:
+            photo_url = places_photo_url(photo_ref, max_height=400)
+        except RuntimeError:
+            pass
+
     lines = [
         f"• {name}",
         f"  Address: {addr}" if addr else None,
+        f"  Coordinates: {coords}" if coords else None,
         f"  Rating: {rating}/5 ({total_ratings} reviews)" if rating != "N/A" else None,
         f"  Price: {price_str}" if price_str != "N/A" else None,
+        f"  Summary: {summary}" if summary else None,
+        f"  Hours: {hours_text}" if hours_text else None,
         f"  Status: {status}" if status else None,
         f"  Types: {types}" if types else None,
+        f"  Google Maps: {maps_uri}" if maps_uri else None,
+        f"  Website: {website}" if website else None,
+        f"  Photo: {photo_url}" if photo_url else None,
     ]
     return "\n".join(l for l in lines if l)
 
@@ -93,7 +226,9 @@ def search_places_nearby(
         "X-Goog-FieldMask": (
             "places.displayName,places.formattedAddress,places.rating,"
             "places.userRatingCount,places.priceLevel,places.types,"
-            "places.businessStatus,places.location"
+            "places.businessStatus,places.location,places.googleMapsUri,"
+            "places.websiteUri,places.editorialSummary,places.photos,"
+            "places.currentOpeningHours"
         ),
     }
     body = {
@@ -145,7 +280,9 @@ def search_places_text(
         "X-Goog-FieldMask": (
             "places.displayName,places.formattedAddress,places.rating,"
             "places.userRatingCount,places.priceLevel,places.types,"
-            "places.businessStatus,places.location"
+            "places.businessStatus,places.location,places.googleMapsUri,"
+            "places.websiteUri,places.editorialSummary,places.photos,"
+            "places.currentOpeningHours"
         ),
     }
     body = {"textQuery": query, "maxResultCount": min(max_results, 20)}
@@ -447,6 +584,65 @@ def optimize_day_route(
         + "\n".join(f"  → {s}" for s in ordered)
         + f"\n  → End: {end_location}\n\n"
         f"Leg details:\n" + "\n".join(leg_details)
+    )
+
+
+# ── Time Zone API ───────────────────────────────────────────────────────
+
+@tool
+def get_timezone(
+    location: str,
+    timestamp: Optional[int] = None,
+) -> str:
+    """Get timezone information for a location using Google Time Zone API.
+
+    Args:
+        location: Lat,lng string like "35.6762,139.6503" or a text address
+                  (will be geocoded first).
+        timestamp: Unix timestamp for the timezone query. Defaults to now.
+                   Needed because timezone offset can vary with DST.
+    """
+    key = _api_key()
+
+    if not _looks_like_latlng(location):
+        location = _geocode(location, key)
+        if not location:
+            return "Could not geocode the provided location."
+
+    if timestamp is None:
+        timestamp = int(time.time())
+
+    params = {
+        "location": location,
+        "timestamp": timestamp,
+        "key": key,
+    }
+    url = f"{_BASE_URL}/timezone/json?{urlencode(params)}"
+    logger.debug(f"TimeZone: {location} @ {timestamp}")
+    try:
+        resp = httpx.get(url, timeout=10)
+        resp.raise_for_status()
+    except httpx.HTTPStatusError as e:
+        logger.error("TimeZone HTTP error %s: %s", e.response.status_code, e.response.text[:200])
+        return f"Time Zone API error (HTTP {e.response.status_code})."
+    except httpx.RequestError as e:
+        logger.error("TimeZone request error: %s", e)
+        return f"Could not reach Time Zone API: {e}"
+    data = resp.json()
+
+    if data.get("status") != "OK":
+        return f"Time Zone API error: {data.get('status')} — {data.get('errorMessage', '')}"
+
+    tz_id = data.get("timeZoneId", "Unknown")
+    tz_name = data.get("timeZoneName", "Unknown")
+    raw_offset = data.get("rawOffset", 0) / 3600
+    dst_offset = data.get("dstOffset", 0) / 3600
+    total_offset = raw_offset + dst_offset
+
+    sign = "+" if total_offset >= 0 else ""
+    return (
+        f"Timezone: {tz_name} ({tz_id})\n"
+        f"UTC offset: {sign}{total_offset:.1f}h (raw {sign}{raw_offset:.1f}h + DST {dst_offset:.1f}h)"
     )
 
 

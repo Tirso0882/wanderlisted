@@ -133,7 +133,9 @@ def build_index(guides_dir: Path | None = None):
         return None
 
     emb_gen = _get_embedding_generator()
-    index = _get_pinecone_index(emb_gen.config.dimensions)
+    dim = int(os.environ.get("AZURE_OPENAI_EMBEDDING_DIMENSIONS",
+              os.environ.get("EMBEDDING_DIMENSION", "3072")))
+    index = _get_pinecone_index(dim)
 
     # Fast path: manifest matches — skip re-embedding
     if not _is_stale(guides_dir):

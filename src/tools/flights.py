@@ -119,25 +119,40 @@ async def search_flights(
         last_seg = segments[-1]
         airline = first_seg["carrierCode"]
         flight_num = f"{airline}{first_seg['number']}"
+        dep_airport = first_seg["departure"]["iataCode"]
+        arr_airport = last_seg["arrival"]["iataCode"]
         departure = first_seg["departure"]["at"]
         arrival = last_seg["arrival"]["at"]
         duration = offer["itineraries"][0].get("duration", "N/A")
         stops = len(segments) - 1
 
-        # Format duration from ISO 8601 (PT11H30M -> 11h 30m)
+        # Parse ISO 8601 duration to minutes and readable string
         dur_str = duration.replace("PT", "").replace("H", "h ").replace("M", "m")
+        dur_mins = 0
+        dur_clean = duration.replace("PT", "")
+        if "H" in dur_clean:
+            parts = dur_clean.split("H")
+            dur_mins += int(parts[0]) * 60
+            dur_clean = parts[1]
+        if "M" in dur_clean:
+            dur_mins += int(dur_clean.replace("M", "") or 0)
 
         results.append(
             f"  {i}. {flight_num} ({airline}) — ${price} {currency}\n"
+            f"     Carrier: {airline} | Flight: {first_seg['number']}\n"
+            f"     Departure airport: {dep_airport} | Arrival airport: {arr_airport}\n"
             f"     Depart: {departure} → Arrive: {arrival}\n"
-            f"     Duration: {dur_str} · "
-            f"{'Non-stop' if stops == 0 else f'{stops} stop(s)'}"
+            f"     Duration: {dur_str} ({dur_mins} minutes) · "
+            f"{'Non-stop' if stops == 0 else f'{stops} stop(s)'}\n"
+            f"     Cabin class: economy"
         )
 
         # If round trip, show return leg
         if len(offer["itineraries"]) > 1:
             ret = offer["itineraries"][1]
             ret_segs = ret["segments"]
+            ret_dep_airport = ret_segs[0]["departure"]["iataCode"]
+            ret_arr_airport = ret_segs[-1]["arrival"]["iataCode"]
             ret_dep = ret_segs[0]["departure"]["at"]
             ret_arr = ret_segs[-1]["arrival"]["at"]
             ret_dur = ret.get("duration", "N/A").replace(
@@ -145,9 +160,10 @@ async def search_flights(
             ).replace("H", "h ").replace("M", "m")
             ret_stops = len(ret_segs) - 1
             results.append(
-                f"     Return: {ret_dep} → {ret_arr} "
-                f"({ret_dur}, "
-                f"{'non-stop' if ret_stops == 0 else f'{ret_stops} stop(s)'})"
+                f"     Return: {ret_dep_airport} → {ret_arr_airport}\n"
+                f"     Return depart: {ret_dep} → Return arrive: {ret_arr}\n"
+                f"     Return duration: {ret_dur} · "
+                f"{'non-stop' if ret_stops == 0 else f'{ret_stops} stop(s)'}"
             )
 
         results.append("")
