@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title> — Wanderlisted</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+<style>
+/* ─── Reset & Variables ────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --accent: #c0395a;
+  --accent-light: #c0395a22;
+  --hero-from: #f4b8c8;
+  --hero-to: #c0395a;
+  --safe-green: #16a34a;
+  --warning-amber: #d97706;
+  --danger-red: #dc2626;
+  --radius: 12px;
+}
+[data-theme="light"] {
+  --bg: #f8f7f4;
+  --card-bg: #ffffff;
+  --text: #1a1a1a;
+  --text-muted: #6b7280;
+  --border: #e5e5e5;
+  --shadow: 0 2px 8px rgba(0,0,0,0.06);
+  --shadow-hover: 0 4px 16px rgba(0,0,0,0.10);
+  --transit-bg: #f0f9ff;
+  --transit-border: #bae6fd;
+  --cultural-tip-bg: #fdf4ff;
+  --currency-bg: #fffbeb;
+  --currency-border: #fde68a;
+}
+[data-theme="dark"] {
+  --bg: #0f0f0f;
+  --card-bg: #1a1a1a;
+  --text: #e5e5e5;
+  --text-muted: #9ca3af;
+  --border: #333;
+  --shadow: 0 2px 8px rgba(0,0,0,0.3);
+  --shadow-hover: 0 4px 20px rgba(0,0,0,0.4);
+  --transit-bg: #1e293b;
+  --transit-border: #334155;
+  --cultural-tip-bg: #2d1f3d;
+  --currency-bg: #422006;
+  --currency-border: #713f12;
+}
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+h1, h2, h3 { font-family: 'Playfair Display', Georgia, serif; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ─── Header ───────────────────────────────────────────────────────── */
+.hero {
+  background: linear-gradient(135deg, var(--hero-from), var(--hero-to));
+  color: #fff;
+  padding: 48px 32px;
+  border-radius: 0 0 var(--radius) var(--radius);
+  margin-bottom: 8px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '🌸';
+  position: absolute;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 5rem;
+  opacity: 0.15;
+  pointer-events: none;
+}
+/* ─── Theme Toggle ─────────────────────────────────────────────────── */
+.theme-toggle {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.1rem;
+  box-shadow: var(--shadow);
+  transition: background 0.2s, border-color 0.2s;
+}
+.theme-toggle:hover { box-shadow: var(--shadow-hover); }
+.hero h1 { font-size: 2.2rem; margin-bottom: 8px; }
+.hero .subtitle { font-size: 1rem; opacity: 0.9; margin-bottom: 16px; }
+.hero-pills { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.hero-pill {
+  background: rgba(255,255,255,0.2);
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  backdrop-filter: blur(4px);
+}
+
+/* ─── Safety Banner ────────────────────────────────────────────────── */
+.safety-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+.safety-banner.green  { background: #dcfce7; color: #166534; }
+.safety-banner.yellow { background: #fef9c3; color: #854d0e; }
+.safety-banner.orange { background: #ffedd5; color: #9a3412; }
+.safety-banner.red    { background: #fee2e2; color: #991b1b; }
+
+/* ─── Route Bar ────────────────────────────────────────────────────── */
+.route-bar {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 24px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  box-shadow: var(--shadow);
+}
+.route-city {
+  font-weight: 600;
+  background: var(--accent-light);
+  color: var(--accent);
+  padding: 4px 12px;
+  border-radius: 8px;
+}
+.route-arrow { color: var(--text-muted); font-size: 0.8rem; }
+
+/* ─── Tabs ─────────────────────────────────────────────────────────── */
+.tabs-wrapper {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+.tab-list {
+  display: flex;
+  overflow-x: auto;
+  border-bottom: 2px solid var(--border);
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.tab-list::-webkit-scrollbar { display: none; }
+.tab-btn {
+  flex: 0 0 auto;
+  padding: 14px 20px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+}
+.tab-btn:hover { color: var(--accent); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.tab-panel { display: none; padding: 28px 24px; }
+.tab-panel.active { display: block; }
+
+/* ─── Day Cards ────────────────────────────────────────────────────── */
+.day-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+  overflow: hidden;
+  transition: box-shadow 0.2s;
+}
+.day-card:hover { box-shadow: var(--shadow-hover); }
+.day-card-header {
+  background: var(--accent-light);
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.day-label { font-weight: 700; font-size: 1.05rem; }
+.day-city { color: var(--text-muted); font-size: 0.85rem; }
+.weather-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--card-bg);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  border: 1px solid var(--border);
+}
+.day-body { padding: 20px; }
+
+/* ─── Time Blocks ──────────────────────────────────────────────────── */
+.time-block { margin-bottom: 20px; }
+.time-block-label {
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+}
+
+/* ─── Activity Card ────────────────────────────────────────────────── */
+.activity-card {
+  display: flex;
+  gap: 14px;
+  padding: 12px;
+  background: var(--bg);
+  border-radius: 8px;
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+}
+.activity-photo {
+  width: 110px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex-shrink: 0;
+  background: var(--border);
+}
+.activity-info { flex: 1; min-width: 0; }
+.activity-info h4 { font-family: 'Inter', sans-serif; font-size: 0.95rem; margin-bottom: 4px; }
+.pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-right: 4px;
+}
+.pill-rating { background: #fef3c7; color: #92400e; }
+.pill-price { background: #dbeafe; color: #1e40af; }
+.pill-free { background: #dcfce7; color: #166534; }
+.activity-meta { font-size: 0.82rem; color: var(--text-muted); margin-top: 4px; }
+.activity-links { margin-top: 6px; font-size: 0.82rem; }
+.activity-links a { margin-right: 12px; }
+
+/* ─── Transit Panel ────────────────────────────────────────────────── */
+.transit-panel {
+  background: var(--transit-bg);
+  border: 1px solid var(--transit-border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-top: 10px;
+  font-size: 0.85rem;
+}
+.transit-step { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+.transit-icon { font-size: 1rem; width: 24px; text-align: center; }
+
+/* ─── Cultural Tip ─────────────────────────────────────────────────── */
+.cultural-tip {
+  background: var(--cultural-tip-bg);
+  border-left: 3px solid var(--accent);
+  padding: 12px 16px;
+  border-radius: 0 8px 8px 0;
+  margin-top: 12px;
+  font-size: 0.88rem;
+}
+
+/* ─── Day Footer ───────────────────────────────────────────────────── */
+.day-footer {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* ─── Flight Card ──────────────────────────────────────────────────── */
+.flight-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+  background: var(--bg);
+}
+.flight-label { font-weight: 700; font-size: 0.9rem; color: var(--accent); margin-bottom: 12px; }
+.flight-route {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.flight-point { text-align: center; }
+.flight-point .code { font-size: 1.4rem; font-weight: 700; }
+.flight-point .time { font-size: 0.85rem; color: var(--text-muted); }
+.flight-line {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 100px;
+}
+.flight-line .duration { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 4px; }
+.flight-line .bar {
+  width: 100%;
+  height: 2px;
+  background: var(--accent);
+  position: relative;
+}
+.flight-line .bar::after {
+  content: '✈';
+  position: absolute;
+  right: -4px;
+  top: -8px;
+  font-size: 0.9rem;
+}
+.flight-line .stops-label { font-size: 0.78rem; color: var(--text-muted); margin-top: 4px; }
+.flight-price { font-size: 1.3rem; font-weight: 700; color: var(--accent); margin-top: 12px; }
+
+/* ─── Hotel Card ───────────────────────────────────────────────────── */
+.hotel-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+  background: var(--bg);
+}
+.hotel-card h3 { font-family: 'Inter', sans-serif; font-size: 1.05rem; margin-bottom: 4px; }
+.hotel-stars { color: #eab308; margin-bottom: 6px; }
+.hotel-detail { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 3px; }
+.hotel-amenities { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.amenity-tag {
+  background: var(--accent-light);
+  color: var(--accent);
+  padding: 2px 10px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+}
+
+/* ─── Budget ───────────────────────────────────────────────────────── */
+.budget-overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.budget-stat {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  text-align: center;
+}
+.budget-stat .value { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+.budget-stat .label { font-size: 0.82rem; color: var(--text-muted); }
+.budget-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+.budget-table th, .budget-table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+.budget-table th { font-weight: 600; }
+.budget-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.budget-bar-label { width: 100px; font-size: 0.82rem; text-align: right; }
+.budget-bar-track {
+  flex: 1;
+  height: 18px;
+  background: var(--bg);
+  border-radius: 9px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.budget-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 9px;
+  transition: width 0.3s;
+}
+.budget-bar-value { width: 80px; font-size: 0.82rem; }
+
+/* ─── Currency Quick Ref ───────────────────────────────────────────── */
+.currency-box {
+  background: var(--currency-bg);
+  border: 1px solid var(--currency-border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  font-size: 0.9rem;
+}
+
+/* ─── Safety ───────────────────────────────────────────────────────── */
+.safety-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.safety-card h3 { font-family: 'Inter', sans-serif; font-size: 1rem; margin-bottom: 8px; }
+.emergency-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+.emergency-item {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+}
+.emergency-item .number { font-size: 1.2rem; font-weight: 700; color: var(--accent); }
+.emergency-item .label { font-size: 0.78rem; color: var(--text-muted); }
+
+/* ─── Culture ──────────────────────────────────────────────────────── */
+.phrase-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+.phrase-table th, .phrase-table td {
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+.phrase-table th { background: var(--accent-light); font-weight: 600; }
+
+/* ─── Packing ──────────────────────────────────────────────────────── */
+.packing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+}
+.packing-category h3 {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+  color: var(--accent);
+}
+.packing-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 0.88rem;
+}
+.packing-item .reason { color: var(--text-muted); font-size: 0.78rem; }
+
+/* ─── Footer ───────────────────────────────────────────────────────── */
+footer {
+  text-align: center;
+  padding: 24px;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  border-top: 1px solid var(--border);
+  margin-top: 24px;
+}
+footer a { margin: 0 8px; }
+
+/* ─── Responsive ───────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .hero { padding: 32px 20px; }
+  .hero h1 { font-size: 1.6rem; }
+  .tab-btn { padding: 10px 14px; font-size: 0.8rem; }
+  .tab-panel { padding: 16px; }
+  .activity-card { flex-direction: column; }
+  .activity-photo { width: 100%; height: 160px; }
+  .flight-route { flex-direction: column; text-align: center; }
+}
+
+/* ─── Print ────────────────────────────────────────────────────────── */
+@media print {
+  body { max-width: none; padding: 0; background: #fff; color: #000; }
+  .hero { background: none; color: #000; border: 2px solid #ccc; border-radius: 0; }
+  .tab-list { display: none; }
+  .tab-panel { display: block !important; padding: 12px 0; }
+  .tab-panel::before {
+    content: attr(aria-label);
+    display: block;
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin: 20px 0 10px;
+    border-bottom: 2px solid #333;
+    padding-bottom: 4px;
+  }
+  .day-card { break-inside: avoid; page-break-inside: avoid; }
+  .activity-photo { max-width: 80px; max-height: 60px; }
+  iframe { display: none; }
+  .safety-banner { border: 1px solid; }
+  a[href]::after { content: " (" attr(href) ")"; font-size: 0.7rem; color: #666; }
+}
+
+/* ─── Accessibility ────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ THEME TOGGLE ══════════════════════════════════════════ -->
+<button class="theme-toggle" id="theme-toggle" aria-label="Toggle light/dark mode" title="Toggle light/dark mode">🌙</button>
+
+<!-- ═══ HERO HEADER ═══════════════════════════════════════════ -->
+<header class="hero">
+  <h1>Your Travel Handbook</h1>
+  <p class="subtitle">
+    
+    
+  </p>
+  <div class="hero-pills">
+    
+    <span class="hero-pill">📍 tokyo</span>
+    
+    
+    
+    
+    
+    
+  </div>
+</header>
+
+<!-- ═══ SAFETY BANNER ═════════════════════════════════════════ -->
+
+
+<!-- ═══ ROUTE BAR ═════════════════════════════════════════════ -->
+
+
+<!-- ═══ TABS ══════════════════════════════════════════════════ -->
+<div class="tabs-wrapper">
+  <div class="tab-list" role="tablist" aria-label="Handbook sections">
+    <button class="tab-btn active" role="tab" aria-selected="true" aria-controls="panel-itinerary" id="tab-itinerary" onclick="switchTab(event, 'itinerary')">📅 Itinerary</button>
+    <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-flights" id="tab-flights" onclick="switchTab(event, 'flights')">✈ Flights</button>
+    <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-hotels" id="tab-hotels" onclick="switchTab(event, 'hotels')">🏨 Hotels</button>
+    <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-budget" id="tab-budget" onclick="switchTab(event, 'budget')">💰 Budget</button>
+    <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-maps" id="tab-maps" onclick="switchTab(event, 'maps')">🗺 Maps</button>
+    <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-safety" id="tab-safety" onclick="switchTab(event, 'safety')">🛡 Safety</button>
+    <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-culture" id="tab-culture" onclick="switchTab(event, 'culture')">🎌 Culture</button>
+    <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-packing" id="tab-packing" onclick="switchTab(event, 'packing')">🧳 Packing</button>
+  </div>
+
+  <!-- ─── TAB 1: ITINERARY ─────────────────────────────────── -->
+  <div class="tab-panel active" id="panel-itinerary" role="tabpanel" aria-label="Itinerary" aria-labelledby="tab-itinerary">
+    
+    <p style="color:var(--text-muted)">No day-by-day itinerary available yet. Run a full trip planning request to generate one.</p>
+    
+  </div>
+
+  <!-- ─── TAB 2: FLIGHTS ────────────────────────────────────── -->
+  <div class="tab-panel" id="panel-flights" role="tabpanel" aria-label="Flights & Transport" aria-labelledby="tab-flights">
+    
+    <p style="color:var(--text-muted)">No flight data available.</p>
+    
+  </div>
+
+  <!-- ─── TAB 3: HOTELS ─────────────────────────────────────── -->
+  <div class="tab-panel" id="panel-hotels" role="tabpanel" aria-label="Hotels" aria-labelledby="tab-hotels">
+    
+    <p style="color:var(--text-muted)">No hotel data available.</p>
+    
+  </div>
+
+  <!-- ─── TAB 4: BUDGET ─────────────────────────────────────── -->
+  <div class="tab-panel" id="panel-budget" role="tabpanel" aria-label="Budget Summary" aria-labelledby="tab-budget">
+    <div class="budget-overview">
+      <div class="budget-stat">
+        <div class="value">$0</div>
+        <div class="label">Estimated Total</div>
+      </div>
+      
+      
+    </div>
+
+    <h3 style="margin-bottom:12px">Category Breakdown</h3>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+
+    
+  </div>
+
+  <!-- ─── TAB 5: MAPS ───────────────────────────────────────── -->
+  <div class="tab-panel" id="panel-maps" role="tabpanel" aria-label="Maps & Routes" aria-labelledby="tab-maps">
+    
+    
+
+    
+    
+    <div style="margin-bottom:20px">
+      <h3 style="margin-bottom:8px">📍 Tokyo</h3>
+      <iframe
+        src="https://www.google.com/maps/embed/v1/place?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&q=tokyo&zoom=12"
+        width="100%" height="350" style="border:0;border-radius:var(--radius)"
+        loading="lazy" allowfullscreen
+        referrerpolicy="no-referrer-when-downgrade"
+        title="Map of tokyo">
+      </iframe>
+    </div>
+    
+    
+
+    
+  </div>
+
+  <!-- ─── TAB 6: SAFETY ──────────────────────────────────────── -->
+  <div class="tab-panel" id="panel-safety" role="tabpanel" aria-label="Safety & Health" aria-labelledby="tab-safety">
+    
+
+    
+
+    
+
+    
+
+    
+  </div>
+
+  <!-- ─── TAB 7: CULTURE ─────────────────────────────────────── -->
+  <div class="tab-panel" id="panel-culture" role="tabpanel" aria-label="Culture & Language" aria-labelledby="tab-culture">
+    
+
+    
+
+    
+
+    
+
+    
+  </div>
+
+  <!-- ─── TAB 8: PACKING ─────────────────────────────────────── -->
+  <div class="tab-panel" id="panel-packing" role="tabpanel" aria-label="Packing List" aria-labelledby="tab-packing">
+    
+    <p style="color:var(--text-muted)">No packing list generated yet.</p>
+    
+  </div>
+
+</div><!-- end tabs-wrapper -->
+
+<!-- ═══ FOOTER ════════════════════════════════════════════════ -->
+<footer>
+  Generated by <strong>Wanderlisted</strong><br>
+  Powered by LangChain · LangGraph · LangSmith
+  
+</footer>
+
+<!-- ═══ Tab Switching Script ══════════════════════════════════ -->
+<script>
+function switchTab(event, name) {
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.remove('active');
+    b.setAttribute('aria-selected', 'false');
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  event.currentTarget.setAttribute('aria-selected', 'true');
+  document.getElementById('panel-' + name).classList.add('active');
+}
+// Keyboard navigation for tabs
+document.querySelector('.tab-list')?.addEventListener('keydown', function(e) {
+  const tabs = Array.from(this.querySelectorAll('.tab-btn'));
+  const idx = tabs.indexOf(document.activeElement);
+  if (idx < 0) return;
+  let next = idx;
+  if (e.key === 'ArrowRight') next = (idx + 1) % tabs.length;
+  else if (e.key === 'ArrowLeft') next = (idx - 1 + tabs.length) % tabs.length;
+  else return;
+  e.preventDefault();
+  tabs[next].focus();
+  tabs[next].click();
+});
+
+// ─── Light / Dark Theme Toggle ───────────────────────────────
+(function() {
+  const html = document.documentElement;
+  const btn = document.getElementById('theme-toggle');
+  const STORAGE_KEY = 'wanderlisted-theme';
+
+  function applyTheme(theme) {
+    html.setAttribute('data-theme', theme);
+    btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+    btn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+  }
+
+  // Determine initial theme: localStorage > OS preference > light
+  const stored = localStorage.getItem(STORAGE_KEY);
+  if (stored === 'dark' || stored === 'light') {
+    applyTheme(stored);
+  } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    applyTheme('dark');
+  } else {
+    applyTheme('light');
+  }
+
+  btn.addEventListener('click', function() {
+    const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    applyTheme(next);
+    localStorage.setItem(STORAGE_KEY, next);
+  });
+
+  // Listen for OS theme changes (only if user hasn't manually overridden)
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+    if (!localStorage.getItem(STORAGE_KEY)) {
+      applyTheme(e.matches ? 'dark' : 'light');
+    }
+  });
+})();
+</script>
+</body>
+</html>

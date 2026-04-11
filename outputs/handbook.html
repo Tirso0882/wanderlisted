@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>10 Days in Japan — Wanderlisted</title>
+<title>5-Day Tokyo &amp; Kamakura Trip — Wanderlisted</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
@@ -11,29 +11,42 @@
 /* ─── Reset & Variables ────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
-  --accent: #c0395a;
-  --accent-light: #c0395a22;
+  --accent: #c44a20;
+  --accent-light: #c44a2022;
+  --hero-from: #e8723a;
+  --hero-to: #8b2500;
+  --safe-green: #16a34a;
+  --warning-amber: #d97706;
+  --danger-red: #dc2626;
+  --radius: 12px;
+}
+[data-theme="light"] {
   --bg: #f8f7f4;
   --card-bg: #ffffff;
   --text: #1a1a1a;
   --text-muted: #6b7280;
   --border: #e5e5e5;
-  --safe-green: #16a34a;
-  --warning-amber: #d97706;
-  --danger-red: #dc2626;
-  --radius: 12px;
   --shadow: 0 2px 8px rgba(0,0,0,0.06);
   --shadow-hover: 0 4px 16px rgba(0,0,0,0.10);
+  --transit-bg: #f0f9ff;
+  --transit-border: #bae6fd;
+  --cultural-tip-bg: #fdf4ff;
+  --currency-bg: #fffbeb;
+  --currency-border: #fde68a;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0f0f0f;
-    --card-bg: #1a1a1a;
-    --text: #e5e5e5;
-    --text-muted: #9ca3af;
-    --border: #333;
-    --shadow: 0 2px 8px rgba(0,0,0,0.3);
-  }
+[data-theme="dark"] {
+  --bg: #0f0f0f;
+  --card-bg: #1a1a1a;
+  --text: #e5e5e5;
+  --text-muted: #9ca3af;
+  --border: #333;
+  --shadow: 0 2px 8px rgba(0,0,0,0.3);
+  --shadow-hover: 0 4px 20px rgba(0,0,0,0.4);
+  --transit-bg: #1e293b;
+  --transit-border: #334155;
+  --cultural-tip-bg: #2d1f3d;
+  --currency-bg: #422006;
+  --currency-border: #713f12;
 }
 body {
   font-family: 'Inter', system-ui, sans-serif;
@@ -50,13 +63,45 @@ a:hover { text-decoration: underline; }
 
 /* ─── Header ───────────────────────────────────────────────────────── */
 .hero {
-  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 70%, #000));
+  background: linear-gradient(135deg, var(--hero-from), var(--hero-to));
   color: #fff;
   padding: 48px 32px;
   border-radius: 0 0 var(--radius) var(--radius);
   margin-bottom: 8px;
   text-align: center;
+  position: relative;
+  overflow: hidden;
 }
+.hero::before {
+  content: '🍁';
+  position: absolute;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 5rem;
+  opacity: 0.15;
+  pointer-events: none;
+}
+/* ─── Theme Toggle ─────────────────────────────────────────────────── */
+.theme-toggle {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.1rem;
+  box-shadow: var(--shadow);
+  transition: background 0.2s, border-color 0.2s;
+}
+.theme-toggle:hover { box-shadow: var(--shadow-hover); }
 .hero h1 { font-size: 2.2rem; margin-bottom: 8px; }
 .hero .subtitle { font-size: 1rem; opacity: 0.9; margin-bottom: 16px; }
 .hero-pills { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
@@ -228,30 +273,24 @@ a:hover { text-decoration: underline; }
 
 /* ─── Transit Panel ────────────────────────────────────────────────── */
 .transit-panel {
-  background: #f0f9ff;
-  border: 1px solid #bae6fd;
+  background: var(--transit-bg);
+  border: 1px solid var(--transit-border);
   border-radius: 8px;
   padding: 12px 16px;
   margin-top: 10px;
   font-size: 0.85rem;
-}
-@media (prefers-color-scheme: dark) {
-  .transit-panel { background: #1e293b; border-color: #334155; }
 }
 .transit-step { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
 .transit-icon { font-size: 1rem; width: 24px; text-align: center; }
 
 /* ─── Cultural Tip ─────────────────────────────────────────────────── */
 .cultural-tip {
-  background: #fdf4ff;
+  background: var(--cultural-tip-bg);
   border-left: 3px solid var(--accent);
   padding: 12px 16px;
   border-radius: 0 8px 8px 0;
   margin-top: 12px;
   font-size: 0.88rem;
-}
-@media (prefers-color-scheme: dark) {
-  .cultural-tip { background: #2d1f3d; }
 }
 
 /* ─── Day Footer ───────────────────────────────────────────────────── */
@@ -327,6 +366,43 @@ a:hover { text-decoration: underline; }
   border-radius: 6px;
   font-size: 0.78rem;
 }
+.hotel-photo {
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: var(--radius) var(--radius) 0 0;
+  margin: -20px -20px 16px -20px;
+  width: calc(100% + 40px);
+}
+.hotel-photos-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.hotel-photos-row img {
+  height: 120px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.hotel-map-embed {
+  width: 100%;
+  height: 200px;
+  border: 0;
+  border-radius: 8px;
+  margin-top: 12px;
+}
+/* ─── Day Route Map ────────────────────────────────────────────── */
+.day-route-map {
+  width: 100%;
+  height: 260px;
+  border: 0;
+  border-radius: var(--radius);
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
 
 /* ─── Budget ───────────────────────────────────────────────────────── */
 .budget-overview {
@@ -372,14 +448,11 @@ a:hover { text-decoration: underline; }
 
 /* ─── Currency Quick Ref ───────────────────────────────────────────── */
 .currency-box {
-  background: #fffbeb;
-  border: 1px solid #fde68a;
+  background: var(--currency-bg);
+  border: 1px solid var(--currency-border);
   border-radius: var(--radius);
   padding: 16px 20px;
   font-size: 0.9rem;
-}
-@media (prefers-color-scheme: dark) {
-  .currency-box { background: #422006; border-color: #713f12; }
 }
 
 /* ─── Safety ───────────────────────────────────────────────────────── */
@@ -489,16 +562,19 @@ footer a { margin: 0 8px; }
 </head>
 <body>
 
+<!-- ═══ THEME TOGGLE ══════════════════════════════════════════ -->
+<button class="theme-toggle" id="theme-toggle" aria-label="Toggle light/dark mode" title="Toggle light/dark mode">🌙</button>
+
 <!-- ═══ HERO HEADER ═══════════════════════════════════════════ -->
 <header class="hero">
-  <h1>10 Days in Japan</h1>
+  <h1>5-Day Tokyo &amp; Kamakura Trip</h1>
   <p class="subtitle">
-    2026-04-10 — 2026-04-20
-     · Alice, Bob
+    2026-11-10 — 2026-11-15
+    
   </p>
   <div class="hero-pills">
     
-    <span class="hero-pill">📍 tokyo, kyoto</span>
+    <span class="hero-pill">📍 tokyo, kamakura</span>
     
     
     <span class="hero-pill">💎 Mid-Range</span>
@@ -507,10 +583,8 @@ footer a { margin: 0 8px; }
     <span class="hero-pill">👥 Couple</span>
     
     
-    <span class="hero-pill">💰 $4,000 USD</span>
+    <span class="hero-pill">💰 $3,000 USD</span>
     
-    
-    <span class="hero-pill">💱 $1 = 153.42 JPY</span>
     
     
     <span class="hero-pill">🗣 Japanese</span>
@@ -523,9 +597,9 @@ footer a { margin: 0 8px; }
 
 <div class="safety-banner green" role="alert">
   🟢
-  <span>Japan — Level 1: Exercise Normal Precautions</span>
+  <span>Japan is considered very safe for travelers with low crime rates and excellent infrastructure. Normal precautions are sufficient.</span>
   
-  <span style="margin-left:auto;font-size:0.82rem">Visa-free for US citizens (90 days)</span>
+  <span style="margin-left:auto;font-size:0.82rem">Visa-free entry for short-term tourism (up to 90 days) for many nationalities, including U.S. passport holders. Passport should be valid for the duration of stay; onward/return ticket may be required.</span>
   
 </div>
 
@@ -556,7 +630,7 @@ footer a { margin: 0 8px; }
   </span>
   
   
-  <span class="route-city">Kyoto</span>
+  <span class="route-city">Kamakura</span>
   
   <span class="route-arrow">
     
@@ -606,18 +680,12 @@ footer a { margin: 0 8px; }
       <div class="day-card-header">
         <div>
           <span class="day-label">Day 1</span>
-          <span class="day-city"> · 2026-04-11</span>
+          <span class="day-city"> · 2026-11-11</span>
           <span class="day-city"> · Tokyo</span>
         </div>
         
-        <span class="weather-badge">
-          ⛅ 14–21°C · 20% rain
-        </span>
-        
       </div>
       <div class="day-body">
-        
-        <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:12px">💡 Light layers and a compact umbrella</p>
         
 
         
@@ -631,21 +699,23 @@ footer a { margin: 0 8px; }
           <div class="activity-card">
             
             <div class="activity-info">
-              <h4>Meiji Shrine</h4>
+              <h4>Narita Express to Asakusa</h4>
               
-              <span class="pill pill-rating">⭐ 4.6/5 (12,340)</span>
-              
-              
-              <span class="pill pill-free">Free</span>
+              <span class="pill pill-rating">⭐ 4.6/5 (12,000)</span>
               
               
+              <span class="pill pill-price">$$</span>
               
-              <p class="activity-meta">Tokyo&#39;s most famous Shinto shrine set in a forest.</p>
+              
+              <span class="pill pill-price">~$25</span>
+              
+              
+              <p class="activity-meta">Comfortable airport train into Tokyo.</p>
               
               
               <div class="activity-links">
-                <a href="https://maps.google.com/?cid=meiji" target="_blank" rel="noopener">📍 Maps</a>
-                
+                <a href="https://maps.google.com/?q=Narita+Express" target="_blank" rel="noopener">📍 Maps</a>
+                <a href="https://www.jreast.co.jp" target="_blank" rel="noopener">🌐 Website</a>
               </div>
             </div>
           </div>
@@ -656,15 +726,44 @@ footer a { margin: 0 8px; }
 
           
           
-          <div class="transit-panel">
-            <strong>🚏 Getting Around</strong>
-            
-            <div class="transit-step">
-              <span class="transit-icon">🚶</span>
-              <span>Hotel → Meiji Shrine: 12 min (0.9 km)</span>
-            </div>
-            
+        </div>
+        
+        <div class="time-block">
+          <div class="time-block-label">
+            🌆 Afternoon
           </div>
+
+          
+          
+          <div class="activity-card">
+            
+            <img src="https://lh5.googleusercontent.com/p/AF1QipPpSensoji" alt="Senso-ji Temple" loading="lazy" class="activity-photo">
+            
+            <div class="activity-info">
+              <h4>Senso-ji Temple</h4>
+              
+              <span class="pill pill-rating">⭐ 4.5/5 (85,000)</span>
+              
+              
+              <span class="pill pill-free">Free</span>
+              
+              
+              
+              <p class="activity-meta">Tokyo’s oldest Buddhist temple, iconic lantern gate.</p>
+              
+              
+              <div class="activity-links">
+                <a href="https://maps.google.com/?q=Sensoji" target="_blank" rel="noopener">📍 Maps</a>
+                <a href="https://www.senso-ji.jp" target="_blank" rel="noopener">🌐 Website</a>
+              </div>
+            </div>
+          </div>
+          
+
+          
+          
+
+          
           
         </div>
         
@@ -681,8 +780,314 @@ footer a { margin: 0 8px; }
           
           <div class="activity-card" style="border-left: 3px solid var(--accent)">
             
+            <img src="https://lh5.googleusercontent.com/p/AF1QipPDaikokuya" alt="Daikokuya Tempura" loading="lazy" class="activity-photo">
+            
             <div class="activity-info">
-              <h4>🍽 Ichiran Ramen Shibuya</h4>
+              <h4>🍽 Daikokuya Tempura</h4>
+              
+              <span class="pill pill-rating">⭐ 4.1/5</span>
+              
+              
+              <span class="pill pill-price">$$</span>
+              
+              
+              <span class="pill pill-price">~$50/person</span>
+              
+              <p class="activity-meta">📍 1 Chome-38-10 Asakusa, Taito City, Tokyo</p>
+              <div class="activity-links">
+                <a href="https://maps.google.com/?q=Daikokuya+Asakusa" target="_blank" rel="noopener">📍 Maps</a>
+                <a href="http://www.daikokuya.co.jp" target="_blank" rel="noopener">🌐 Website</a>
+              </div>
+            </div>
+          </div>
+          
+
+          
+          
+        </div>
+        
+
+        
+        
+        <div class="cultural-tip">💡 <strong>Cultural Tip:</strong> Bow slightly when entering temples and restaurants.</div>
+        
+
+        
+        
+        <iframe src="https://www.google.com/maps/embed/v1/directions?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&amp;origin=35.7719%2C140.3929&amp;destination=35.7129%2C139.7963&amp;mode=walking&amp;waypoints=35.7148%2C139.7967" class="day-route-map" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade" title="Day 1 route map"></iframe>
+        
+      </div>
+
+      
+      
+      <div class="day-footer">
+        <span>📊 Day cost: $75 USD</span>
+        
+        <span>📈 Running total: $75 / $3000</span>
+      </div>
+    </div>
+    
+    <div class="day-card">
+      <div class="day-card-header">
+        <div>
+          <span class="day-label">Day 2</span>
+          <span class="day-city"> · 2026-11-12</span>
+          <span class="day-city"> · Tokyo</span>
+        </div>
+        
+      </div>
+      <div class="day-body">
+        
+
+        
+        <div class="time-block">
+          <div class="time-block-label">
+            🌅 Morning
+          </div>
+
+          
+          
+          <div class="activity-card">
+            
+            <img src="https://lh5.googleusercontent.com/p/AF1QipPMeiji" alt="Meiji Shrine" loading="lazy" class="activity-photo">
+            
+            <div class="activity-info">
+              <h4>Meiji Shrine</h4>
+              
+              <span class="pill pill-rating">⭐ 4.6/5 (45,000)</span>
+              
+              
+              <span class="pill pill-free">Free</span>
+              
+              
+              
+              <p class="activity-meta">Peaceful forest shrine in the heart of Tokyo.</p>
+              
+              
+              <div class="activity-links">
+                <a href="https://maps.google.com/?q=Meiji+Shrine" target="_blank" rel="noopener">📍 Maps</a>
+                <a href="https://www.meijijingu.or.jp" target="_blank" rel="noopener">🌐 Website</a>
+              </div>
+            </div>
+          </div>
+          
+
+          
+          
+
+          
+          
+        </div>
+        
+        <div class="time-block">
+          <div class="time-block-label">
+            🌆 Afternoon
+          </div>
+
+          
+          
+          <div class="activity-card">
+            
+            <div class="activity-info">
+              <h4>Harajuku Backstreets</h4>
+              
+              <span class="pill pill-rating">⭐ 4.4/5 (12,000)</span>
+              
+              
+              <span class="pill pill-free">Free</span>
+              
+              
+              
+              <p class="activity-meta">Trendy streets with fashion and cafés.</p>
+              
+              
+              <div class="activity-links">
+                <a href="https://maps.google.com/?q=Harajuku" target="_blank" rel="noopener">📍 Maps</a>
+                
+              </div>
+            </div>
+          </div>
+          
+
+          
+          
+
+          
+          
+        </div>
+        
+        <div class="time-block">
+          <div class="time-block-label">
+            🌙 Evening
+          </div>
+
+          
+          
+
+          
+          
+          
+          <div class="activity-card" style="border-left: 3px solid var(--accent)">
+            
+            <img src="https://lh5.googleusercontent.com/p/AF1QipPUobei" alt="Uobei Sushi" loading="lazy" class="activity-photo">
+            
+            <div class="activity-info">
+              <h4>🍽 Uobei Sushi</h4>
+              
+              <span class="pill pill-rating">⭐ 4.2/5</span>
+              
+              
+              <span class="pill pill-price">$</span>
+              
+              
+              <span class="pill pill-price">~$40/person</span>
+              
+              <p class="activity-meta">📍 1 Chome-21-15 Dogenzaka, Shibuya City, Tokyo</p>
+              <div class="activity-links">
+                <a href="https://maps.google.com/?q=Uobei+Shibuya" target="_blank" rel="noopener">📍 Maps</a>
+                <a href="https://www.genkisushi.co.jp" target="_blank" rel="noopener">🌐 Website</a>
+              </div>
+            </div>
+          </div>
+          
+
+          
+          
+        </div>
+        
+
+        
+        
+        <div class="cultural-tip">💡 <strong>Cultural Tip:</strong> Photography is allowed outdoors, but avoid close-up shots of people without permission.</div>
+        
+
+        
+        
+        <iframe src="https://www.google.com/maps/embed/v1/directions?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&amp;origin=35.6764%2C139.6993&amp;destination=35.6595%2C139.7005&amp;mode=walking&amp;waypoints=35.6702%2C139.7026" class="day-route-map" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade" title="Day 2 route map"></iframe>
+        
+      </div>
+
+      
+      
+      <div class="day-footer">
+        <span>📊 Day cost: $40 USD</span>
+        
+        <span>📈 Running total: $115 / $3000</span>
+      </div>
+    </div>
+    
+    <div class="day-card">
+      <div class="day-card-header">
+        <div>
+          <span class="day-label">Day 3</span>
+          <span class="day-city"> · 2026-11-13</span>
+          <span class="day-city"> · Kamakura</span>
+        </div>
+        
+      </div>
+      <div class="day-body">
+        
+
+        
+        <div class="time-block">
+          <div class="time-block-label">
+            🌅 Morning
+          </div>
+
+          
+          
+          <div class="activity-card">
+            
+            <img src="https://places.googleapis.com/v1/places/ChIJ33NPKsJFGGARDg77hD466cc/photos/AU_ZVEGUr27dIabCiQkXydbStxfUgpq2OViUZzVvZDKOzz_sFmc0LTA6qTtAhaibgOytQdZJztxdJBVS1-AXEjoMtwmXxSW5ancDf9-t8zKnYuh6JNiA0J46Zp8tZy7_f3ADF8UIv3odhzrVn7UE6Kxf7bxw-xn_JwOVqwlM-GJWUPhK9jVTUg8tCI2r_xmgVa3HTGDufkivkvLv0ur9bVyG3ZeSRnxLJbW4DEfw3w8IrzWy9xZhnHqFz_H8L-TmVPv2bFhMfuH9R4f0e6_VT3sOfkFoXqJxtFdtQ0YlVyPNUO505djaTKM7cYLkiaB8x0v0Yp25dsLA1bZLapAfr33TsKPkmmPxg-IWrPtRVPmnV2RZCpuVRMMlSJ4RoPixzLjM94_W_l045Brg7SM_B5vC51ErC9LTbHN21OoVsujIhdhRvA/media?maxHeightPx=400&amp;key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04" alt="JR Yokosuka Line to Kamakura" loading="lazy" class="activity-photo">
+            
+            <div class="activity-info">
+              <h4>JR Yokosuka Line to Kamakura</h4>
+              
+              <span class="pill pill-rating">⭐ 4.5/5 (8,000)</span>
+              
+              
+              <span class="pill pill-price">$</span>
+              
+              
+              <span class="pill pill-price">~$18</span>
+              
+              
+              <p class="activity-meta">Direct train from Tokyo to Kamakura.</p>
+              
+              
+              <div class="activity-links">
+                <a href="https://maps.google.com/?q=Tokyo+Station" target="_blank" rel="noopener">📍 Maps</a>
+                <a href="https://www.jreast.co.jp" target="_blank" rel="noopener">🌐 Website</a>
+              </div>
+            </div>
+          </div>
+          
+
+          
+          
+
+          
+          
+        </div>
+        
+        <div class="time-block">
+          <div class="time-block-label">
+            🌆 Afternoon
+          </div>
+
+          
+          
+          <div class="activity-card">
+            
+            <img src="https://lh5.googleusercontent.com/p/AF1QipPDaibutsu" alt="Great Buddha of Kamakura" loading="lazy" class="activity-photo">
+            
+            <div class="activity-info">
+              <h4>Great Buddha of Kamakura</h4>
+              
+              <span class="pill pill-rating">⭐ 4.5/5 (32,000)</span>
+              
+              
+              <span class="pill pill-price">$</span>
+              
+              
+              <span class="pill pill-price">~$4</span>
+              
+              
+              <p class="activity-meta">Iconic bronze Buddha statue.</p>
+              
+              
+              <div class="activity-links">
+                <a href="https://maps.google.com/?q=Great+Buddha+Kamakura" target="_blank" rel="noopener">📍 Maps</a>
+                <a href="https://www.kotoku-in.jp" target="_blank" rel="noopener">🌐 Website</a>
+              </div>
+            </div>
+          </div>
+          
+
+          
+          
+
+          
+          
+        </div>
+        
+        <div class="time-block">
+          <div class="time-block-label">
+            🌙 Evening
+          </div>
+
+          
+          
+
+          
+          
+          
+          <div class="activity-card" style="border-left: 3px solid var(--accent)">
+            
+            <img src="https://lh5.googleusercontent.com/p/AF1QipPMatsubara" alt="Matsubara-an" loading="lazy" class="activity-photo">
+            
+            <div class="activity-info">
+              <h4>🍽 Matsubara-an</h4>
               
               <span class="pill pill-rating">⭐ 4.3/5</span>
               
@@ -690,11 +1095,162 @@ footer a { margin: 0 8px; }
               <span class="pill pill-price">$$</span>
               
               
-              <span class="pill pill-price">~$12/person</span>
+              <span class="pill pill-price">~$60/person</span>
               
-              <p class="activity-meta">📍 1-22-7 Jinnan, Shibuya</p>
+              <p class="activity-meta">📍 4 Chome-10-3 Yuigahama, Kamakura</p>
               <div class="activity-links">
+                <a href="https://maps.google.com/?q=Matsubara-an" target="_blank" rel="noopener">📍 Maps</a>
+                <a href="https://www.matsubara-an.com" target="_blank" rel="noopener">🌐 Website</a>
+              </div>
+            </div>
+          </div>
+          
+
+          
+          
+        </div>
+        
+
+        
+        
+        <div class="cultural-tip">💡 <strong>Cultural Tip:</strong> Keep voices low on trains and respect quiet temple spaces.</div>
+        
+
+        
+        
+        <iframe src="https://www.google.com/maps/embed/v1/directions?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&amp;origin=35.6812%2C139.7671&amp;destination=35.3115%2C139.5433&amp;mode=walking&amp;waypoints=35.3167%2C139.5354" class="day-route-map" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade" title="Day 3 route map"></iframe>
+        
+      </div>
+
+      
+      
+      <div class="day-footer">
+        <span>📊 Day cost: $82 USD</span>
+        
+        <span>📈 Running total: $197 / $3000</span>
+      </div>
+    </div>
+    
+    <div class="day-card">
+      <div class="day-card-header">
+        <div>
+          <span class="day-label">Day 4</span>
+          <span class="day-city"> · 2026-11-14</span>
+          <span class="day-city"> · Tokyo</span>
+        </div>
+        
+      </div>
+      <div class="day-body">
+        
+
+        
+        <div class="time-block">
+          <div class="time-block-label">
+            🌅 Morning
+          </div>
+
+          
+          
+          <div class="activity-card">
+            
+            <img src="https://places.googleapis.com/v1/places/ChIJPYwFnNGNGGARYEeXwiYQPe8/photos/AU_ZVEF4cQTYqlnQUgd1oaT8FQapQ1na7nIwam2S3fSOSzWRTK9DJSIGOptkmG2vj4WfZd5XW_ck-wXaizxucGQcYyjvNct98ZjbNi6__S7XhYP83qgdxVQkURJFs9D3MEGjbitXc88SooYW6PmksJu7UIDVo0rbF439J5KJYB8H7uo10Te8C4jjPyjlAxJw8C9PAjpFNs2ECui4MekOBHa5Hnr2Brku9soFIyvFLyDnzQmHShF985NJFCWAT1JDQGOYtc4k38DOoCP8enY1ZppRACk_0VYFGD7LR5hg-dDQoUWF893glqrJ8x8nXoIZWay6bPsZR0wsWsHqKGu3nzzMiDdQB36zirwAKMLqQkYKgurCwjFfAcdm6EmgRL399yknSeifztytTWtmUFqW7H0tN05-5p3wcorl5GYLo-w8RogSYw/media?maxHeightPx=400&amp;key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04" alt="Yanaka Ginza" loading="lazy" class="activity-photo">
+            
+            <div class="activity-info">
+              <h4>Yanaka Ginza</h4>
+              
+              <span class="pill pill-rating">⭐ 4.4/5 (7,000)</span>
+              
+              
+              <span class="pill pill-free">Free</span>
+              
+              
+              
+              <p class="activity-meta">Old-town shopping street with local charm.</p>
+              
+              
+              <div class="activity-links">
+                <a href="https://maps.google.com/?q=Yanaka+Ginza" target="_blank" rel="noopener">📍 Maps</a>
                 
+              </div>
+            </div>
+          </div>
+          
+
+          
+          
+
+          
+          
+        </div>
+        
+        <div class="time-block">
+          <div class="time-block-label">
+            🌆 Afternoon
+          </div>
+
+          
+          
+          <div class="activity-card">
+            
+            <img src="https://lh5.googleusercontent.com/p/AF1QipPNezu" alt="Nezu Shrine" loading="lazy" class="activity-photo">
+            
+            <div class="activity-info">
+              <h4>Nezu Shrine</h4>
+              
+              <span class="pill pill-rating">⭐ 4.5/5 (9,000)</span>
+              
+              
+              <span class="pill pill-free">Free</span>
+              
+              
+              
+              <p class="activity-meta">Torii gates and peaceful grounds.</p>
+              
+              
+              <div class="activity-links">
+                <a href="https://maps.google.com/?q=Nezu+Shrine" target="_blank" rel="noopener">📍 Maps</a>
+                <a href="https://www.nedujinja.or.jp" target="_blank" rel="noopener">🌐 Website</a>
+              </div>
+            </div>
+          </div>
+          
+
+          
+          
+
+          
+          
+        </div>
+        
+        <div class="time-block">
+          <div class="time-block-label">
+            🌙 Evening
+          </div>
+
+          
+          
+
+          
+          
+          
+          <div class="activity-card" style="border-left: 3px solid var(--accent)">
+            
+            <img src="https://places.googleapis.com/v1/places/ChIJP9eKBdeMGGAR0zzBXJNVj5A/photos/AU_ZVEGhpM6ldScd7jAIz2YsJj_Lr_m3i45CtE0LhRDDpBYlOisfvxxbnOZN8-NnshIFFRQsEuenlREI5xNVI28vkouKcEuDJHQtL6vDs-0WsSm5d8KfcWLMPByWmdjk-50T5pYYPNCks2N5Fb06tjnLOQ_R_HYxmgyi2sZQsZ1sOGB3nAU22ygG-2H4gwuCP0zU5Ny2cc8uB64Irv-nohONreWJgRPTl9uaPT7dXsdt8_nTpHuGRJsaotq-ida7TZ-3_6wF5u8ZvZZvdyxwQnrJpp2pHN9puuqu00IXFMLcukIREqnoh-g_FDbviUE1-jV01BjEqXAWq5PKxKzKHrlBvqw65oNNGxnllRcFf02BaokvEXmcYWbp_qnWUQtqQvA1ugK5NrFT7Y6vK0a0GTfB76V1PFHLGWSCy4wdKnhZ4GhnGA/media?maxHeightPx=400&amp;key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04" alt="Omoide Yokocho Yakitori" loading="lazy" class="activity-photo">
+            
+            <div class="activity-info">
+              <h4>🍽 Omoide Yokocho Yakitori</h4>
+              
+              <span class="pill pill-rating">⭐ 4.3/5</span>
+              
+              
+              <span class="pill pill-price">$$</span>
+              
+              
+              <span class="pill pill-price">~$60/person</span>
+              
+              <p class="activity-meta">📍 1 Chome-2 Nishishinjuku, Shinjuku City, Tokyo</p>
+              <div class="activity-links">
+                <a href="https://maps.google.com/?q=Omoide+Yokocho" target="_blank" rel="noopener">📍 Maps</a>
                 
               </div>
             </div>
@@ -708,16 +1264,174 @@ footer a { margin: 0 8px; }
 
         
         
-        <div class="cultural-tip">💡 <strong>Cultural Tip:</strong> At Meiji Shrine, bow once before entering the torii gate. Walk on the sides — the centre path is for the deity.</div>
+        <div class="cultural-tip">💡 <strong>Cultural Tip:</strong> Cash is still preferred at small eateries.</div>
+        
+
+        
+        
+        <iframe src="https://www.google.com/maps/embed/v1/directions?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&amp;origin=35.7277%2C139.7709&amp;destination=35.6949%2C139.6994&amp;mode=walking&amp;waypoints=35.7175%2C139.765" class="day-route-map" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade" title="Day 4 route map"></iframe>
         
       </div>
 
       
       
       <div class="day-footer">
-        <span>📊 Day cost: $85 USD</span>
-        <span>🚶 4.2 km walked</span>
-        <span>📈 Running total: $85 / $4000</span>
+        <span>📊 Day cost: $60 USD</span>
+        
+        <span>📈 Running total: $257 / $3000</span>
+      </div>
+    </div>
+    
+    <div class="day-card">
+      <div class="day-card-header">
+        <div>
+          <span class="day-label">Day 5</span>
+          <span class="day-city"> · 2026-11-15</span>
+          <span class="day-city"> · Tokyo</span>
+        </div>
+        
+      </div>
+      <div class="day-body">
+        
+
+        
+        <div class="time-block">
+          <div class="time-block-label">
+            🌅 Morning
+          </div>
+
+          
+          
+          <div class="activity-card">
+            
+            <img src="https://lh5.googleusercontent.com/p/AF1QipPTsukiji" alt="Tsukiji Outer Market" loading="lazy" class="activity-photo">
+            
+            <div class="activity-info">
+              <h4>Tsukiji Outer Market</h4>
+              
+              <span class="pill pill-rating">⭐ 4.5/5 (42,000)</span>
+              
+              
+              <span class="pill pill-price">$</span>
+              
+              
+              <span class="pill pill-price">~$30</span>
+              
+              
+              <p class="activity-meta">Famous seafood market with street food.</p>
+              
+              
+              <div class="activity-links">
+                <a href="https://maps.google.com/?q=Tsukiji+Outer+Market" target="_blank" rel="noopener">📍 Maps</a>
+                <a href="https://www.tsukiji.or.jp" target="_blank" rel="noopener">🌐 Website</a>
+              </div>
+            </div>
+          </div>
+          
+
+          
+          
+
+          
+          
+        </div>
+        
+        <div class="time-block">
+          <div class="time-block-label">
+            🌆 Afternoon
+          </div>
+
+          
+          
+          <div class="activity-card">
+            
+            <img src="https://places.googleapis.com/v1/places/ChIJAQAsR--LGGAR_AmB8WMDy88/photos/AU_ZVEE_IK7szS4p0ILAFuMilWkI7fJDUnt-SG4O3z1rZ31Z5RPFsMn4WfRcSw6dgBA2Rr-DfMJV72ewIdPydTJ38wCfcRlXutVj7ETDk4bxl_YnZmuwXkc1beNJjZwLWcvUjLTIzJ6u15WJQA8moJVYSjOiMTKQ3eO8bx0j1Rx55koNJX41UrfHxbPCT_82rwqU578ie-Xb-zwTDXAZiU4SyccOxAF-laia4sTbQl6aTs7XU7GEqeOI2lg17FIooePAvQi0Qqi-Y1O9ctvjpIrzaFrJGLhylIUBdb1NZozVUeCw-71nZnKzTrT9ZGng_aQZjMHRobQ5WJ7ZTp3kdINQUB6Q9x50uF8Oz4dboknVeCRWaxu26gztm1Fj4_FbDJHdrTtJnw-AQWlSfv1b-s6ykBf3zc1Bzx3ZV0tX8uEuZG0/media?maxHeightPx=400&amp;key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04" alt="Ginza Shopping Walk" loading="lazy" class="activity-photo">
+            
+            <div class="activity-info">
+              <h4>Ginza Shopping Walk</h4>
+              
+              <span class="pill pill-rating">⭐ 4.6/5 (15,000)</span>
+              
+              
+              <span class="pill pill-free">Free</span>
+              
+              
+              
+              <p class="activity-meta">Upscale shopping district with cafés.</p>
+              
+              
+              <div class="activity-links">
+                <a href="https://maps.google.com/?q=Ginza" target="_blank" rel="noopener">📍 Maps</a>
+                
+              </div>
+            </div>
+          </div>
+          
+
+          
+          
+
+          
+          
+        </div>
+        
+        <div class="time-block">
+          <div class="time-block-label">
+            🌙 Evening
+          </div>
+
+          
+          
+          <div class="activity-card">
+            
+            <div class="activity-info">
+              <h4>Narita Express to Airport</h4>
+              
+              <span class="pill pill-rating">⭐ 4.6/5 (12,000)</span>
+              
+              
+              <span class="pill pill-price">$$</span>
+              
+              
+              <span class="pill pill-price">~$25</span>
+              
+              
+              <p class="activity-meta">Return train to Narita Airport.</p>
+              
+              
+              <div class="activity-links">
+                <a href="https://maps.google.com/?q=Tokyo+Station" target="_blank" rel="noopener">📍 Maps</a>
+                <a href="https://www.jreast.co.jp" target="_blank" rel="noopener">🌐 Website</a>
+              </div>
+            </div>
+          </div>
+          
+
+          
+          
+
+          
+          
+        </div>
+        
+
+        
+        
+        <div class="cultural-tip">💡 <strong>Cultural Tip:</strong> Arrive early at the airport; international check-in can be time-consuming.</div>
+        
+
+        
+        
+        <iframe src="https://www.google.com/maps/embed/v1/directions?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&amp;origin=35.6655%2C139.7708&amp;destination=35.6812%2C139.7671&amp;mode=walking&amp;waypoints=35.6717%2C139.765" class="day-route-map" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade" title="Day 5 route map"></iframe>
+        
+      </div>
+
+      
+      
+      <div class="day-footer">
+        <span>📊 Day cost: $55 USD</span>
+        
+        <span>📈 Running total: $312 / $3000</span>
       </div>
     </div>
     
@@ -736,20 +1450,20 @@ footer a { margin: 0 8px; }
       <div class="flight-route">
         <div class="flight-point">
           <div class="code">JFK</div>
-          <div class="time">2026-04-10 11:00</div>
+          <div class="time">2026-11-10T09:00:00</div>
         </div>
         <div class="flight-line">
-          <div class="duration">NH 110 · 13h 30m</div>
+          <div class="duration">CX841 · 21h 20m</div>
           <div class="bar"></div>
-          <div class="stops-label">Non-stop · Economy</div>
+          <div class="stops-label">1 stop(s) · Economy</div>
         </div>
         <div class="flight-point">
           <div class="code">NRT</div>
-          <div class="time">2026-04-11 14:30</div>
+          <div class="time">2026-11-11T20:20:00</div>
         </div>
       </div>
       
-      <div class="flight-price">$1,784 USD</div>
+      <div class="flight-price">$2,136 USD</div>
       
     </div>
     
@@ -762,16 +1476,212 @@ footer a { margin: 0 8px; }
       <div class="flight-route">
         <div class="flight-point">
           <div class="code">NRT</div>
-          <div class="time">2026-04-20 17:00</div>
+          <div class="time">2026-11-15T21:30:00</div>
         </div>
         <div class="flight-line">
-          <div class="duration">NH 109 · 13h 0m</div>
+          <div class="duration"> · 28h 30m</div>
           <div class="bar"></div>
-          <div class="stops-label">Non-stop</div>
+          <div class="stops-label">1 stop(s)</div>
         </div>
         <div class="flight-point">
           <div class="code">JFK</div>
-          <div class="time">2026-04-20 16:30</div>
+          <div class="time">2026-11-16T12:00:00</div>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+    <div class="flight-card">
+      <div class="flight-label">FLIGHT 2</div>
+      
+      
+      <div class="flight-route">
+        <div class="flight-point">
+          <div class="code">JFK</div>
+          <div class="time">2026-11-10T01:45:00</div>
+        </div>
+        <div class="flight-line">
+          <div class="duration">CX843 · 21h 25m</div>
+          <div class="bar"></div>
+          <div class="stops-label">1 stop(s) · Economy</div>
+        </div>
+        <div class="flight-point">
+          <div class="code">NRT</div>
+          <div class="time">2026-11-11T13:10:00</div>
+        </div>
+      </div>
+      
+      <div class="flight-price">$2,136 USD</div>
+      
+    </div>
+    
+
+    
+    <div class="flight-card">
+      <div class="flight-label">RETURN</div>
+      
+      
+      <div class="flight-route">
+        <div class="flight-point">
+          <div class="code">NRT</div>
+          <div class="time">2026-11-15T21:30:00</div>
+        </div>
+        <div class="flight-line">
+          <div class="duration"> · 28h 30m</div>
+          <div class="bar"></div>
+          <div class="stops-label">1 stop(s)</div>
+        </div>
+        <div class="flight-point">
+          <div class="code">JFK</div>
+          <div class="time">2026-11-16T12:00:00</div>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+    <div class="flight-card">
+      <div class="flight-label">FLIGHT 3</div>
+      
+      
+      <div class="flight-route">
+        <div class="flight-point">
+          <div class="code">JFK</div>
+          <div class="time">2026-11-10T01:45:00</div>
+        </div>
+        <div class="flight-line">
+          <div class="duration">CX843 · 22h 25m</div>
+          <div class="bar"></div>
+          <div class="stops-label">1 stop(s) · Economy</div>
+        </div>
+        <div class="flight-point">
+          <div class="code">NRT</div>
+          <div class="time">2026-11-11T14:10:00</div>
+        </div>
+      </div>
+      
+      <div class="flight-price">$2,136 USD</div>
+      
+    </div>
+    
+
+    
+    <div class="flight-card">
+      <div class="flight-label">RETURN</div>
+      
+      
+      <div class="flight-route">
+        <div class="flight-point">
+          <div class="code">NRT</div>
+          <div class="time">2026-11-15T21:30:00</div>
+        </div>
+        <div class="flight-line">
+          <div class="duration"> · 28h 30m</div>
+          <div class="bar"></div>
+          <div class="stops-label">1 stop(s)</div>
+        </div>
+        <div class="flight-point">
+          <div class="code">JFK</div>
+          <div class="time">2026-11-16T12:00:00</div>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+    <div class="flight-card">
+      <div class="flight-label">FLIGHT 4</div>
+      
+      
+      <div class="flight-route">
+        <div class="flight-point">
+          <div class="code">JFK</div>
+          <div class="time">2026-11-10T13:40:00</div>
+        </div>
+        <div class="flight-line">
+          <div class="duration">CX831 · 26h 50m</div>
+          <div class="bar"></div>
+          <div class="stops-label">1 stop(s) · Economy</div>
+        </div>
+        <div class="flight-point">
+          <div class="code">NRT</div>
+          <div class="time">2026-11-12T06:30:00</div>
+        </div>
+      </div>
+      
+      <div class="flight-price">$2,136 USD</div>
+      
+    </div>
+    
+
+    
+    <div class="flight-card">
+      <div class="flight-label">RETURN</div>
+      
+      
+      <div class="flight-route">
+        <div class="flight-point">
+          <div class="code">NRT</div>
+          <div class="time">2026-11-15T21:30:00</div>
+        </div>
+        <div class="flight-line">
+          <div class="duration"> · 28h 30m</div>
+          <div class="bar"></div>
+          <div class="stops-label">1 stop(s)</div>
+        </div>
+        <div class="flight-point">
+          <div class="code">JFK</div>
+          <div class="time">2026-11-16T12:00:00</div>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+    <div class="flight-card">
+      <div class="flight-label">FLIGHT 5</div>
+      
+      
+      <div class="flight-route">
+        <div class="flight-point">
+          <div class="code">JFK</div>
+          <div class="time">2026-11-10T09:00:00</div>
+        </div>
+        <div class="flight-line">
+          <div class="duration">CX841 · 31h 30m</div>
+          <div class="bar"></div>
+          <div class="stops-label">1 stop(s) · Economy</div>
+        </div>
+        <div class="flight-point">
+          <div class="code">NRT</div>
+          <div class="time">2026-11-12T06:30:00</div>
+        </div>
+      </div>
+      
+      <div class="flight-price">$2,136 USD</div>
+      
+    </div>
+    
+
+    
+    <div class="flight-card">
+      <div class="flight-label">RETURN</div>
+      
+      
+      <div class="flight-route">
+        <div class="flight-point">
+          <div class="code">NRT</div>
+          <div class="time">2026-11-15T21:30:00</div>
+        </div>
+        <div class="flight-line">
+          <div class="duration"> · 28h 30m</div>
+          <div class="bar"></div>
+          <div class="stops-label">1 stop(s)</div>
+        </div>
+        <div class="flight-point">
+          <div class="code">JFK</div>
+          <div class="time">2026-11-16T12:00:00</div>
         </div>
       </div>
     </div>
@@ -785,28 +1695,66 @@ footer a { margin: 0 8px; }
     
     
     <div class="hotel-card">
-      <h3>Hotel Gracery Shinjuku</h3>
+      
+      
+      <img src="https://lh5.googleusercontent.com/p/AF1QipP0Y6E5h8LrYw2s7pE_sY0y5x6fZ0E4g" alt="Hotel Tavinos Asakusa" loading="lazy" class="hotel-photo">
+      
+      
+      <h3>Hotel Tavinos Asakusa</h3>
       
       <div class="hotel-stars">★★★★☆</div>
       
-      <p class="hotel-detail">📍 Kabukicho, Shinjuku</p>
-      <p class="hotel-detail">🛏 Deluxe Twin · 2 Twin Beds</p>
-      <p class="hotel-detail">📅 2026-04-11 → 2026-04-15</p>
+      <p class="hotel-detail">📍 Asakusa</p>
+      <p class="hotel-detail">🛏 Standard double</p>
+      <p class="hotel-detail">📅  → </p>
       
       <p class="hotel-detail">💰 $140/night · Total: <strong>$560</strong></p>
       
       
       
-      <div class="hotel-amenities">
-        
-        <span class="amenity-tag">WiFi</span>
-        
-        <span class="amenity-tag">Restaurant</span>
-        
-        <span class="amenity-tag">Coin Laundry</span>
-        
-      </div>
       
+      <p style="margin-top:10px">
+      <a href="https://maps.google.com/?cid=17590708369340058505" target="_blank" rel="noopener">📍 Maps</a>
+      
+      </p>
+      
+      
+      <p class="hotel-detail" style="margin-top:8px">Modern boutique hotel with Japanese pop-art touches, steps from Senso-ji Temple and ideal for exploring historic Asakusa.</p>
+      
+      
+      <iframe src="https://www.google.com/maps/embed/v1/place?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&amp;q=Hotel+Tavinos+Asakusa%2C+Asakusa&amp;zoom=15" class="hotel-map-embed" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade" title="Map of Hotel Tavinos Asakusa"></iframe>
+      
+    </div>
+    
+    <div class="hotel-card">
+      
+      
+      <img src="https://lh5.googleusercontent.com/p/AF1QipM1Zt_j4x5zG6sFzY8xWjX8v4nX8" alt="KAIKA Tokyo by THE SHARE HOTELS" loading="lazy" class="hotel-photo">
+      
+      
+      <h3>KAIKA Tokyo by THE SHARE HOTELS</h3>
+      
+      <div class="hotel-stars">★★★★☆</div>
+      
+      <p class="hotel-detail">📍 Kuramae</p>
+      <p class="hotel-detail">🛏 Standard double</p>
+      <p class="hotel-detail">📅  → </p>
+      
+      <p class="hotel-detail">💰 $155/night · Total: <strong>$620</strong></p>
+      
+      
+      
+      
+      <p style="margin-top:10px">
+      <a href="https://maps.google.com/?cid=10922516434835230373" target="_blank" rel="noopener">📍 Maps</a>
+      
+      </p>
+      
+      
+      <p class="hotel-detail" style="margin-top:8px">Art-focused boutique hotel in Kuramae with a quiet, local atmosphere and easy walk to Asakusa.</p>
+      
+      
+      <iframe src="https://www.google.com/maps/embed/v1/place?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&amp;q=KAIKA+Tokyo+by+THE+SHARE+HOTELS%2C+Kuramae&amp;zoom=15" class="hotel-map-embed" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade" title="Map of KAIKA Tokyo by THE SHARE HOTELS"></iframe>
       
     </div>
     
@@ -817,25 +1765,25 @@ footer a { margin: 0 8px; }
   <div class="tab-panel" id="panel-budget" role="tabpanel" aria-label="Budget Summary" aria-labelledby="tab-budget">
     <div class="budget-overview">
       <div class="budget-stat">
-        <div class="value">$3,420</div>
+        <div class="value">$3,000</div>
         <div class="label">Estimated Total</div>
       </div>
       
       <div class="budget-stat">
-        <div class="value">$4,000</div>
+        <div class="value">$3,000</div>
         <div class="label">Your Budget</div>
       </div>
       <div class="budget-stat">
         
         <div class="value" style="color:var(--safe-green)">
-          $580
+          $0
         </div>
         <div class="label">Remaining</div>
       </div>
       
       
       <div class="budget-stat">
-        <div class="value">$1,710</div>
+        <div class="value">$1,500</div>
         <div class="label">Per Person</div>
       </div>
       
@@ -848,9 +1796,9 @@ footer a { margin: 0 8px; }
     <div class="budget-bar-row">
       <div class="budget-bar-label">✈ Flights</div>
       <div class="budget-bar-track">
-        <div class="budget-bar-fill" style="width: 52.16374269005848%"></div>
+        <div class="budget-bar-fill" style="width: 66.66666666666666%"></div>
       </div>
-      <div class="budget-bar-value">$1,784</div>
+      <div class="budget-bar-value">$2,000</div>
     </div>
     
     
@@ -858,9 +1806,9 @@ footer a { margin: 0 8px; }
     <div class="budget-bar-row">
       <div class="budget-bar-label">🏨 Hotels</div>
       <div class="budget-bar-track">
-        <div class="budget-bar-fill" style="width: 28.654970760233915%"></div>
+        <div class="budget-bar-fill" style="width: 20.666666666666668%"></div>
       </div>
-      <div class="budget-bar-value">$980</div>
+      <div class="budget-bar-value">$620</div>
     </div>
     
     
@@ -868,9 +1816,9 @@ footer a { margin: 0 8px; }
     <div class="budget-bar-row">
       <div class="budget-bar-label">🍽 Meals</div>
       <div class="budget-bar-track">
-        <div class="budget-bar-fill" style="width: 9.35672514619883%"></div>
+        <div class="budget-bar-fill" style="width: 13.333333333333334%"></div>
       </div>
-      <div class="budget-bar-value">$320</div>
+      <div class="budget-bar-value">$400</div>
     </div>
     
     
@@ -878,9 +1826,9 @@ footer a { margin: 0 8px; }
     <div class="budget-bar-row">
       <div class="budget-bar-label">🎯 Activities</div>
       <div class="budget-bar-track">
-        <div class="budget-bar-fill" style="width: 4.385964912280701%"></div>
+        <div class="budget-bar-fill" style="width: 2.0%"></div>
       </div>
-      <div class="budget-bar-value">$150</div>
+      <div class="budget-bar-value">$60</div>
     </div>
     
     
@@ -888,33 +1836,19 @@ footer a { margin: 0 8px; }
     <div class="budget-bar-row">
       <div class="budget-bar-label">🚃 Transport</div>
       <div class="budget-bar-track">
-        <div class="budget-bar-fill" style="width: 3.0994152046783627%"></div>
+        <div class="budget-bar-fill" style="width: 4.0%"></div>
       </div>
-      <div class="budget-bar-value">$106</div>
+      <div class="budget-bar-value">$120</div>
     </div>
     
     
-    
-    <div class="budget-bar-row">
-      <div class="budget-bar-label">📦 Misc</div>
-      <div class="budget-bar-track">
-        <div class="budget-bar-fill" style="width: 2.3391812865497075%"></div>
-      </div>
-      <div class="budget-bar-value">$80</div>
-    </div>
     
     
 
     
-
+    <p style="margin-top:16px;font-size:0.9rem;color:var(--text-muted)">Mid-range 5-day Tokyo &amp; Kamakura trip for two people in November with boutique hotel, meals, transport, and temple activities included, targeting a total budget of around $3,000.</p>
     
-    <div class="currency-box" style="margin-top:20px">
-      <strong>💱 Currency Quick Reference</strong><br>
-      $1 USD = 153.42 JPY<br>
-      $10 = 1,534 JPY ·
-      $50 = 7,671 JPY ·
-      $100 = 15,342 JPY
-    </div>
+
     
   </div>
 
@@ -925,8 +1859,84 @@ footer a { margin: 0 8px; }
       
         
           
+            
+          
         
       
+        
+          
+            
+          
+        
+      
+        
+      
+    
+      
+        
+          
+            
+          
+        
+      
+        
+          
+            
+          
+        
+      
+        
+      
+    
+      
+        
+          
+            
+          
+        
+      
+        
+          
+            
+          
+        
+      
+        
+      
+    
+      
+        
+          
+            
+          
+        
+      
+        
+          
+            
+          
+        
+      
+        
+      
+    
+      
+        
+          
+            
+          
+        
+      
+        
+          
+            
+          
+        
+      
+        
+          
+            
+          
         
       
     
@@ -936,7 +1946,7 @@ footer a { margin: 0 8px; }
     <div style="margin-bottom:20px">
       <h3 style="margin-bottom:8px">📍 Tokyo</h3>
       <iframe
-        src="https://www.google.com/maps/embed/v1/place?key=GOOGLE_MAPS_API_KEY&q=tokyo&zoom=12"
+        src="https://www.google.com/maps/embed/v1/place?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&q=tokyo&zoom=12"
         width="100%" height="350" style="border:0;border-radius:var(--radius)"
         loading="lazy" allowfullscreen
         referrerpolicy="no-referrer-when-downgrade"
@@ -945,18 +1955,162 @@ footer a { margin: 0 8px; }
     </div>
     
     <div style="margin-bottom:20px">
-      <h3 style="margin-bottom:8px">📍 Kyoto</h3>
+      <h3 style="margin-bottom:8px">📍 Kamakura</h3>
       <iframe
-        src="https://www.google.com/maps/embed/v1/place?key=GOOGLE_MAPS_API_KEY&q=kyoto&zoom=12"
+        src="https://www.google.com/maps/embed/v1/place?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&q=kamakura&zoom=12"
         width="100%" height="350" style="border:0;border-radius:var(--radius)"
         loading="lazy" allowfullscreen
         referrerpolicy="no-referrer-when-downgrade"
-        title="Map of kyoto">
+        title="Map of kamakura">
       </iframe>
     </div>
     
     
 
+    
+    
+    
+    <h3 style="margin-top:20px;margin-bottom:8px">🚶 Daily Routes</h3>
+    
+    
+    <div style="margin-bottom:18px">
+      <h4>Day 1</h4>
+      <iframe src="https://www.google.com/maps/embed/v1/directions?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&amp;origin=35.7719%2C140.3929&amp;destination=35.7129%2C139.7963&amp;mode=walking&amp;waypoints=35.7148%2C139.7967" width="100%" height="320"
+        style="border:0;border-radius:var(--radius)" loading="lazy" allowfullscreen
+        referrerpolicy="no-referrer-when-downgrade"
+        title="Day 1 route"></iframe>
+    </div>
+    
+    
+    
+    <div style="margin-bottom:18px">
+      <h4>Day 2</h4>
+      <iframe src="https://www.google.com/maps/embed/v1/directions?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&amp;origin=35.6764%2C139.6993&amp;destination=35.6595%2C139.7005&amp;mode=walking&amp;waypoints=35.6702%2C139.7026" width="100%" height="320"
+        style="border:0;border-radius:var(--radius)" loading="lazy" allowfullscreen
+        referrerpolicy="no-referrer-when-downgrade"
+        title="Day 2 route"></iframe>
+    </div>
+    
+    
+    
+    <div style="margin-bottom:18px">
+      <h4>Day 3</h4>
+      <iframe src="https://www.google.com/maps/embed/v1/directions?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&amp;origin=35.6812%2C139.7671&amp;destination=35.3115%2C139.5433&amp;mode=walking&amp;waypoints=35.3167%2C139.5354" width="100%" height="320"
+        style="border:0;border-radius:var(--radius)" loading="lazy" allowfullscreen
+        referrerpolicy="no-referrer-when-downgrade"
+        title="Day 3 route"></iframe>
+    </div>
+    
+    
+    
+    <div style="margin-bottom:18px">
+      <h4>Day 4</h4>
+      <iframe src="https://www.google.com/maps/embed/v1/directions?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&amp;origin=35.7277%2C139.7709&amp;destination=35.6949%2C139.6994&amp;mode=walking&amp;waypoints=35.7175%2C139.765" width="100%" height="320"
+        style="border:0;border-radius:var(--radius)" loading="lazy" allowfullscreen
+        referrerpolicy="no-referrer-when-downgrade"
+        title="Day 4 route"></iframe>
+    </div>
+    
+    
+    
+    <div style="margin-bottom:18px">
+      <h4>Day 5</h4>
+      <iframe src="https://www.google.com/maps/embed/v1/directions?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&amp;origin=35.6655%2C139.7708&amp;destination=35.6812%2C139.7671&amp;mode=walking&amp;waypoints=35.6717%2C139.765" width="100%" height="320"
+        style="border:0;border-radius:var(--radius)" loading="lazy" allowfullscreen
+        referrerpolicy="no-referrer-when-downgrade"
+        title="Day 5 route"></iframe>
+    </div>
+    
+    
+    
+
+    
+    <h3 style="margin-top:20px;margin-bottom:8px">📌 All Places</h3>
+    <div style="overflow-x:auto">
+    <table class="phrase-table">
+      <thead><tr><th>Place</th><th>Category</th><th>Rating</th><th>Maps</th></tr></thead>
+      <tbody>
+      
+      <tr>
+        <td>Narita Express to Asakusa</td>
+        <td>transport</td>
+        <td>⭐ 4.6</td>
+        <td><a href="https://maps.google.com/?q=Narita+Express" target="_blank" rel="noopener">Open</a></td>
+      </tr>
+      
+      <tr>
+        <td>Senso-ji Temple</td>
+        <td>temple</td>
+        <td>⭐ 4.5</td>
+        <td><a href="https://maps.google.com/?q=Sensoji" target="_blank" rel="noopener">Open</a></td>
+      </tr>
+      
+      <tr>
+        <td>Meiji Shrine</td>
+        <td>shrine</td>
+        <td>⭐ 4.6</td>
+        <td><a href="https://maps.google.com/?q=Meiji+Shrine" target="_blank" rel="noopener">Open</a></td>
+      </tr>
+      
+      <tr>
+        <td>Harajuku Backstreets</td>
+        <td>neighborhood</td>
+        <td>⭐ 4.4</td>
+        <td><a href="https://maps.google.com/?q=Harajuku" target="_blank" rel="noopener">Open</a></td>
+      </tr>
+      
+      <tr>
+        <td>JR Yokosuka Line to Kamakura</td>
+        <td>transport</td>
+        <td>⭐ 4.5</td>
+        <td><a href="https://maps.google.com/?q=Tokyo+Station" target="_blank" rel="noopener">Open</a></td>
+      </tr>
+      
+      <tr>
+        <td>Great Buddha of Kamakura</td>
+        <td>temple</td>
+        <td>⭐ 4.5</td>
+        <td><a href="https://maps.google.com/?q=Great+Buddha+Kamakura" target="_blank" rel="noopener">Open</a></td>
+      </tr>
+      
+      <tr>
+        <td>Yanaka Ginza</td>
+        <td>neighborhood</td>
+        <td>⭐ 4.4</td>
+        <td><a href="https://maps.google.com/?q=Yanaka+Ginza" target="_blank" rel="noopener">Open</a></td>
+      </tr>
+      
+      <tr>
+        <td>Nezu Shrine</td>
+        <td>shrine</td>
+        <td>⭐ 4.5</td>
+        <td><a href="https://maps.google.com/?q=Nezu+Shrine" target="_blank" rel="noopener">Open</a></td>
+      </tr>
+      
+      <tr>
+        <td>Tsukiji Outer Market</td>
+        <td>market</td>
+        <td>⭐ 4.5</td>
+        <td><a href="https://maps.google.com/?q=Tsukiji+Outer+Market" target="_blank" rel="noopener">Open</a></td>
+      </tr>
+      
+      <tr>
+        <td>Ginza Shopping Walk</td>
+        <td>shopping</td>
+        <td>⭐ 4.6</td>
+        <td><a href="https://maps.google.com/?q=Ginza" target="_blank" rel="noopener">Open</a></td>
+      </tr>
+      
+      <tr>
+        <td>Narita Express to Airport</td>
+        <td>transport</td>
+        <td>⭐ 4.6</td>
+        <td><a href="https://maps.google.com/?q=Tokyo+Station" target="_blank" rel="noopener">Open</a></td>
+      </tr>
+      
+      </tbody>
+    </table>
+    </div>
     
   </div>
 
@@ -965,14 +2119,14 @@ footer a { margin: 0 8px; }
     
     <div class="safety-card">
       <h3>Travel Advisory</h3>
-      <p>Japan — Level 1: Exercise Normal Precautions</p>
+      <p>Japan is considered very safe for travelers with low crime rates and excellent infrastructure. Normal precautions are sufficient.</p>
     </div>
     
 
     
     <div class="safety-card">
       <h3>📋 Entry Requirements</h3>
-      <p>Visa-free for US citizens (90 days)</p>
+      <p>Visa-free entry for short-term tourism (up to 90 days) for many nationalities, including U.S. passport holders. Passport should be valid for the duration of stay; onward/return ticket may be required.</p>
     </div>
     
 
@@ -981,97 +2135,86 @@ footer a { margin: 0 8px; }
       <h3>🏥 Health</h3>
       <ul>
       
-        <li>No mandatory vaccinations</li>
+        <li>No mandatory vaccinations for entry</li>
       
-        <li>Tap water safe</li>
+        <li>Routine vaccinations recommended</li>
+      
+        <li>Travel insurance advised</li>
       
       </ul>
     </div>
     
 
     
-    <div class="safety-card">
-      <h3>🚨 Emergency Contacts</h3>
-      <div class="emergency-grid">
-        
-        <div class="emergency-item">
-          <div class="number">110</div>
-          <div class="label">Police</div>
-        </div>
-        
-        <div class="emergency-item">
-          <div class="number">119</div>
-          <div class="label">Ambulance</div>
-        </div>
-        
-      </div>
-    </div>
-    
 
+    
+    <div class="safety-card">
+      <h3>⚠ Seasonal Risks</h3>
+      <ul>
+      
+        <li>Earthquakes possible year-round</li>
+      
+        <li>Typhoons mainly Aug–Oct; low risk in November</li>
+      
+        <li>Occasional heavy rain</li>
+      
+      </ul>
+    </div>
     
   </div>
 
   <!-- ─── TAB 7: CULTURE ─────────────────────────────────────── -->
   <div class="tab-panel" id="panel-culture" role="tabpanel" aria-label="Culture & Language" aria-labelledby="tab-culture">
     
-    <h3 style="margin-bottom:10px">🗣 Phrasebook</h3>
-    <table class="phrase-table">
-      <thead>
-        <tr><th>English</th><th>Local</th><th>Romanized</th></tr>
-      </thead>
-      <tbody>
-      
-        <tr>
-          <td>Hello</td>
-          <td>こんにちは</td>
-          <td>Konnichiwa</td>
-        </tr>
-      
-        <tr>
-          <td>Thank you</td>
-          <td>ありがとう</td>
-          <td>Arigatō</td>
-        </tr>
-      
-        <tr>
-          <td>Excuse me</td>
-          <td>すみません</td>
-          <td>Sumimasen</td>
-        </tr>
-      
-      </tbody>
-    </table>
-    
 
     
     <h3 style="margin:20px 0 10px">🎎 Etiquette</h3>
     <ul>
     
-      <li style="margin-bottom:4px">Bow when greeting</li>
+      <li style="margin-bottom:4px">Bow slightly when greeting or thanking</li>
     
-      <li style="margin-bottom:4px">Remove shoes when entering temples and ryokans</li>
+      <li style="margin-bottom:4px">Speak quietly on trains and public transport</li>
     
-      <li style="margin-bottom:4px">Never tip — it can be considered rude</li>
+      <li style="margin-bottom:4px">Follow posted rules about photography, especially at shrines and temples</li>
+    
+      <li style="margin-bottom:4px">Carry cash, as some places do not accept cards</li>
+    
+      <li style="margin-bottom:4px">Remove shoes when required in temples, homes, and some restaurants</li>
     
     </ul>
     
 
     
     <h3 style="margin:20px 0 10px">💵 Tipping</h3>
-    <p>Tipping is not customary in Japan and may be refused.</p>
+    <p>Tipping is not customary in Japan and can be considered rude. Excellent service is included in the price.</p>
     
 
     
     <h3 style="margin:20px 0 10px">🍜 Dining Customs</h3>
     <ul>
     
-      <li style="margin-bottom:4px">Slurping noodles is polite</li>
+      <li style="margin-bottom:4px">Say &#39;itadakimasu&#39; before eating and &#39;gochisousama deshita&#39; after finishing</li>
     
-      <li style="margin-bottom:4px">Say itadakimasu before eating</li>
+      <li style="margin-bottom:4px">Do not stick chopsticks upright in rice</li>
+    
+      <li style="margin-bottom:4px">Slurping noodles is acceptable and shows appreciation</li>
+    
+      <li style="margin-bottom:4px">Return trays and dishes in casual eateries when indicated</li>
     
     </ul>
     
 
+    
+    <h3 style="margin:20px 0 10px">👔 Dress Code</h3>
+    <ul>
+    
+      <li style="margin-bottom:4px">Dress modestly when visiting temples and shrines</li>
+    
+      <li style="margin-bottom:4px">Comfortable walking shoes are essential due to extensive walking</li>
+    
+      <li style="margin-bottom:4px">Neat, understated clothing is common in cities</li>
+    
+    </ul>
     
   </div>
 
@@ -1092,7 +2235,13 @@ footer a { margin: 0 8px; }
     
       
       
-        
+      
+    
+      
+      
+      
+    
+      
       
       
     
@@ -1104,7 +2253,49 @@ footer a { margin: 0 8px; }
     
       
       
+      
+    
+      
+      
         
+      
+      
+    
+      
+      
+      
+    
+      
+      
+      
+    
+      
+      
+        
+      
+      
+    
+      
+      
+      
+    
+      
+      
+        
+      
+      
+    
+      
+      
+      
+    
+      
+      
+        
+      
+      
+    
+      
       
       
     
@@ -1114,13 +2305,28 @@ footer a { margin: 0 8px; }
         <h3>👔 Clothing</h3>
         
         <div class="packing-item">
-          <span>☑ Light layers</span>
-          <span class="reason">— 14–24°C range</span>
+          <span>☑ Lightweight waterproof jacket</span>
+          <span class="reason">— Protects against occasional November rain while staying breathable</span>
         </div>
         
         <div class="packing-item">
-          <span>☑ Compact rain jacket</span>
-          <span class="reason">— Rain on days 3, 5</span>
+          <span>☑ Comfortable walking shoes</span>
+          <span class="reason">— Long days on foot exploring neighborhoods and temples</span>
+        </div>
+        
+        <div class="packing-item">
+          <span>☑ Warm layers (sweater or fleece)</span>
+          <span class="reason">— Allows easy layering for cool mornings and evenings</span>
+        </div>
+        
+        <div class="packing-item">
+          <span>☐ Scarf</span>
+          <span class="reason">— Adds warmth and style without bulk</span>
+        </div>
+        
+        <div class="packing-item">
+          <span>☐ Compact umbrella</span>
+          <span class="reason">— Quick protection from sudden showers</span>
         </div>
         
       </div>
@@ -1130,7 +2336,12 @@ footer a { margin: 0 8px; }
         
         <div class="packing-item">
           <span>☑ Passport</span>
-          <span class="reason">— Valid until Oct 2027</span>
+          <span class="reason">— Required for international travel and hotel check-in</span>
+        </div>
+        
+        <div class="packing-item">
+          <span>☐ Printed flight and hotel confirmations</span>
+          <span class="reason">— Backup in case of phone or connectivity issues</span>
         </div>
         
       </div>
@@ -1139,8 +2350,48 @@ footer a { margin: 0 8px; }
         <h3>📱 Tech</h3>
         
         <div class="packing-item">
-          <span>☑ Portable WiFi</span>
-          <span class="reason">— ¥900/day at airport</span>
+          <span>☑ Camera or mirrorless camera</span>
+          <span class="reason">— High-quality images of street scenes and temples</span>
+        </div>
+        
+        <div class="packing-item">
+          <span>☑ Extra camera batteries and memory cards</span>
+          <span class="reason">— Prevents missing shots during long days out</span>
+        </div>
+        
+        <div class="packing-item">
+          <span>☐ Portable power bank</span>
+          <span class="reason">— Keeps phone and camera charged on the go</span>
+        </div>
+        
+      </div>
+      
+      <div class="packing-category">
+        <h3>💊 Health</h3>
+        
+        <div class="packing-item">
+          <span>☑ Personal medications</span>
+          <span class="reason">— May be hard to find exact equivalents abroad</span>
+        </div>
+        
+        <div class="packing-item">
+          <span>☐ Basic first-aid kit</span>
+          <span class="reason">— Covers minor blisters or aches from walking</span>
+        </div>
+        
+      </div>
+      
+      <div class="packing-category">
+        <h3>💴 Money</h3>
+        
+        <div class="packing-item">
+          <span>☑ Cash (Japanese yen)</span>
+          <span class="reason">— Many small restaurants and temples prefer cash</span>
+        </div>
+        
+        <div class="packing-item">
+          <span>☑ Credit/debit cards</span>
+          <span class="reason">— Backup payment method</span>
         </div>
         
       </div>
@@ -1149,8 +2400,13 @@ footer a { margin: 0 8px; }
         <h3>🎌 Activities</h3>
         
         <div class="packing-item">
-          <span>☑ Clean socks</span>
-          <span class="reason">— Shoe removal at temples</span>
+          <span>☑ Small daypack</span>
+          <span class="reason">— Carries camera, water, and essentials comfortably</span>
+        </div>
+        
+        <div class="packing-item">
+          <span>☐ Reusable water bottle</span>
+          <span class="reason">— Stays hydrated while walking</span>
         </div>
         
       </div>
@@ -1163,7 +2419,7 @@ footer a { margin: 0 8px; }
 
 <!-- ═══ FOOTER ════════════════════════════════════════════════ -->
 <footer>
-  Generated by <strong>Wanderlisted</strong><br>
+  Generated by <strong>Wanderlisted</strong> · April 09, 2026 at 11:17<br>
   Powered by LangChain · LangGraph · LangSmith
   
 </footer>
@@ -1193,6 +2449,42 @@ document.querySelector('.tab-list')?.addEventListener('keydown', function(e) {
   tabs[next].focus();
   tabs[next].click();
 });
+
+// ─── Light / Dark Theme Toggle ───────────────────────────────
+(function() {
+  const html = document.documentElement;
+  const btn = document.getElementById('theme-toggle');
+  const STORAGE_KEY = 'wanderlisted-theme';
+
+  function applyTheme(theme) {
+    html.setAttribute('data-theme', theme);
+    btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+    btn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+  }
+
+  // Determine initial theme: localStorage > OS preference > light
+  const stored = localStorage.getItem(STORAGE_KEY);
+  if (stored === 'dark' || stored === 'light') {
+    applyTheme(stored);
+  } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    applyTheme('dark');
+  } else {
+    applyTheme('light');
+  }
+
+  btn.addEventListener('click', function() {
+    const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    applyTheme(next);
+    localStorage.setItem(STORAGE_KEY, next);
+  });
+
+  // Listen for OS theme changes (only if user hasn't manually overridden)
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+    if (!localStorage.getItem(STORAGE_KEY)) {
+      applyTheme(e.matches ? 'dark' : 'light');
+    }
+  });
+})();
 </script>
 </body>
 </html>
