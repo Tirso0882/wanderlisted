@@ -19,6 +19,8 @@ _CSV_PATH = Path(__file__).resolve().parent.parent / "data" / "iata_codes.csv"
 _IATA_BY_NAME: dict[str, str] = {}
 # IATA code (uppercase) → set — for "already valid" checks
 _VALID_CODES: set[str] = set()
+# IATA code (uppercase) → country name
+_COUNTRY_BY_CODE: dict[str, str] = {}
 
 
 def _load_iata_db() -> None:
@@ -42,6 +44,10 @@ def _load_iata_db() -> None:
 
             city = (row.get("city_name") or "").strip().lower()
             airport = (row.get("airport_name") or "").strip().lower()
+            country = (row.get("country") or "").strip()
+
+            if country:
+                _COUNTRY_BY_CODE[code] = country
 
             if city:
                 _city_entries.setdefault(city, []).append((code, airport))
@@ -65,6 +71,43 @@ def _load_iata_db() -> None:
 
 
 _load_iata_db()
+
+# ── Public helpers ────────────────────────────────────────────────────────
+
+def get_airport_country(iata_code: str) -> str:
+    """Return the country name for a given IATA airport code, or empty string."""
+    return _COUNTRY_BY_CODE.get(iata_code.upper().strip(), "")
+
+
+def iata_to_flag_emoji(iata_code: str) -> str:
+    """Derive a country flag emoji from an IATA code via country name lookup."""
+    country = get_airport_country(iata_code)
+    # Map common country names to ISO-3166-1 alpha-2 codes for flag emoji
+    _NAME_TO_ISO: dict[str, str] = {
+        "united states": "US", "united kingdom": "GB", "france": "FR",
+        "germany": "DE", "japan": "JP", "spain": "ES", "italy": "IT",
+        "netherlands": "NL", "canada": "CA", "australia": "AU",
+        "brazil": "BR", "mexico": "MX", "colombia": "CO", "peru": "PE",
+        "argentina": "AR", "chile": "CL", "turkey": "TR", "egypt": "EG",
+        "morocco": "MA", "south africa": "ZA", "china": "CN", "india": "IN",
+        "south korea": "KR", "thailand": "TH", "singapore": "SG",
+        "united arab emirates": "AE", "qatar": "QA", "portugal": "PT",
+        "greece": "GR", "poland": "PL", "russia": "RU", "ukraine": "UA",
+        "sweden": "SE", "norway": "NO", "denmark": "DK", "finland": "FI",
+        "switzerland": "CH", "austria": "AT", "belgium": "BE",
+        "czech republic": "CZ", "hungary": "HU", "romania": "RO",
+        "new zealand": "NZ", "indonesia": "ID", "malaysia": "MY",
+        "philippines": "PH", "vietnam": "VN", "kenya": "KE",
+        "ethiopia": "ET", "nigeria": "NG", "ghana": "GH",
+        "israel": "IL", "saudi arabia": "SA", "iran": "IR",
+        "taiwan": "TW", "hong kong": "HK", "pakistan": "PK",
+        "bangladesh": "BD", "sri lanka": "LK",
+    }
+    iso = _NAME_TO_ISO.get(country.lower())
+    if not iso:
+        return ""
+    # Convert ISO-3166-1 alpha-2 to flag emoji (regional indicator symbols)
+    return chr(ord(iso[0]) + 0x1F1A5) + chr(ord(iso[1]) + 0x1F1A5)
 
 
 @tool
