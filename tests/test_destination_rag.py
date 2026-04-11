@@ -42,6 +42,7 @@ class TestSearchDestinationGuides:
         assert "Fushimi Inari" in result
         assert "conveyor-belt sushi" in result
         assert "japan_guide.md" in result
+        assert "Guide confidence: high" in result
         mock_emb_gen.embed_query.assert_called_once_with("Kyoto temple tips")
         mock_index.query.assert_called_once()
 
@@ -64,6 +65,7 @@ class TestSearchDestinationGuides:
         result = search_destination_guides.invoke("alien planet travel")
 
         assert "No relevant destination guide content" in result
+        assert "search_web" in result or "search_hidden_gems" in result
 
     @patch("src.tools.destination_rag.build_index")
     def test_formats_multiple_sources(self, mock_build):
@@ -112,3 +114,68 @@ class TestSearchDestinationGuides:
 
         # build_index should only be called once (lazy init)
         mock_build.assert_called_once()
+
+    @patch("src.tools.destination_rag.build_index")
+    def test_filters_low_relevance_matches(self, mock_build):
+        """Matches below _MIN_RELEVANCE (0.40) should be excluded."""
+        mock_index = MagicMock()
+        mock_emb_gen = MagicMock()
+        mock_emb_gen.embed_query.return_value = [0.1] * 3072
+        mock_index.query.return_value = _make_pinecone_response([
+            {"metadata": {"source": "test.md", "text": "Good match", "section": "See"}, "score": 0.75},
+            {"metadata": {"source": "test.md", "text": "Noisy match", "section": "Eat"}, "score": 0.30},
+        ])
+        mock_build.return_value = (mock_index, mock_emb_gen)
+
+        result = search_destination_guides.invoke("test query")
+
+        assert "Good match" in result
+        assert "Noisy match" not in result
+
+    @patch("src.tools.destination_rag.build_index")
+    def test_low_confidence_includes_web_nudge(self, mock_build):
+        """Low-confidence results should nudge agent to use web search."""
+        mock_index = MagicMock()
+        mock_emb_gen = MagicMock()
+        mock_emb_gen.embed_query.return_value = [0.1] * 3072
+        mock_index.query.return_value = _make_pinecone_response([
+            {"metadata": {"source": "test.md", "text": "Weak match", "section": "See"}, "score": 0.48},
+        ])
+        mock_build.return_value = (mock_index, mock_emb_gen)
+
+        result = search_destination_guides.invoke("obscure topic")
+
+        assert "Guide confidence: low" in result
+        assert "search_web" in result
+
+    @patch("src.tools.destination_rag.build_index")
+    def test_medium_confidence_includes_complement_hint(self, mock_build):
+        """Medium-confidence results should suggest complementing with web search."""
+        mock_index = MagicMock()
+        mock_emb_gen = MagicMock()
+        mock_emb_gen.embed_query.return_value = [0.1] * 3072
+        mock_index.query.return_value = _make_pinecone_response([
+            {"metadata": {"source": "test.md", "text": "Decent match", "section": "See"}, "score": 0.60},
+        ])
+        mock_build.return_value = (mock_index, mock_emb_gen)
+
+        result = search_destination_guides.invoke("moderate topic")
+
+        assert "Guide confidence: medium" in result
+        assert "search_web" in result
+
+    @patch("src.tools.destination_rag.build_index")
+    def test_top_k_parameter(self, mock_build):
+        """Custom top_k should be passed to Pinecone query."""
+        mock_index = MagicMock()
+        mock_emb_gen = MagicMock()
+        mock_emb_gen.embed_query.return_value = [0.1] * 3072
+        mock_index.query.return_value = _make_pinecone_response([
+            {"metadata": {"source": "test.md", "text": "Result", "section": "See"}, "score": 0.80},
+        ])
+        mock_build.return_value = (mock_index, mock_emb_gen)
+
+        search_destination_guides.invoke({"query": "test", "top_k": 8})
+
+        call_kwargs = mock_index.query.call_args
+        assert call_kwargs.kwargs.get("top_k") == 8 or call_kwargs[1].get("top_k") == 8
