@@ -1,4 +1,5 @@
-.PHONY: help install dev test reindex rag-test clean lint fmt
+.PHONY: help install dev test reindex rag-test clean lint fmt \
+       docker-build docker-up docker-down eval-layer1
 
 help:
 	@echo "Wanderlisted — Travel Agent Build System"
@@ -14,6 +15,14 @@ help:
 	@echo "  make lint         — Lint code with ruff"
 	@echo "  make fmt          — Format code with ruff"
 	@echo "  make clean        — Remove cache, logs, and compiled files"
+	@echo ""
+	@echo "Docker:"
+	@echo "  make docker-build — Build the production Docker image"
+	@echo "  make docker-up    — Start API + Redis + Postgres (docker compose)"
+	@echo "  make docker-down  — Stop all containers"
+	@echo ""
+	@echo "Evaluation:"
+	@echo "  make eval-layer1  — Run Layer 1 code-based evaluator tests"
 	@echo ""
 
 install:
@@ -58,3 +67,17 @@ clean:
 	rm -rf .coverage htmlcov/
 	rm -rf logs/*.log
 	@echo "✓ Cleaned up cache, logs, and compiled files"
+
+# ── Docker ────────────────────────────────────────────────────────
+docker-build:
+	docker build -t wanderlisted:latest .
+
+docker-up:
+	docker compose up --build -d
+
+docker-down:
+	docker compose down
+
+# ── Evaluation ────────────────────────────────────────────────────
+eval-layer1:
+	.venv/bin/pytest tests/test_evaluators.py -x --tb=short -q
