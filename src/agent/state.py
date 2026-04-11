@@ -21,3 +21,9 @@ class TravelAgentState(MessagesState):
 
     # Handbook output paths (populated by render_handbook node)
     handbook_paths: dict[str, str] = {}  # {"html": "outputs/handbook.html", ...}
+
+    # HITL (Human-in-the-Loop) — Phase 4
+    human_feedback: str = ""                # Free-text feedback from user
+    hitl_action: str = ""                   # Last HITL action: "approved", "rejected", "edited"
+    safety_acknowledged: bool = False       # User acknowledged safety advisory
+    budget_adjustment_accepted: bool = False  # User accepted budget adjustment
