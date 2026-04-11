@@ -217,3 +217,5 @@ docs/
 
 # Generated eval cache
 scripts/.eval_cache.json
+
+.DS_Store
