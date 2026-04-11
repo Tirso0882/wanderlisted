@@ -74,14 +74,19 @@ class TestFlightsIntegration:
 class TestHotelsIntegration:
     @skip_no_amadeus
     async def test_live_hotel_search(self):
+        from tenacity import RetryError
+
         from src.tools.hotels import search_hotels
 
-        result = await search_hotels.ainvoke({
-            "city_code": "PAR",
-            "check_in_date": "2026-09-15",
-            "check_out_date": "2026-09-18",
-            "adults": 1,
-        })
+        try:
+            result = await search_hotels.ainvoke({
+                "city_code": "PAR",
+                "check_in_date": "2026-09-15",
+                "check_out_date": "2026-09-18",
+                "adults": 1,
+            })
+        except RetryError:
+            pytest.skip("Amadeus API unavailable (rate limit or auth error)")
         assert "PAR" in result or "No hotel offers found" in result
 
 
@@ -113,8 +118,8 @@ class TestRAGIntegration:
 
         from src.tools.destination_rag import search_destination_guides
 
-        result = search_destination_guides.invoke("Kyoto temples etiquette")
-        assert "japan_guide.md" in result or "No destination guides" in result
+        result = search_destination_guides.invoke("Tokyo temples etiquette")
+        assert "tokyo.md" in result or "No destination guides" in result
 
         # Clean up
         mod._vectorstore = None
