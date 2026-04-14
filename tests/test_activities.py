@@ -32,12 +32,14 @@ class TestActivitiesMocked:
             return_value=Response(200, json=_MOCK_PLACES_RESPONSE)
         )
 
-        result = await search_activities.ainvoke({
-            "city": "Tokyo, Japan",
-            "category": "food",
-            "query": "ramen",
-            "limit": 3,
-        })
+        result = await search_activities.ainvoke(
+            {
+                "city": "Tokyo, Japan",
+                "category": "food",
+                "query": "ramen",
+                "limit": 3,
+            }
+        )
 
         assert "Ichiran Shibuya" in result
         assert "4.5/5" in result
@@ -50,10 +52,12 @@ class TestActivitiesMocked:
             return_value=Response(200, json=_MOCK_PLACES_RESPONSE)
         )
 
-        result = await search_activities.ainvoke({
-            "city": "Tokyo, Japan",
-            "category": "food",
-        })
+        result = await search_activities.ainvoke(
+            {
+                "city": "Tokyo, Japan",
+                "category": "food",
+            }
+        )
 
         assert "maps.google.com" in result
 
@@ -64,10 +68,12 @@ class TestActivitiesMocked:
             return_value=Response(200, json=_MOCK_PLACES_RESPONSE)
         )
 
-        result = await search_activities.ainvoke({
-            "city": "Tokyo, Japan",
-            "category": "food",
-        })
+        result = await search_activities.ainvoke(
+            {
+                "city": "Tokyo, Japan",
+                "category": "food",
+            }
+        )
 
         assert "Photo:" in result
         assert "places/abc/photos/xyz" in result
@@ -79,10 +85,12 @@ class TestActivitiesMocked:
             return_value=Response(200, json={"places": []})
         )
 
-        result = await search_activities.ainvoke({
-            "city": "Nowhere, Atlantis",
-            "category": "sightseeing",
-        })
+        result = await search_activities.ainvoke(
+            {
+                "city": "Nowhere, Atlantis",
+                "category": "sightseeing",
+            }
+        )
 
         assert "No sightseeing activities found" in result
 
@@ -93,13 +101,16 @@ class TestActivitiesMocked:
             return_value=Response(200, json=_MOCK_PLACES_RESPONSE)
         )
 
-        await search_activities.ainvoke({
-            "city": "Tokyo, Japan",
-            "category": "food",
-            "limit": 50,  # should be clamped to 10
-        })
+        await search_activities.ainvoke(
+            {
+                "city": "Tokyo, Japan",
+                "category": "food",
+                "limit": 50,  # should be clamped to 10
+            }
+        )
 
         import json
+
         body = json.loads(route.calls[0].request.content)
         assert body["maxResultCount"] == 10
 
@@ -110,10 +121,19 @@ class TestActivitiesMocked:
             return_value=Response(200, json={"places": []})
         )
 
-        for cat in ["sightseeing", "food", "outdoor", "culture", "shopping", "nightlife"]:
-            result = await search_activities.ainvoke({
-                "city": "Paris, France",
-                "category": cat,
-            })
+        for cat in [
+            "sightseeing",
+            "food",
+            "outdoor",
+            "culture",
+            "shopping",
+            "nightlife",
+        ]:
+            result = await search_activities.ainvoke(
+                {
+                    "city": "Paris, France",
+                    "category": cat,
+                }
+            )
             # Should not crash — returns "No X activities found"
             assert "activities found" in result.lower() or cat.lower() in result.lower()

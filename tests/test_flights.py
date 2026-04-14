@@ -23,7 +23,10 @@ _MOCK_FLIGHTS_RESPONSE = {
                         {
                             "carrierCode": "NH",
                             "number": "107",
-                            "departure": {"at": "2026-06-15T10:00:00", "iataCode": "SEA"},
+                            "departure": {
+                                "at": "2026-06-15T10:00:00",
+                                "iataCode": "SEA",
+                            },
                             "arrival": {"at": "2026-06-16T14:30:00", "iataCode": "NRT"},
                         }
                     ],
@@ -51,12 +54,14 @@ class TestFlightsMocked:
             return_value=Response(200, json=_MOCK_FLIGHTS_RESPONSE)
         )
 
-        result = await search_flights.ainvoke({
-            "origin": "SEA",
-            "destination": "NRT",
-            "departure_date": "2026-06-15",
-            "adults": 1,
-        })
+        result = await search_flights.ainvoke(
+            {
+                "origin": "SEA",
+                "destination": "NRT",
+                "departure_date": "2026-06-15",
+                "adults": 1,
+            }
+        )
 
         assert "SEA" in result
         assert "NRT" in result
@@ -76,12 +81,14 @@ class TestFlightsMocked:
             return_value=Response(200, json={"data": []})
         )
 
-        result = await search_flights.ainvoke({
-            "origin": "SEA",
-            "destination": "NRT",
-            "departure_date": "2026-06-15",
-            "adults": 1,
-        })
+        result = await search_flights.ainvoke(
+            {
+                "origin": "SEA",
+                "destination": "NRT",
+                "departure_date": "2026-06-15",
+                "adults": 1,
+            }
+        )
 
         assert "No flights found" in result
 
@@ -98,11 +105,13 @@ class TestFlightsMocked:
             return_value=Response(200, json=_MOCK_FLIGHTS_RESPONSE)
         )
 
-        result = await search_flights.ainvoke({
-            "origin": "SEA",
-            "destination": "NRT",
-            "departure_date": "2026-06-15",
-            "adults": 1,
-        })
+        result = await search_flights.ainvoke(
+            {
+                "origin": "SEA",
+                "destination": "NRT",
+                "departure_date": "2026-06-15",
+                "adults": 1,
+            }
+        )
 
         assert "Non-stop" in result

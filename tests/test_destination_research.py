@@ -22,6 +22,7 @@ from src.tools.destination_research import (
 def _reset_state():
     _cache.clear()
     import src.tools.destination_rag as rag_mod
+
     rag_mod._index = None
     rag_mod._emb_gen = None
     rag_mod._initialised = False
@@ -62,10 +63,26 @@ class TestResearchDestination:
     async def test_high_confidence_skips_web(self, mock_build, monkeypatch):
         """When RAG returns high-confidence results, Tavily should NOT be called."""
         monkeypatch.setenv("TAVILY_API_KEY", "test-key")
-        mock_index, mock_emb_gen = _mock_pinecone([
-            {"metadata": {"source": "tokyo.md", "text": "Temple etiquette.", "section": "See"}, "score": 0.85},
-            {"metadata": {"source": "tokyo.md", "text": "Bow when greeting.", "section": "Culture"}, "score": 0.80},
-        ])
+        mock_index, mock_emb_gen = _mock_pinecone(
+            [
+                {
+                    "metadata": {
+                        "source": "tokyo.md",
+                        "text": "Temple etiquette.",
+                        "section": "See",
+                    },
+                    "score": 0.85,
+                },
+                {
+                    "metadata": {
+                        "source": "tokyo.md",
+                        "text": "Bow when greeting.",
+                        "section": "Culture",
+                    },
+                    "score": 0.80,
+                },
+            ]
+        )
         mock_build.return_value = (mock_index, mock_emb_gen)
 
         # Tavily should NOT be called — no route needed
@@ -73,10 +90,12 @@ class TestResearchDestination:
             return_value=Response(200, json=_MOCK_TAVILY_RESPONSE)
         )
 
-        result = await research_destination.ainvoke({
-            "query": "Tokyo cultural etiquette",
-            "destinations": ["tokyo"],
-        })
+        result = await research_destination.ainvoke(
+            {
+                "query": "Tokyo cultural etiquette",
+                "destinations": ["tokyo"],
+            }
+        )
 
         assert "Temple etiquette" in result
         assert "Sources: guides (high)" in result
@@ -94,10 +113,12 @@ class TestResearchDestination:
             return_value=Response(200, json=_MOCK_TAVILY_RESPONSE)
         )
 
-        result = await research_destination.ainvoke({
-            "query": "Marrakech culture tips",
-            "destinations": ["marrakech"],
-        })
+        result = await research_destination.ainvoke(
+            {
+                "query": "Marrakech culture tips",
+                "destinations": ["marrakech"],
+            }
+        )
 
         assert "Tsukiji" in result  # From Tavily mock
         assert "Web" in result or "web" in result
@@ -108,19 +129,30 @@ class TestResearchDestination:
     async def test_medium_confidence_includes_web(self, mock_build, monkeypatch):
         """Medium RAG confidence should trigger Tavily to complement."""
         monkeypatch.setenv("TAVILY_API_KEY", "test-key")
-        mock_index, mock_emb_gen = _mock_pinecone([
-            {"metadata": {"source": "test.md", "text": "Some info.", "section": "See"}, "score": 0.60},
-        ])
+        mock_index, mock_emb_gen = _mock_pinecone(
+            [
+                {
+                    "metadata": {
+                        "source": "test.md",
+                        "text": "Some info.",
+                        "section": "See",
+                    },
+                    "score": 0.60,
+                },
+            ]
+        )
         mock_build.return_value = (mock_index, mock_emb_gen)
 
         respx.post("https://api.tavily.com/search").mock(
             return_value=Response(200, json=_MOCK_TAVILY_RESPONSE)
         )
 
-        result = await research_destination.ainvoke({
-            "query": "test query",
-            "destinations": ["test"],
-        })
+        result = await research_destination.ainvoke(
+            {
+                "query": "test query",
+                "destinations": ["test"],
+            }
+        )
 
         # Both sources should be present
         assert "Guide" in result or "guide" in result
@@ -132,18 +164,27 @@ class TestResearchDestination:
     async def test_tavily_failure_still_returns_rag(self, mock_build, monkeypatch):
         """If Tavily fails, RAG results should still be returned."""
         monkeypatch.setenv("TAVILY_API_KEY", "test-key")
-        mock_index, mock_emb_gen = _mock_pinecone([
-            {"metadata": {"source": "test.md", "text": "Good info.", "section": "See"}, "score": 0.55},
-        ])
+        mock_index, mock_emb_gen = _mock_pinecone(
+            [
+                {
+                    "metadata": {
+                        "source": "test.md",
+                        "text": "Good info.",
+                        "section": "See",
+                    },
+                    "score": 0.55,
+                },
+            ]
+        )
         mock_build.return_value = (mock_index, mock_emb_gen)
 
-        respx.post("https://api.tavily.com/search").mock(
-            return_value=Response(500)
-        )
+        respx.post("https://api.tavily.com/search").mock(return_value=Response(500))
 
-        result = await research_destination.ainvoke({
-            "query": "test query",
-        })
+        result = await research_destination.ainvoke(
+            {
+                "query": "test query",
+            }
+        )
 
         # RAG results should still be present despite Tavily failure
         assert "Good info." in result
@@ -160,9 +201,11 @@ class TestResearchDestination:
             return_value=Response(200, json=_MOCK_TAVILY_EMPTY)
         )
 
-        result = await research_destination.ainvoke({
-            "query": "completely unknown place",
-        })
+        result = await research_destination.ainvoke(
+            {
+                "query": "completely unknown place",
+            }
+        )
 
         assert "No information found" in result
 

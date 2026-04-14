@@ -11,6 +11,7 @@ from src.tools.destination_rag import search_destination_guides
 @pytest.fixture(autouse=True)
 def _reset_index():
     import src.tools.destination_rag as mod
+
     mod._index = None
     mod._emb_gen = None
     mod._initialised = False
@@ -31,10 +32,26 @@ class TestSearchDestinationGuides:
         mock_index = MagicMock()
         mock_emb_gen = MagicMock()
         mock_emb_gen.embed_query.return_value = [0.1] * 3072
-        mock_index.query.return_value = _make_pinecone_response([
-            {"metadata": {"source": "japan_guide.md", "text": "Visit Fushimi Inari early morning to avoid crowds.", "section": "See"}, "score": 0.92},
-            {"metadata": {"source": "japan_guide.md", "text": "Try conveyor-belt sushi for affordable options.", "section": "Eat"}, "score": 0.87},
-        ])
+        mock_index.query.return_value = _make_pinecone_response(
+            [
+                {
+                    "metadata": {
+                        "source": "japan_guide.md",
+                        "text": "Visit Fushimi Inari early morning to avoid crowds.",
+                        "section": "See",
+                    },
+                    "score": 0.92,
+                },
+                {
+                    "metadata": {
+                        "source": "japan_guide.md",
+                        "text": "Try conveyor-belt sushi for affordable options.",
+                        "section": "Eat",
+                    },
+                    "score": 0.87,
+                },
+            ]
+        )
         mock_build.return_value = (mock_index, mock_emb_gen)
 
         result = search_destination_guides.invoke("Kyoto temple tips")
@@ -72,10 +89,26 @@ class TestSearchDestinationGuides:
         mock_index = MagicMock()
         mock_emb_gen = MagicMock()
         mock_emb_gen.embed_query.return_value = [0.1] * 3072
-        mock_index.query.return_value = _make_pinecone_response([
-            {"metadata": {"source": "japan_guide.md", "text": "Tokyo info", "section": "See"}, "score": 0.90},
-            {"metadata": {"source": "france_guide.md", "text": "Paris info", "section": "See"}, "score": 0.85},
-        ])
+        mock_index.query.return_value = _make_pinecone_response(
+            [
+                {
+                    "metadata": {
+                        "source": "japan_guide.md",
+                        "text": "Tokyo info",
+                        "section": "See",
+                    },
+                    "score": 0.90,
+                },
+                {
+                    "metadata": {
+                        "source": "france_guide.md",
+                        "text": "Paris info",
+                        "section": "See",
+                    },
+                    "score": 0.85,
+                },
+            ]
+        )
         mock_build.return_value = (mock_index, mock_emb_gen)
 
         result = search_destination_guides.invoke("city tips")
@@ -91,9 +124,18 @@ class TestSearchDestinationGuides:
         mock_index = MagicMock()
         mock_emb_gen = MagicMock()
         mock_emb_gen.embed_query.return_value = [0.1] * 3072
-        mock_index.query.return_value = _make_pinecone_response([
-            {"metadata": {"source": "japan_guide.md", "text": "Sushi tips", "section": "Eat"}, "score": 0.90},
-        ])
+        mock_index.query.return_value = _make_pinecone_response(
+            [
+                {
+                    "metadata": {
+                        "source": "japan_guide.md",
+                        "text": "Sushi tips",
+                        "section": "Eat",
+                    },
+                    "score": 0.90,
+                },
+            ]
+        )
         mock_build.return_value = (mock_index, mock_emb_gen)
 
         result = search_destination_guides.invoke("food tips")
@@ -104,9 +146,18 @@ class TestSearchDestinationGuides:
         mock_index = MagicMock()
         mock_emb_gen = MagicMock()
         mock_emb_gen.embed_query.return_value = [0.1] * 3072
-        mock_index.query.return_value = _make_pinecone_response([
-            {"metadata": {"source": "test.md", "text": "Test", "section": "intro"}, "score": 0.80},
-        ])
+        mock_index.query.return_value = _make_pinecone_response(
+            [
+                {
+                    "metadata": {
+                        "source": "test.md",
+                        "text": "Test",
+                        "section": "intro",
+                    },
+                    "score": 0.80,
+                },
+            ]
+        )
         mock_build.return_value = (mock_index, mock_emb_gen)
 
         search_destination_guides.invoke("query 1")
@@ -121,10 +172,26 @@ class TestSearchDestinationGuides:
         mock_index = MagicMock()
         mock_emb_gen = MagicMock()
         mock_emb_gen.embed_query.return_value = [0.1] * 3072
-        mock_index.query.return_value = _make_pinecone_response([
-            {"metadata": {"source": "test.md", "text": "Good match", "section": "See"}, "score": 0.75},
-            {"metadata": {"source": "test.md", "text": "Noisy match", "section": "Eat"}, "score": 0.30},
-        ])
+        mock_index.query.return_value = _make_pinecone_response(
+            [
+                {
+                    "metadata": {
+                        "source": "test.md",
+                        "text": "Good match",
+                        "section": "See",
+                    },
+                    "score": 0.75,
+                },
+                {
+                    "metadata": {
+                        "source": "test.md",
+                        "text": "Noisy match",
+                        "section": "Eat",
+                    },
+                    "score": 0.30,
+                },
+            ]
+        )
         mock_build.return_value = (mock_index, mock_emb_gen)
 
         result = search_destination_guides.invoke("test query")
@@ -138,9 +205,18 @@ class TestSearchDestinationGuides:
         mock_index = MagicMock()
         mock_emb_gen = MagicMock()
         mock_emb_gen.embed_query.return_value = [0.1] * 3072
-        mock_index.query.return_value = _make_pinecone_response([
-            {"metadata": {"source": "test.md", "text": "Weak match", "section": "See"}, "score": 0.48},
-        ])
+        mock_index.query.return_value = _make_pinecone_response(
+            [
+                {
+                    "metadata": {
+                        "source": "test.md",
+                        "text": "Weak match",
+                        "section": "See",
+                    },
+                    "score": 0.48,
+                },
+            ]
+        )
         mock_build.return_value = (mock_index, mock_emb_gen)
 
         result = search_destination_guides.invoke("obscure topic")
@@ -154,9 +230,18 @@ class TestSearchDestinationGuides:
         mock_index = MagicMock()
         mock_emb_gen = MagicMock()
         mock_emb_gen.embed_query.return_value = [0.1] * 3072
-        mock_index.query.return_value = _make_pinecone_response([
-            {"metadata": {"source": "test.md", "text": "Decent match", "section": "See"}, "score": 0.60},
-        ])
+        mock_index.query.return_value = _make_pinecone_response(
+            [
+                {
+                    "metadata": {
+                        "source": "test.md",
+                        "text": "Decent match",
+                        "section": "See",
+                    },
+                    "score": 0.60,
+                },
+            ]
+        )
         mock_build.return_value = (mock_index, mock_emb_gen)
 
         result = search_destination_guides.invoke("moderate topic")
@@ -170,9 +255,18 @@ class TestSearchDestinationGuides:
         mock_index = MagicMock()
         mock_emb_gen = MagicMock()
         mock_emb_gen.embed_query.return_value = [0.1] * 3072
-        mock_index.query.return_value = _make_pinecone_response([
-            {"metadata": {"source": "test.md", "text": "Result", "section": "See"}, "score": 0.80},
-        ])
+        mock_index.query.return_value = _make_pinecone_response(
+            [
+                {
+                    "metadata": {
+                        "source": "test.md",
+                        "text": "Result",
+                        "section": "See",
+                    },
+                    "score": 0.80,
+                },
+            ]
+        )
         mock_build.return_value = (mock_index, mock_emb_gen)
 
         search_destination_guides.invoke({"query": "test", "top_k": 8})

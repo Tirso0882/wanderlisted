@@ -30,7 +30,9 @@ class TestBudgetBreakdownModel:
         assert "Tokyo" in b.summary
 
     def test_serialization_roundtrip(self):
-        b = BudgetBreakdown(flights=800, accommodation=1500, total=3200, per_person=1600)
+        b = BudgetBreakdown(
+            flights=800, accommodation=1500, total=3200, per_person=1600
+        )
         data = b.model_dump()
         b2 = BudgetBreakdown(**data)
         assert b2.total == 3200
@@ -40,7 +42,15 @@ class TestBudgetBreakdownModel:
         b = BudgetBreakdown()
         keys = set(b.model_dump().keys())
         expected = {
-            "flights", "accommodation", "transport", "meals",
-            "activities", "misc", "total", "per_person", "currency", "summary",
+            "flights",
+            "accommodation",
+            "transport",
+            "meals",
+            "activities",
+            "misc",
+            "total",
+            "per_person",
+            "currency",
+            "summary",
         }
         assert keys == expected

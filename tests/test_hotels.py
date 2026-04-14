@@ -63,12 +63,14 @@ class TestHotelsMocked:
             return_value=Response(200, json=_MOCK_HOTEL_OFFERS)
         )
 
-        result = await search_hotels.ainvoke({
-            "city_code": "TYO",
-            "check_in_date": "2026-06-15",
-            "check_out_date": "2026-06-20",
-            "adults": 2,
-        })
+        result = await search_hotels.ainvoke(
+            {
+                "city_code": "TYO",
+                "check_in_date": "2026-06-15",
+                "check_out_date": "2026-06-20",
+                "adults": 2,
+            }
+        )
 
         assert "Hotel Sunroute" in result
         assert "620" in result
@@ -87,11 +89,13 @@ class TestHotelsMocked:
             return_value=Response(200, json={"data": []})
         )
 
-        result = await search_hotels.ainvoke({
-            "city_code": "XYZ",
-            "check_in_date": "2026-06-15",
-            "check_out_date": "2026-06-20",
-            "adults": 1,
-        })
+        result = await search_hotels.ainvoke(
+            {
+                "city_code": "XYZ",
+                "check_in_date": "2026-06-15",
+                "check_out_date": "2026-06-20",
+                "adults": 1,
+            }
+        )
 
         assert "No hotel offers found" in result

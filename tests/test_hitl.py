@@ -1,6 +1,5 @@
 """Tests for HITL (Human-in-the-Loop) state and interrupt gate logic."""
 
-
 from src.agent.state import TravelAgentState
 
 
@@ -10,7 +9,12 @@ from src.agent.state import TravelAgentState
 async def test_state_has_hitl_fields():
     """TravelAgentState includes all Phase 4 HITL fields."""
     annotations = TravelAgentState.__annotations__
-    for field in ("human_feedback", "hitl_action", "safety_acknowledged", "budget_adjustment_accepted"):
+    for field in (
+        "human_feedback",
+        "hitl_action",
+        "safety_acknowledged",
+        "budget_adjustment_accepted",
+    ):
         assert field in annotations, f"Missing HITL field: {field}"
 
 
@@ -32,8 +36,11 @@ async def test_state_hitl_fields_are_writable():
 # ── Safety keyword detection tests ───────────────────────────────────────────
 
 _DANGER_KEYWORDS = [
-    "do not travel", "level 4", "advisory level: red",
-    "reconsider travel", "level 3",
+    "do not travel",
+    "level 4",
+    "advisory level: red",
+    "reconsider travel",
+    "level 3",
 ]
 
 
