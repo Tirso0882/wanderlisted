@@ -36,56 +36,56 @@ class SeasonPalette:
 # (destination_slug, season) → SeasonPalette
 _SEASON_PALETTES: dict[tuple[str, str], SeasonPalette] = {
     # Japan
-    ("japan",  "spring"): SeasonPalette("#c0395a", "#f4b8c8", "#c0395a", "🌸"),
-    ("tokyo",  "spring"): SeasonPalette("#c0395a", "#f4b8c8", "#c0395a", "🌸"),
-    ("kyoto",  "spring"): SeasonPalette("#b5375a", "#f0b0c2", "#b5375a", "🌸"),
-    ("osaka",  "spring"): SeasonPalette("#c0395a", "#f4b8c8", "#c0395a", "🌸"),
-    ("japan",  "summer"): SeasonPalette("#1a7a3a", "#2e9e52", "#145f2e", "🎋"),
-    ("tokyo",  "summer"): SeasonPalette("#1a7a3a", "#2e9e52", "#145f2e", "🎋"),
-    ("japan",  "autumn"): SeasonPalette("#c44a20", "#e8723a", "#8b2500", "🍁"),
-    ("tokyo",  "autumn"): SeasonPalette("#c44a20", "#e8723a", "#8b2500", "🍁"),
-    ("japan",  "winter"): SeasonPalette("#1e3a8a", "#3b6fd4", "#0d1e5c", "❄️"),
-    ("tokyo",  "winter"): SeasonPalette("#1e3a8a", "#3b6fd4", "#0d1e5c", "❄️"),
+    ("japan", "spring"): SeasonPalette("#c0395a", "#f4b8c8", "#c0395a", "🌸"),
+    ("tokyo", "spring"): SeasonPalette("#c0395a", "#f4b8c8", "#c0395a", "🌸"),
+    ("kyoto", "spring"): SeasonPalette("#b5375a", "#f0b0c2", "#b5375a", "🌸"),
+    ("osaka", "spring"): SeasonPalette("#c0395a", "#f4b8c8", "#c0395a", "🌸"),
+    ("japan", "summer"): SeasonPalette("#1a7a3a", "#2e9e52", "#145f2e", "🎋"),
+    ("tokyo", "summer"): SeasonPalette("#1a7a3a", "#2e9e52", "#145f2e", "🎋"),
+    ("japan", "autumn"): SeasonPalette("#c44a20", "#e8723a", "#8b2500", "🍁"),
+    ("tokyo", "autumn"): SeasonPalette("#c44a20", "#e8723a", "#8b2500", "🍁"),
+    ("japan", "winter"): SeasonPalette("#1e3a8a", "#3b6fd4", "#0d1e5c", "❄️"),
+    ("tokyo", "winter"): SeasonPalette("#1e3a8a", "#3b6fd4", "#0d1e5c", "❄️"),
     # France / Paris
     ("france", "spring"): SeasonPalette("#2c5f8a", "#5b9fd4", "#1a3a5f", "🌷"),
-    ("paris",  "spring"): SeasonPalette("#2c5f8a", "#5b9fd4", "#1a3a5f", "🌷"),
+    ("paris", "spring"): SeasonPalette("#2c5f8a", "#5b9fd4", "#1a3a5f", "🌷"),
     ("france", "summer"): SeasonPalette("#1e3a8a", "#4a7fc1", "#0d2050", "☀️"),
-    ("paris",  "summer"): SeasonPalette("#1e3a8a", "#4a7fc1", "#0d2050", "☀️"),
+    ("paris", "summer"): SeasonPalette("#1e3a8a", "#4a7fc1", "#0d2050", "☀️"),
     ("france", "autumn"): SeasonPalette("#c47820", "#e6a23c", "#8b4513", "🍂"),
-    ("paris",  "autumn"): SeasonPalette("#c47820", "#e6a23c", "#8b4513", "🍂"),
+    ("paris", "autumn"): SeasonPalette("#c47820", "#e6a23c", "#8b4513", "🍂"),
     ("france", "winter"): SeasonPalette("#2c5f8a", "#4a7fc1", "#1a3360", "⛄"),
-    ("paris",  "winter"): SeasonPalette("#2c5f8a", "#4a7fc1", "#1a3360", "⛄"),
+    ("paris", "winter"): SeasonPalette("#2c5f8a", "#4a7fc1", "#1a3360", "⛄"),
     # Italy / Rome
-    ("italy",  "spring"): SeasonPalette("#c4793a", "#e0986a", "#8b4e1c", "🌹"),
-    ("rome",   "spring"): SeasonPalette("#c4793a", "#e0986a", "#8b4e1c", "🌹"),
-    ("italy",  "summer"): SeasonPalette("#c4793a", "#f5a623", "#8b4513", "🍕"),
-    ("rome",   "summer"): SeasonPalette("#c4793a", "#f5a623", "#8b4513", "🍕"),
-    ("italy",  "autumn"): SeasonPalette("#8b4513", "#c0692c", "#5c2e00", "🍂"),
-    ("rome",   "autumn"): SeasonPalette("#8b4513", "#c0692c", "#5c2e00", "🍂"),
-    ("italy",  "winter"): SeasonPalette("#c4793a", "#e0986a", "#8b4e1c", "🎄"),
-    ("rome",   "winter"): SeasonPalette("#c4793a", "#e0986a", "#8b4e1c", "🎄"),
+    ("italy", "spring"): SeasonPalette("#c4793a", "#e0986a", "#8b4e1c", "🌹"),
+    ("rome", "spring"): SeasonPalette("#c4793a", "#e0986a", "#8b4e1c", "🌹"),
+    ("italy", "summer"): SeasonPalette("#c4793a", "#f5a623", "#8b4513", "🍕"),
+    ("rome", "summer"): SeasonPalette("#c4793a", "#f5a623", "#8b4513", "🍕"),
+    ("italy", "autumn"): SeasonPalette("#8b4513", "#c0692c", "#5c2e00", "🍂"),
+    ("rome", "autumn"): SeasonPalette("#8b4513", "#c0692c", "#5c2e00", "🍂"),
+    ("italy", "winter"): SeasonPalette("#c4793a", "#e0986a", "#8b4e1c", "🎄"),
+    ("rome", "winter"): SeasonPalette("#c4793a", "#e0986a", "#8b4e1c", "🎄"),
     # Spain / Barcelona
-    ("spain",     "spring"): SeasonPalette("#c43a3a", "#e87070", "#8b1a1a", "🌺"),
+    ("spain", "spring"): SeasonPalette("#c43a3a", "#e87070", "#8b1a1a", "🌺"),
     ("barcelona", "spring"): SeasonPalette("#c43a3a", "#e87070", "#8b1a1a", "🌺"),
-    ("spain",     "summer"): SeasonPalette("#e67e22", "#f3a23c", "#a0541a", "🌊"),
+    ("spain", "summer"): SeasonPalette("#e67e22", "#f3a23c", "#a0541a", "🌊"),
     ("barcelona", "summer"): SeasonPalette("#e67e22", "#f3a23c", "#a0541a", "🌊"),
-    ("spain",     "autumn"): SeasonPalette("#c43a3a", "#e06060", "#8b1a1a", "🍷"),
+    ("spain", "autumn"): SeasonPalette("#c43a3a", "#e06060", "#8b1a1a", "🍷"),
     ("barcelona", "autumn"): SeasonPalette("#c43a3a", "#e06060", "#8b1a1a", "🍷"),
     # UK / London
-    ("uk",     "spring"): SeasonPalette("#1e3a5f", "#4a7fc1", "#0d1e3a", "🌷"),
+    ("uk", "spring"): SeasonPalette("#1e3a5f", "#4a7fc1", "#0d1e3a", "🌷"),
     ("london", "spring"): SeasonPalette("#1e3a5f", "#4a7fc1", "#0d1e3a", "🌷"),
-    ("uk",     "summer"): SeasonPalette("#1e3a5f", "#4a90d9", "#0d1e3a", "⛅"),
+    ("uk", "summer"): SeasonPalette("#1e3a5f", "#4a90d9", "#0d1e3a", "⛅"),
     ("london", "summer"): SeasonPalette("#1e3a5f", "#4a90d9", "#0d1e3a", "⛅"),
-    ("uk",     "autumn"): SeasonPalette("#4a2c2a", "#8b5e3c", "#2c1a18", "🍂"),
+    ("uk", "autumn"): SeasonPalette("#4a2c2a", "#8b5e3c", "#2c1a18", "🍂"),
     ("london", "autumn"): SeasonPalette("#4a2c2a", "#8b5e3c", "#2c1a18", "🍂"),
-    ("uk",     "winter"): SeasonPalette("#1e3a5f", "#4a7fc1", "#0d2050", "❄️"),
+    ("uk", "winter"): SeasonPalette("#1e3a5f", "#4a7fc1", "#0d2050", "❄️"),
     ("london", "winter"): SeasonPalette("#1e3a5f", "#4a7fc1", "#0d2050", "❄️"),
     # Morocco / Marrakech
-    ("morocco",   "spring"): SeasonPalette("#b87a2b", "#e0a843", "#7a5020", "🌺"),
+    ("morocco", "spring"): SeasonPalette("#b87a2b", "#e0a843", "#7a5020", "🌺"),
     ("marrakech", "spring"): SeasonPalette("#b87a2b", "#e0a843", "#7a5020", "🌺"),
-    ("morocco",   "summer"): SeasonPalette("#b87a2b", "#f5b942", "#7a5020", "☀️"),
+    ("morocco", "summer"): SeasonPalette("#b87a2b", "#f5b942", "#7a5020", "☀️"),
     ("marrakech", "summer"): SeasonPalette("#b87a2b", "#f5b942", "#7a5020", "☀️"),
-    ("morocco",   "winter"): SeasonPalette("#b87a2b", "#d4953a", "#7a5020", "🌙"),
+    ("morocco", "winter"): SeasonPalette("#b87a2b", "#d4953a", "#7a5020", "🌙"),
     ("marrakech", "winter"): SeasonPalette("#b87a2b", "#d4953a", "#7a5020", "🌙"),
     # Egypt / Cairo
     ("egypt", "spring"): SeasonPalette("#b8860b", "#daa520", "#8b6508", "🌅"),
@@ -97,21 +97,21 @@ _SEASON_PALETTES: dict[tuple[str, str], SeasonPalette] = {
     ("egypt", "winter"): SeasonPalette("#b8860b", "#c5981e", "#8b6508", "🌙"),
     ("cairo", "winter"): SeasonPalette("#b8860b", "#c5981e", "#8b6508", "🌙"),
     # Turkey / Istanbul
-    ("turkey",   "spring"): SeasonPalette("#a0342e", "#d45f59", "#6b1f1b", "🌷"),
+    ("turkey", "spring"): SeasonPalette("#a0342e", "#d45f59", "#6b1f1b", "🌷"),
     ("istanbul", "spring"): SeasonPalette("#a0342e", "#d45f59", "#6b1f1b", "🌷"),
-    ("turkey",   "summer"): SeasonPalette("#a0342e", "#c55050", "#6b1f1b", "☀️"),
+    ("turkey", "summer"): SeasonPalette("#a0342e", "#c55050", "#6b1f1b", "☀️"),
     ("istanbul", "summer"): SeasonPalette("#a0342e", "#c55050", "#6b1f1b", "☀️"),
-    ("turkey",   "autumn"): SeasonPalette("#a0342e", "#c24848", "#6b1f1b", "🍂"),
+    ("turkey", "autumn"): SeasonPalette("#a0342e", "#c24848", "#6b1f1b", "🍂"),
     ("istanbul", "autumn"): SeasonPalette("#a0342e", "#c24848", "#6b1f1b", "🍂"),
     # Colombia / Bogotá / Medellín / Cartagena
-    ("colombia",   "spring"): SeasonPalette("#e8b81a", "#f5d03c", "#a07e08", "🌻"),
-    ("bogota",     "spring"): SeasonPalette("#e8b81a", "#f5d03c", "#a07e08", "🌻"),
-    ("medellin",   "spring"): SeasonPalette("#e86a1a", "#f5923c", "#a04408", "🌺"),
-    ("cartagena",  "summer"): SeasonPalette("#1a8a8a", "#2eaec0", "#0d5a5a", "🏖"),
+    ("colombia", "spring"): SeasonPalette("#e8b81a", "#f5d03c", "#a07e08", "🌻"),
+    ("bogota", "spring"): SeasonPalette("#e8b81a", "#f5d03c", "#a07e08", "🌻"),
+    ("medellin", "spring"): SeasonPalette("#e86a1a", "#f5923c", "#a04408", "🌺"),
+    ("cartagena", "summer"): SeasonPalette("#1a8a8a", "#2eaec0", "#0d5a5a", "🏖"),
     # Mexico
-    ("mexico",      "spring"): SeasonPalette("#2e7a3e", "#4aab5e", "#1e5228", "🌵"),
+    ("mexico", "spring"): SeasonPalette("#2e7a3e", "#4aab5e", "#1e5228", "🌵"),
     ("mexico_city", "summer"): SeasonPalette("#2e7a3e", "#4aab5e", "#1e5228", "🌮"),
-    ("cancun",      "summer"): SeasonPalette("#1a7a8a", "#2eaec0", "#0d4e5c", "🏖"),
+    ("cancun", "summer"): SeasonPalette("#1a7a8a", "#2eaec0", "#0d4e5c", "🏖"),
 }
 
 # Fallback single-colour map (for unmapped destination+season combos)
@@ -300,7 +300,9 @@ class HandbookRenderer:
         if handbook.start_date or handbook.end_date:
             lines.append(f"**Dates:** {handbook.start_date} — {handbook.end_date}  ")
         if handbook.destinations:
-            lines.append(f"**Destinations:** {', '.join(d.title() for d in handbook.destinations)}  ")
+            lines.append(
+                f"**Destinations:** {', '.join(d.title() for d in handbook.destinations)}  "
+            )
         if handbook.travel_style:
             lines.append(f"**Style:** {handbook.travel_style.title()}  ")
         if handbook.total_budget_usd:
@@ -321,7 +323,9 @@ class HandbookRenderer:
                         f"| {seg.flight_number} | {seg.departure_time} → {seg.arrival_time}"
                     )
                 if f.total_price_usd:
-                    lines.append(f"  - **Price:** ${f.total_price_usd:,.0f} {f.currency}")
+                    lines.append(
+                        f"  - **Price:** ${f.total_price_usd:,.0f} {f.currency}"
+                    )
             lines.append("")
 
         # Hotels

@@ -16,7 +16,9 @@ from pathlib import Path
 import mwparserfromhell
 import requests
 
-GUIDES_DIR = Path(__file__).resolve().parents[1] / "knowledge_base" / "destination_guides"
+GUIDES_DIR = (
+    Path(__file__).resolve().parents[1] / "knowledge_base" / "destination_guides"
+)
 
 API_URL = "https://en.wikivoyage.org/w/api.php"
 
@@ -88,7 +90,7 @@ def wikitext_to_markdown(wikitext: str, title: str) -> str:
     text = parsed.strip_code(collapse=True)
 
     # Clean up common artifacts
-    text = re.sub(r"\n{3,}", "\n\n", text)        # Collapse excess blank lines
+    text = re.sub(r"\n{3,}", "\n\n", text)  # Collapse excess blank lines
     text = re.sub(r"^\s+$", "", text, flags=re.M)  # Remove whitespace-only lines
     text = text.strip()
 
@@ -142,7 +144,9 @@ def main():
         to_download = cities
         skipped = []
     else:
-        to_download = [c for c in cities if not (GUIDES_DIR / city_to_filename(c)).exists()]
+        to_download = [
+            c for c in cities if not (GUIDES_DIR / city_to_filename(c)).exists()
+        ]
         skipped = [c for c in cities if (GUIDES_DIR / city_to_filename(c)).exists()]
 
     if skipped:

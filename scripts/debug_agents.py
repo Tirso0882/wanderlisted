@@ -8,13 +8,16 @@ import traceback
 sys.path.insert(0, ".")
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 from langchain.agents import create_agent
 from langchain_core.messages import HumanMessage, SystemMessage
 from src.agent.llm import get_llm
 from src.agent.agents import (
-    FlightsAgent, HotelsAgent, DestinationAgent,
+    FlightsAgent,
+    HotelsAgent,
+    DestinationAgent,
 )
 
 
@@ -30,12 +33,18 @@ async def test_agent(name, agent_cls):
             tools=agent.tools,
             system_prompt=agent.system_prompt,
         )
-        result = await executor.ainvoke({
-            "messages": [
-                SystemMessage(content="USER PROFILE:\nDestinations: Tokyo\nTravel style: mid-range\nGroup type: couple"),
-                HumanMessage(content="Plan a 5-day trip to Tokyo for a couple. Mid-range budget ~$3000. Departing from New York JFK November 10-15, 2025."),
-            ]
-        })
+        result = await executor.ainvoke(
+            {
+                "messages": [
+                    SystemMessage(
+                        content="USER PROFILE:\nDestinations: Tokyo\nTravel style: mid-range\nGroup type: couple"
+                    ),
+                    HumanMessage(
+                        content="Plan a 5-day trip to Tokyo for a couple. Mid-range budget ~$3000. Departing from New York JFK November 10-15, 2025."
+                    ),
+                ]
+            }
+        )
         ai_msgs = [m for m in result["messages"] if hasattr(m, "content") and m.content]
         print(f"  SUCCESS: {len(ai_msgs)} messages returned")
         if ai_msgs:

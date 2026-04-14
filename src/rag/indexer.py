@@ -29,7 +29,9 @@ load_dotenv()
 logger = AppLogger(logger_name="rag.indexer", level="DEBUG")
 
 # ── Paths ────────────────────────────────────────────────────────────────
-GUIDES_DIR = Path(__file__).resolve().parents[2] / "knowledge_base" / "destination_guides"
+GUIDES_DIR = (
+    Path(__file__).resolve().parents[2] / "knowledge_base" / "destination_guides"
+)
 CACHE_DIR = Path(__file__).resolve().parents[2] / "knowledge_base" / ".cache"
 MANIFEST_PATH = CACHE_DIR / "manifest.json"
 
@@ -39,6 +41,7 @@ NAMESPACE = "destination_guides"
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────
+
 
 def _hash_file(path: Path) -> str:
     """SHA-256 hash of a file's contents."""
@@ -120,6 +123,7 @@ def _load_and_chunk(guides_dir: Path) -> list[Document]:
 
 # ── Public API ───────────────────────────────────────────────────────────
 
+
 def build_index(guides_dir: Path | None = None):
     """Build (or skip if fresh) the Pinecone vector index.
 
@@ -133,8 +137,12 @@ def build_index(guides_dir: Path | None = None):
         return None
 
     emb_gen = _get_embedding_generator()
-    dim = int(os.environ.get("AZURE_OPENAI_EMBEDDING_DIMENSIONS",
-              os.environ.get("EMBEDDING_DIMENSION", "3072")))
+    dim = int(
+        os.environ.get(
+            "AZURE_OPENAI_EMBEDDING_DIMENSIONS",
+            os.environ.get("EMBEDDING_DIMENSION", "3072"),
+        )
+    )
     index = _get_pinecone_index(dim)
 
     # Fast path: manifest matches — skip re-embedding
@@ -163,11 +171,13 @@ def build_index(guides_dir: Path | None = None):
 
         upsert_data = []
         for j, (vec, text, meta) in enumerate(zip(vectors, texts, metadatas)):
-            upsert_data.append({
-                "id": f"chunk-{i + j}",
-                "values": vec,
-                "metadata": {**meta, "text": text},
-            })
+            upsert_data.append(
+                {
+                    "id": f"chunk-{i + j}",
+                    "values": vec,
+                    "metadata": {**meta, "text": text},
+                }
+            )
         index.upsert(vectors=upsert_data, namespace=NAMESPACE)
 
     _save_manifest(guides_dir)
@@ -184,4 +194,6 @@ if __name__ == "__main__":
         index, _ = result
         stats = index.describe_index_stats()
         ns = stats.get("namespaces", {}).get(NAMESPACE, {})
-        print(f"\nPinecone index '{INDEX_NAME}' — {ns.get('vector_count', '?')} vectors in namespace '{NAMESPACE}'")
+        print(
+            f"\nPinecone index '{INDEX_NAME}' — {ns.get('vector_count', '?')} vectors in namespace '{NAMESPACE}'"
+        )

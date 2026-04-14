@@ -31,6 +31,7 @@ _ROUTES_URL = "https://routes.googleapis.com"
 
 # ── helpers ──────────────────────────────────────────────────────────────
 
+
 def _api_key() -> str:
     key = os.environ.get("GOOGLE_MAPS_API_KEY", "")
     if not key:
@@ -126,9 +127,13 @@ def _format_place(place: dict) -> str:
     rating = place.get("rating", "N/A")
     total_ratings = place.get("user_ratings_total", place.get("userRatingCount", 0))
     price = place.get("price_level", place.get("priceLevel", ""))
-    price_str = {"PRICE_LEVEL_FREE": "Free", "PRICE_LEVEL_INEXPENSIVE": "$",
-                 "PRICE_LEVEL_MODERATE": "$$", "PRICE_LEVEL_EXPENSIVE": "$$$",
-                 "PRICE_LEVEL_VERY_EXPENSIVE": "$$$$"}.get(str(price), str(price) if price else "N/A")
+    price_str = {
+        "PRICE_LEVEL_FREE": "Free",
+        "PRICE_LEVEL_INEXPENSIVE": "$",
+        "PRICE_LEVEL_MODERATE": "$$",
+        "PRICE_LEVEL_EXPENSIVE": "$$$",
+        "PRICE_LEVEL_VERY_EXPENSIVE": "$$$$",
+    }.get(str(price), str(price) if price else "N/A")
     status = place.get("business_status", place.get("businessStatus", ""))
     types = ", ".join(place.get("types", [])[:4])
 
@@ -190,6 +195,7 @@ def _format_place(place: dict) -> str:
 
 # ── Places API (New) ────────────────────────────────────────────────────
 
+
 @tool
 def search_places_nearby(
     location: str,
@@ -245,8 +251,14 @@ def search_places_nearby(
         resp = httpx.post(url, headers=headers, json=body, timeout=15)
         resp.raise_for_status()
     except httpx.HTTPStatusError as e:
-        logger.error("Places Nearby HTTP error %s: %s", e.response.status_code, e.response.text[:200])
-        return f"Places API error (HTTP {e.response.status_code}). Try a different search."
+        logger.error(
+            "Places Nearby HTTP error %s: %s",
+            e.response.status_code,
+            e.response.text[:200],
+        )
+        return (
+            f"Places API error (HTTP {e.response.status_code}). Try a different search."
+        )
     except httpx.RequestError as e:
         logger.error("Places Nearby request error: %s", e)
         return f"Could not reach Places API: {e}"
@@ -290,8 +302,14 @@ def search_places_text(
         resp = httpx.post(url, headers=headers, json=body, timeout=15)
         resp.raise_for_status()
     except httpx.HTTPStatusError as e:
-        logger.error("Places Text HTTP error %s: %s", e.response.status_code, e.response.text[:200])
-        return f"Places API error (HTTP {e.response.status_code}). Try a different query."
+        logger.error(
+            "Places Text HTTP error %s: %s",
+            e.response.status_code,
+            e.response.text[:200],
+        )
+        return (
+            f"Places API error (HTTP {e.response.status_code}). Try a different query."
+        )
     except httpx.RequestError as e:
         logger.error("Places Text request error: %s", e)
         return f"Could not reach Places API: {e}"
@@ -305,6 +323,7 @@ def search_places_text(
 
 
 # ── Directions API ──────────────────────────────────────────────────────
+
 
 @tool
 def get_directions(
@@ -337,7 +356,11 @@ def get_directions(
         resp = httpx.get(url, timeout=15)
         resp.raise_for_status()
     except httpx.HTTPStatusError as e:
-        logger.error("Directions HTTP error %s: %s", e.response.status_code, e.response.text[:200])
+        logger.error(
+            "Directions HTTP error %s: %s",
+            e.response.status_code,
+            e.response.text[:200],
+        )
         return f"Directions API error (HTTP {e.response.status_code})."
     except httpx.RequestError as e:
         logger.error("Directions request error: %s", e)
@@ -352,7 +375,9 @@ def get_directions(
     steps_text = []
     for i, step in enumerate(leg["steps"][:15], 1):  # Cap at 15 steps
         instr = step.get("html_instructions", "").replace("<b>", "").replace("</b>", "")
-        instr = instr.replace("<div style=\"font-size:0.9em\">", " ").replace("</div>", "")
+        instr = instr.replace('<div style="font-size:0.9em">', " ").replace(
+            "</div>", ""
+        )
         dist = step["distance"]["text"]
         dur = step["duration"]["text"]
         transit_info = ""
@@ -372,6 +397,7 @@ def get_directions(
 
 
 # ── Distance Matrix API ─────────────────────────────────────────────────
+
 
 @tool
 def get_distance_matrix(
@@ -399,7 +425,11 @@ def get_distance_matrix(
         resp = httpx.get(url, timeout=15)
         resp.raise_for_status()
     except httpx.HTTPStatusError as e:
-        logger.error("Distance Matrix HTTP error %s: %s", e.response.status_code, e.response.text[:200])
+        logger.error(
+            "Distance Matrix HTTP error %s: %s",
+            e.response.status_code,
+            e.response.text[:200],
+        )
         return f"Distance Matrix API error (HTTP {e.response.status_code})."
     except httpx.RequestError as e:
         logger.error("Distance Matrix request error: %s", e)
@@ -429,6 +459,7 @@ def get_distance_matrix(
 
 # ── Routes API (compute routes) ─────────────────────────────────────────
 
+
 @tool
 def compute_route(
     origin: str,
@@ -455,7 +486,11 @@ def compute_route(
         addr = addr.strip()
         if _looks_like_latlng(addr):
             lat, lng = addr.split(",")
-            return {"location": {"latLng": {"latitude": float(lat), "longitude": float(lng)}}}
+            return {
+                "location": {
+                    "latLng": {"latitude": float(lat), "longitude": float(lng)}
+                }
+            }
         return {"address": addr}
 
     body: dict = {
@@ -469,10 +504,19 @@ def compute_route(
 
     logger.debug(f"Routes API: {origin} → {destination} via {waypoints or 'direct'}")
     try:
-        resp = httpx.post(f"{_ROUTES_URL}/directions/v2:computeRoutes", headers=headers, json=body, timeout=20)
+        resp = httpx.post(
+            f"{_ROUTES_URL}/directions/v2:computeRoutes",
+            headers=headers,
+            json=body,
+            timeout=20,
+        )
         resp.raise_for_status()
     except httpx.HTTPStatusError as e:
-        logger.error("Routes API HTTP error %s: %s", e.response.status_code, e.response.text[:200])
+        logger.error(
+            "Routes API HTTP error %s: %s",
+            e.response.status_code,
+            e.response.text[:200],
+        )
         return f"Routes API error (HTTP {e.response.status_code})."
     except httpx.RequestError as e:
         logger.error("Routes API request error: %s", e)
@@ -499,6 +543,7 @@ def compute_route(
 
 
 # ── Route Optimization API ──────────────────────────────────────────────
+
 
 @tool
 def optimize_day_route(
@@ -532,7 +577,11 @@ def optimize_day_route(
         addr = addr.strip()
         if _looks_like_latlng(addr):
             lat, lng = addr.split(",")
-            return {"location": {"latLng": {"latitude": float(lat), "longitude": float(lng)}}}
+            return {
+                "location": {
+                    "latLng": {"latitude": float(lat), "longitude": float(lng)}
+                }
+            }
         return {"address": addr}
 
     stop_list = [s.strip() for s in stops.split(",") if s.strip()]
@@ -546,10 +595,19 @@ def optimize_day_route(
 
     logger.debug(f"Route Optimisation: {len(stop_list)} stops from {start_location}")
     try:
-        resp = httpx.post(f"{_ROUTES_URL}/directions/v2:computeRoutes", headers=headers, json=body, timeout=25)
+        resp = httpx.post(
+            f"{_ROUTES_URL}/directions/v2:computeRoutes",
+            headers=headers,
+            json=body,
+            timeout=25,
+        )
         resp.raise_for_status()
     except httpx.HTTPStatusError as e:
-        logger.error("Route Optimisation HTTP error %s: %s", e.response.status_code, e.response.text[:200])
+        logger.error(
+            "Route Optimisation HTTP error %s: %s",
+            e.response.status_code,
+            e.response.text[:200],
+        )
         return f"Route Optimisation API error (HTTP {e.response.status_code})."
     except httpx.RequestError as e:
         logger.error("Route Optimisation request error: %s", e)
@@ -561,7 +619,9 @@ def optimize_day_route(
         return "Could not compute optimised route."
 
     route = routes[0]
-    opt_order = route.get("optimizedIntermediateWaypointIndex", list(range(len(stop_list))))
+    opt_order = route.get(
+        "optimizedIntermediateWaypointIndex", list(range(len(stop_list)))
+    )
     ordered = [stop_list[i] for i in opt_order]
     total_km = route.get("distanceMeters", 0) / 1000
     total_dur = route.get("duration", "0s")
@@ -572,7 +632,9 @@ def optimize_day_route(
     for i, leg in enumerate(legs):
         leg_dist = leg.get("distanceMeters", 0) / 1000
         leg_dur = leg.get("duration", "?")
-        leg_details.append(f"  {i+1}. {full_path[i]} → {full_path[i+1]}: {leg_dist:.1f} km, {leg_dur}")
+        leg_details.append(
+            f"  {i + 1}. {full_path[i]} → {full_path[i + 1]}: {leg_dist:.1f} km, {leg_dur}"
+        )
 
     return (
         f"Optimised day route ({len(stop_list)} stops):\n"
@@ -587,6 +649,7 @@ def optimize_day_route(
 
 
 # ── Time Zone API ───────────────────────────────────────────────────────
+
 
 @tool
 def get_timezone(
@@ -622,7 +685,9 @@ def get_timezone(
         resp = httpx.get(url, timeout=10)
         resp.raise_for_status()
     except httpx.HTTPStatusError as e:
-        logger.error("TimeZone HTTP error %s: %s", e.response.status_code, e.response.text[:200])
+        logger.error(
+            "TimeZone HTTP error %s: %s", e.response.status_code, e.response.text[:200]
+        )
         return f"Time Zone API error (HTTP {e.response.status_code})."
     except httpx.RequestError as e:
         logger.error("TimeZone request error: %s", e)
@@ -646,6 +711,7 @@ def get_timezone(
 
 
 # ── internal helpers ─────────────────────────────────────────────────────
+
 
 def _looks_like_latlng(text: str) -> bool:
     parts = text.split(",")

@@ -1,4 +1,5 @@
 """Quick check of handbook.json content."""
+
 import json
 
 with open("outputs/handbook.json") as f:
@@ -15,7 +16,9 @@ for d in h.get("days", []):
     acts = sum(len(b.get("activities", [])) for b in tb)
     rest = sum(1 for b in tb if b.get("restaurant"))
     has_route = bool(d.get("route_map_url", ""))
-    print(f"  Day {d.get('day_number')}: {len(tb)} blocks, {acts} activities, {rest} restaurants, route_map={has_route}")
+    print(
+        f"  Day {d.get('day_number')}: {len(tb)} blocks, {acts} activities, {rest} restaurants, route_map={has_route}"
+    )
 
 print(f"Safety advisory: {h.get('safety', {}).get('advisory_summary', '')[:100]}")
 print(f"Culture phrases: {len(h.get('culture', {}).get('phrases', []))}")

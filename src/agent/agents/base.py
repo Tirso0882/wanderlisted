@@ -21,6 +21,7 @@ class SpecializedAgent(ABC):
         """
         if llm is None:
             from src.agent.llm import get_llm
+
             llm = get_llm()
         self.llm = llm
 

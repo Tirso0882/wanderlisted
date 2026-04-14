@@ -99,7 +99,6 @@ RAG_GOLDEN_DATASET = [
             ),
         },
     },
-
     # ── Tokyo (3) ────────────────────────────────────────────────────────
     {
         "inputs": {"question": "What is the best time to visit Tokyo?"},
@@ -133,7 +132,6 @@ RAG_GOLDEN_DATASET = [
             ),
         },
     },
-
     # ── Paris (3) ────────────────────────────────────────────────────────
     {
         "inputs": {"question": "What are the most common scams in Paris?"},
@@ -167,7 +165,6 @@ RAG_GOLDEN_DATASET = [
             ),
         },
     },
-
     # ── Rome (3) ─────────────────────────────────────────────────────────
     {
         "inputs": {"question": "What should I know about pickpocketing in Rome?"},
@@ -181,7 +178,9 @@ RAG_GOLDEN_DATASET = [
         },
     },
     {
-        "inputs": {"question": "Where to find authentic food in Rome, not tourist traps?"},
+        "inputs": {
+            "question": "Where to find authentic food in Rome, not tourist traps?"
+        },
         "outputs": {
             "reference": (
                 "Best food in Rome is off the tourist trail in residential areas like "
@@ -202,7 +201,6 @@ RAG_GOLDEN_DATASET = [
             ),
         },
     },
-
     # ── London (3) ───────────────────────────────────────────────────────
     {
         "inputs": {"question": "Best ethnic food neighborhoods in London?"},
@@ -237,7 +235,6 @@ RAG_GOLDEN_DATASET = [
             ),
         },
     },
-
     # ── Istanbul (3) ─────────────────────────────────────────────────────
     {
         "inputs": {"question": "What street food should I try in Istanbul?"},
@@ -273,7 +270,6 @@ RAG_GOLDEN_DATASET = [
             ),
         },
     },
-
     # ── Cape Town (3) ────────────────────────────────────────────────────
     {
         "inputs": {"question": "What seafood should I try in Cape Town?"},
@@ -308,7 +304,6 @@ RAG_GOLDEN_DATASET = [
             ),
         },
     },
-
     # ── Medellín (2) ─────────────────────────────────────────────────────
     {
         "inputs": {"question": "Is Medellín safe to visit now?"},
@@ -332,7 +327,6 @@ RAG_GOLDEN_DATASET = [
             ),
         },
     },
-
     # ── Bogotá (2) ───────────────────────────────────────────────────────
     {
         "inputs": {"question": "How do I safely get a taxi in Bogotá?"},
@@ -356,7 +350,6 @@ RAG_GOLDEN_DATASET = [
             ),
         },
     },
-
     # ── Lima (2) ─────────────────────────────────────────────────────────
     {
         "inputs": {"question": "How do I get from Lima airport to Miraflores?"},
@@ -380,7 +373,6 @@ RAG_GOLDEN_DATASET = [
             ),
         },
     },
-
     # ── Mexico City (2) ──────────────────────────────────────────────────
     {
         "inputs": {"question": "What are the best restaurants in Mexico City?"},
@@ -404,7 +396,6 @@ RAG_GOLDEN_DATASET = [
             ),
         },
     },
-
     # ── Kraków (2) ───────────────────────────────────────────────────────
     {
         "inputs": {"question": "What should I visit in Kraków?"},
@@ -428,7 +419,6 @@ RAG_GOLDEN_DATASET = [
             ),
         },
     },
-
     # ── Marrakech (2) ────────────────────────────────────────────────────
     {
         "inputs": {"question": "What scams should I watch out for in Marrakech?"},
@@ -451,7 +441,6 @@ RAG_GOLDEN_DATASET = [
             ),
         },
     },
-
     # ── Buenos Aires (2) ─────────────────────────────────────────────────
     {
         "inputs": {"question": "What's unique about Buenos Aires culture?"},
@@ -465,7 +454,9 @@ RAG_GOLDEN_DATASET = [
         },
     },
     {
-        "inputs": {"question": "How do I get from Ezeiza airport to downtown Buenos Aires?"},
+        "inputs": {
+            "question": "How do I get from Ezeiza airport to downtown Buenos Aires?"
+        },
         "outputs": {
             "reference": (
                 "Ezeiza airport is ~35 km south (~1 hour by car). SUBE card needed "
@@ -474,7 +465,6 @@ RAG_GOLDEN_DATASET = [
             ),
         },
     },
-
     # ── Rio de Janeiro (2) ───────────────────────────────────────────────
     {
         "inputs": {"question": "Is Rio de Janeiro safe for tourists?"},
@@ -499,7 +489,6 @@ RAG_GOLDEN_DATASET = [
             ),
         },
     },
-
     # ── Cancún (2) ───────────────────────────────────────────────────────
     {
         "inputs": {"question": "How much does a budget trip to Cancun cost per day?"},
@@ -512,7 +501,9 @@ RAG_GOLDEN_DATASET = [
         },
     },
     {
-        "inputs": {"question": "What's the difference between Cancun Hotel Zone and downtown?"},
+        "inputs": {
+            "question": "What's the difference between Cancun Hotel Zone and downtown?"
+        },
         "outputs": {
             "reference": (
                 "Cancun Hotel Zone is a 22 km strip of Caribbean beaches and resorts — "
@@ -522,7 +513,6 @@ RAG_GOLDEN_DATASET = [
             ),
         },
     },
-
     # ── Cairo (2) ────────────────────────────────────────────────────────
     {
         "inputs": {"question": "What are the must-see attractions in Cairo?"},
@@ -534,7 +524,9 @@ RAG_GOLDEN_DATASET = [
         },
     },
     {
-        "inputs": {"question": "What cultural customs should I know for visiting Egypt?"},
+        "inputs": {
+            "question": "What cultural customs should I know for visiting Egypt?"
+        },
         "outputs": {
             "reference": (
                 "Key customs in Egypt: dress modestly (especially at mosques), "
@@ -543,7 +535,6 @@ RAG_GOLDEN_DATASET = [
             ),
         },
     },
-
     # ── Tallinn (2) ──────────────────────────────────────────────────────
     {
         "inputs": {"question": "What makes Tallinn's Old Town special?"},
@@ -566,10 +557,11 @@ RAG_GOLDEN_DATASET = [
             ),
         },
     },
-
     # ── Moscow (2) ───────────────────────────────────────────────────────
     {
-        "inputs": {"question": "How to get from Sheremetyevo airport to central Moscow?"},
+        "inputs": {
+            "question": "How to get from Sheremetyevo airport to central Moscow?"
+        },
         "outputs": {
             "reference": (
                 "Aeroexpress train from Sheremetyevo (~50 min, tickets online). "
@@ -590,7 +582,6 @@ RAG_GOLDEN_DATASET = [
             ),
         },
     },
-
     # ── Quito (2) ────────────────────────────────────────────────────────
     {
         "inputs": {"question": "What's special about Quito's Old Town?"},
@@ -614,7 +605,6 @@ RAG_GOLDEN_DATASET = [
             ),
         },
     },
-
     # ── Santiago (2) ─────────────────────────────────────────────────────
     {
         "inputs": {"question": "What's the climate like in Santiago, Chile?"},
@@ -637,7 +627,6 @@ RAG_GOLDEN_DATASET = [
             ),
         },
     },
-
     # ── Warsaw (2) ───────────────────────────────────────────────────────
     {
         "inputs": {"question": "What's the history behind Warsaw's Old Town?"},
@@ -661,10 +650,11 @@ RAG_GOLDEN_DATASET = [
             ),
         },
     },
-
     # ── Cross-destination comparisons (3) ────────────────────────────────
     {
-        "inputs": {"question": "Which is cheaper for a budget trip, Bangkok or Cancun?"},
+        "inputs": {
+            "question": "Which is cheaper for a budget trip, Bangkok or Cancun?"
+        },
         "outputs": {
             "reference": (
                 "Bangkok is generally cheaper. Street food from 50 baht (~$1.50), "
@@ -674,7 +664,9 @@ RAG_GOLDEN_DATASET = [
         },
     },
     {
-        "inputs": {"question": "Safest cities in Latin America for solo female travelers?"},
+        "inputs": {
+            "question": "Safest cities in Latin America for solo female travelers?"
+        },
         "outputs": {
             "reference": (
                 "Among the destinations covered, Santiago and Buenos Aires are "
@@ -695,7 +687,6 @@ RAG_GOLDEN_DATASET = [
             ),
         },
     },
-
     # ── Edge cases / negative cases (4) ──────────────────────────────────
     {
         "inputs": {"question": "What's the best hotel in Antarctica?"},
@@ -749,7 +740,9 @@ def upload_dataset() -> str:
     ]:
         try:
             existing = client.read_dataset(dataset_name=name)
-            print(f"Dataset '{name}' already exists (id={existing.id}). Deleting and recreating.")
+            print(
+                f"Dataset '{name}' already exists (id={existing.id}). Deleting and recreating."
+            )
             client.delete_dataset(dataset_id=existing.id)
         except Exception:
             pass
@@ -787,7 +780,11 @@ async def wanderlisted_target(inputs: dict) -> dict:
     except asyncio.TimeoutError:
         return {"output": "TIMEOUT", "destinations_covered": [], "agents_routed": []}
     except Exception as e:
-        return {"output": f"ERROR: {e}", "destinations_covered": [], "agents_routed": []}
+        return {
+            "output": f"ERROR: {e}",
+            "destinations_covered": [],
+            "agents_routed": [],
+        }
 
     components = result.get("itinerary_components", {})
     return {
@@ -823,13 +820,17 @@ async def rag_target(inputs: dict) -> dict:
 
     # Generate
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-    response = await llm.ainvoke([
-        SystemMessage(content=(
-            "You are a travel assistant. Answer the question using ONLY the "
-            "provided context. If the context doesn't contain the answer, say so."
-        )),
-        HumanMessage(content=f"Context:\n{rag_result}\n\nQuestion: {question}"),
-    ])
+    response = await llm.ainvoke(
+        [
+            SystemMessage(
+                content=(
+                    "You are a travel assistant. Answer the question using ONLY the "
+                    "provided context. If the context doesn't contain the answer, say so."
+                )
+            ),
+            HumanMessage(content=f"Context:\n{rag_result}\n\nQuestion: {question}"),
+        ]
+    )
 
     return {
         "output": response.content,
@@ -898,11 +899,21 @@ def run_evaluation(
 
 def main():
     parser = argparse.ArgumentParser(description="Wanderlisted Agent Evaluation")
-    parser.add_argument("--upload-dataset", action="store_true", help="Upload golden datasets to LangSmith")
+    parser.add_argument(
+        "--upload-dataset",
+        action="store_true",
+        help="Upload golden datasets to LangSmith",
+    )
     parser.add_argument("--run", action="store_true", help="Run evaluation experiments")
-    parser.add_argument("--prefix", default="wanderlisted-eval", help="Experiment prefix")
-    parser.add_argument("--mode", choices=["agent", "rag", "all"], default="all", help="Evaluation mode")
-    parser.add_argument("--no-llm-judge", action="store_true", help="Disable LLM-as-Judge evaluator")
+    parser.add_argument(
+        "--prefix", default="wanderlisted-eval", help="Experiment prefix"
+    )
+    parser.add_argument(
+        "--mode", choices=["agent", "rag", "all"], default="all", help="Evaluation mode"
+    )
+    parser.add_argument(
+        "--no-llm-judge", action="store_true", help="Disable LLM-as-Judge evaluator"
+    )
     args = parser.parse_args()
 
     if args.upload_dataset:

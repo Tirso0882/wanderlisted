@@ -7,6 +7,7 @@ import sys
 sys.path.insert(0, ".")
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 from langchain_core.messages import HumanMessage, AIMessage
@@ -42,8 +43,14 @@ async def main():
 
     print("=== DATA KEYS PRESENT ===")
     for k in [
-        "flights", "hotels", "destination", "restaurants",
-        "activities", "transportation", "budget", "itinerary",
+        "flights",
+        "hotels",
+        "destination",
+        "restaurants",
+        "activities",
+        "transportation",
+        "budget",
+        "itinerary",
     ]:
         present = "YES" if k in comps else "NO"
         print(f"  {k}: {present}")

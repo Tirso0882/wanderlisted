@@ -69,7 +69,11 @@ async def main():
             if hasattr(task, "interrupts") and task.interrupts:
                 for intr in task.interrupts:
                     payload = intr.value if hasattr(intr, "value") else intr
-                    itype = payload.get("type", "unknown") if isinstance(payload, dict) else "unknown"
+                    itype = (
+                        payload.get("type", "unknown")
+                        if isinstance(payload, dict)
+                        else "unknown"
+                    )
                     print(f"  🔄 Auto-approving HITL interrupt: {itype}")
 
         result = await graph.ainvoke(
@@ -89,7 +93,7 @@ async def main():
     # Print handbook paths
     paths = result.get("handbook_paths", {})
     if paths:
-        print(f"\n📁 Output files:")
+        print("\n📁 Output files:")
         for fmt, path in paths.items():
             print(f"   {fmt}: {path}")
 

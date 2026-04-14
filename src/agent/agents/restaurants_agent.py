@@ -9,7 +9,9 @@ class RestaurantsAgent(SpecializedAgent):
     """Specialized agent for restaurant and dining recommendations."""
 
     name = "RestaurantsAgent"
-    description = "Expert in restaurants, street food, cafes, bars, and dining experiences"
+    description = (
+        "Expert in restaurants, street food, cafes, bars, and dining experiences"
+    )
 
     @property
     def tools(self):

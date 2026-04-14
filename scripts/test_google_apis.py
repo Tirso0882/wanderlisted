@@ -25,7 +25,9 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Load .env if present
-_env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+_env_path = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"
+)
 if os.path.exists(_env_path):
     with open(_env_path) as f:
         for line in f:
@@ -85,6 +87,7 @@ def run_test(api_name: str, tool_name: str, fn):
 
 # ─── 1. Geocoding API ────────────────────────────────────────────────
 
+
 def test_geocoding():
     key = _api_key()
     result = _geocode(TEST_ADDRESS, key)
@@ -96,91 +99,117 @@ def test_geocoding():
 
 # ─── 2. Places API (New) — Nearby Search ─────────────────────────────
 
+
 def test_places_nearby():
-    result = search_places_nearby.invoke({
-        "location": TEST_LATLNG,
-        "place_type": "restaurant",
-        "radius_meters": 500,
-        "max_results": 3,
-    })
+    result = search_places_nearby.invoke(
+        {
+            "location": TEST_LATLNG,
+            "place_type": "restaurant",
+            "radius_meters": 500,
+            "max_results": 3,
+        }
+    )
     assert "Found" in result, f"Unexpected: {result[:100]}"
     return result
 
 
 # ─── 3. Places API (New) — Text Search ───────────────────────────────
 
+
 def test_places_text():
-    result = search_places_text.invoke({
-        "query": "best ramen near Tokyo Station",
-        "max_results": 3,
-    })
+    result = search_places_text.invoke(
+        {
+            "query": "best ramen near Tokyo Station",
+            "max_results": 3,
+        }
+    )
     assert "Found" in result, f"Unexpected: {result[:100]}"
     return result
 
 
 # ─── 4. Directions API ───────────────────────────────────────────────
 
+
 def test_directions():
     # Use lat/lng to avoid geocoding dependency
-    result = get_directions.invoke({
-        "origin": "35.6812,139.7671",       # Tokyo Station
-        "destination": "35.7148,139.7967",   # Senso-ji
-        "mode": "driving",
-    })
+    result = get_directions.invoke(
+        {
+            "origin": "35.6812,139.7671",  # Tokyo Station
+            "destination": "35.7148,139.7967",  # Senso-ji
+            "mode": "driving",
+        }
+    )
     assert "Route:" in result, f"Unexpected: {result[:100]}"
     return result
 
 
 # ─── 5. Distance Matrix API ──────────────────────────────────────────
 
+
 def test_distance_matrix():
-    result = get_distance_matrix.invoke({
-        "origins": "Tokyo Station",
-        "destinations": "Senso-ji Temple|Tokyo Tower|Meiji Shrine",
-        "mode": "driving",
-    })
+    result = get_distance_matrix.invoke(
+        {
+            "origins": "Tokyo Station",
+            "destinations": "Senso-ji Temple|Tokyo Tower|Meiji Shrine",
+            "mode": "driving",
+        }
+    )
     assert "Distance Matrix" in result, f"Unexpected: {result[:100]}"
     return result
 
 
 # ─── 6. Routes API — Compute Route ───────────────────────────────────
 
+
 def test_compute_route():
-    result = compute_route.invoke({
-        "origin": TEST_ADDRESS,
-        "destination": TEST_DEST_ADDRESS,
-        "travel_mode": "DRIVE",
-    })
+    result = compute_route.invoke(
+        {
+            "origin": TEST_ADDRESS,
+            "destination": TEST_DEST_ADDRESS,
+            "travel_mode": "DRIVE",
+        }
+    )
     assert "Route:" in result or "Distance:" in result, f"Unexpected: {result[:100]}"
     return result
 
 
 # ─── 7. Routes API — Optimize Day Route ──────────────────────────────
 
+
 def test_optimize_route():
-    result = optimize_day_route.invoke({
-        "stops": TEST_STOPS,
-        "start_location": TEST_ADDRESS,
-    })
-    assert "Optimised" in result or "stop" in result.lower(), f"Unexpected: {result[:100]}"
+    result = optimize_day_route.invoke(
+        {
+            "stops": TEST_STOPS,
+            "start_location": TEST_ADDRESS,
+        }
+    )
+    assert "Optimised" in result or "stop" in result.lower(), (
+        f"Unexpected: {result[:100]}"
+    )
     return result
 
 
 # ─── 8. Time Zone API ────────────────────────────────────────────────
 
+
 def test_timezone():
-    result = get_timezone.invoke({
-        "location": TEST_LATLNG,
-    })
+    result = get_timezone.invoke(
+        {
+            "location": TEST_LATLNG,
+        }
+    )
     assert "Asia/Tokyo" in result or "Japan" in result, f"Unexpected: {result[:100]}"
     return result
 
 
 # ─── 9. Maps Embed API (URL generation — no HTTP call) ───────────────
 
+
 def test_maps_embed():
     key = _api_key()
-    url = f"https://www.google.com/maps/embed/v1/place?key={key}&q=Tokyo+Station&zoom=12"
+    url = (
+        f"https://www.google.com/maps/embed/v1/place?key={key}&q=Tokyo+Station&zoom=12"
+    )
     assert key in url, "API key not in embed URL"
     assert "embed/v1/place" in url, "Not an embed URL"
     return f"Embed URL: {url[:60]}...\n(This URL is used in handbook HTML iframes)"
@@ -188,27 +217,32 @@ def test_maps_embed():
 
 # ─── Runner ──────────────────────────────────────────────────────────
 
+
 def main():
     key = os.environ.get("GOOGLE_MAPS_API_KEY", "")
     if not key:
-        print(f"{RED}ERROR: GOOGLE_MAPS_API_KEY not set. Export it or add to .env{RESET}")
+        print(
+            f"{RED}ERROR: GOOGLE_MAPS_API_KEY not set. Export it or add to .env{RESET}"
+        )
         sys.exit(1)
 
     print(f"\n{BOLD}🗺  Wanderlisted — Google Maps API Test Suite{RESET}")
     print(f"   Key: {key[:8]}...{key[-4:]}")
     print(f"   Test location: {TEST_ADDRESS} ({TEST_LATLNG})")
-    print("   Enabled APIs: 7 (Geocoding, Places New, Directions, Distance Matrix, Routes, Time Zone, Maps Embed)")
+    print(
+        "   Enabled APIs: 7 (Geocoding, Places New, Directions, Distance Matrix, Routes, Time Zone, Maps Embed)"
+    )
 
     tests = [
-        ("Geocoding API",        "_geocode()",            test_geocoding),
-        ("Places API (New)",     "search_places_nearby",  test_places_nearby),
-        ("Places API (New)",     "search_places_text",    test_places_text),
-        ("Directions API",       "get_directions",        test_directions),
-        ("Distance Matrix API",  "get_distance_matrix",   test_distance_matrix),
-        ("Routes API",           "compute_route",         test_compute_route),
-        ("Routes API",           "optimize_day_route",    test_optimize_route),
-        ("Time Zone API",        "get_timezone",          test_timezone),
-        ("Maps Embed API",       "(URL validation)",      test_maps_embed),
+        ("Geocoding API", "_geocode()", test_geocoding),
+        ("Places API (New)", "search_places_nearby", test_places_nearby),
+        ("Places API (New)", "search_places_text", test_places_text),
+        ("Directions API", "get_directions", test_directions),
+        ("Distance Matrix API", "get_distance_matrix", test_distance_matrix),
+        ("Routes API", "compute_route", test_compute_route),
+        ("Routes API", "optimize_day_route", test_optimize_route),
+        ("Time Zone API", "get_timezone", test_timezone),
+        ("Maps Embed API", "(URL validation)", test_maps_embed),
     ]
 
     for api, tool, fn in tests:
@@ -238,7 +272,9 @@ def main():
     print("  Places (New)     → RestaurantsAgent, ActivitiesAgent, HotelsAgent")
     print("  Directions       → TransportationAgent (step-by-step transit)")
     print("  Distance Matrix  → TransportationAgent, ItineraryAgent")
-    print("  Routes           → TransportationAgent, ItineraryAgent (route optimisation)")
+    print(
+        "  Routes           → TransportationAgent, ItineraryAgent (route optimisation)"
+    )
     print("  Time Zone        → DestinationAgent (local timezone info)")
     print("  Maps Embed       → Handbook HTML template (map iframes)\n")
 
