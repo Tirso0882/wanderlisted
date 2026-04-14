@@ -7,12 +7,12 @@ the Jinja2 template renderer.
 
 from __future__ import annotations
 
-from datetime import date, datetime
 
 from pydantic import BaseModel, Field
 
 
 # ── Flights ──────────────────────────────────────────────────────────────
+
 
 class FlightSegment(BaseModel):
     carrier: str = ""
@@ -39,6 +39,7 @@ class FlightOption(BaseModel):
 
 
 # ── Hotels ───────────────────────────────────────────────────────────────
+
 
 class HotelOption(BaseModel):
     name: str = ""
@@ -68,6 +69,7 @@ class HotelOption(BaseModel):
 
 # ── Places (activities, restaurants, attractions) ────────────────────────
 
+
 class PlaceCard(BaseModel):
     """Unified model for activities, restaurants, and attractions."""
 
@@ -90,6 +92,7 @@ class PlaceCard(BaseModel):
 
 # ── Transit ──────────────────────────────────────────────────────────────
 
+
 class TransitStep(BaseModel):
     mode: str = ""  # "walk", "transit", "drive", "train", "bus", "ferry"
     from_place: str = ""
@@ -104,6 +107,7 @@ class TransitStep(BaseModel):
 
 # ── Weather ──────────────────────────────────────────────────────────────
 
+
 class DayWeather(BaseModel):
     date: str = ""
     condition: str = ""
@@ -115,6 +119,7 @@ class DayWeather(BaseModel):
 
 
 # ── Day plan ─────────────────────────────────────────────────────────────
+
 
 class TimeBlock(BaseModel):
     """A single block within a day (morning / afternoon / evening)."""
@@ -140,9 +145,10 @@ class DayPlan(BaseModel):
 
 # ── Safety ───────────────────────────────────────────────────────────────
 
+
 class SafetyInfo(BaseModel):
     advisory_level: str = "green"  # "green", "yellow", "orange", "red"
-    advisory_level_num: int = 1     # 1-4
+    advisory_level_num: int = 1  # 1-4
     advisory_summary: str = ""
     visa_requirements: str = ""
     health_requirements: list[str] = Field(default_factory=list)
@@ -160,6 +166,7 @@ class SafetyInfo(BaseModel):
 
 # ── Culture ──────────────────────────────────────────────────────────────
 
+
 class CultureGuide(BaseModel):
     phrases: list[dict[str, str]] = Field(default_factory=list)
     etiquette_tips: list[str] = Field(default_factory=list)
@@ -168,14 +175,21 @@ class CultureGuide(BaseModel):
     religious_customs: list[str] = Field(default_factory=list)
     dress_code_notes: list[str] = Field(default_factory=list)
     # Enhanced fields
-    festivals: list[dict[str, str]] = Field(default_factory=list)   # [{name, date, description}]
+    festivals: list[dict[str, str]] = Field(
+        default_factory=list
+    )  # [{name, date, description}]
     food_specialties: list[str] = Field(default_factory=list)
-    local_customs: list[dict[str, str]] = Field(default_factory=list)  # [{context, custom, tip}]
+    local_customs: list[dict[str, str]] = Field(
+        default_factory=list
+    )  # [{context, custom, tip}]
     music_and_arts: list[str] = Field(default_factory=list)
-    etiquette_cards: list[dict[str, str]] = Field(default_factory=list)  # [{title, icon, items: str (newline-separated)}]
+    etiquette_cards: list[dict[str, str]] = Field(
+        default_factory=list
+    )  # [{title, icon, items: str (newline-separated)}]
 
 
 # ── Currency Exchange ────────────────────────────────────────────────────
+
 
 class CurrencyExchangeLocation(BaseModel):
     name: str = ""
@@ -187,26 +201,37 @@ class CurrencyExchangeLocation(BaseModel):
 
 # ── Local Tips & Apps ────────────────────────────────────────────────────
 
+
 class LocalTipsApps(BaseModel):
-    must_have_apps: list[dict[str, str]] = Field(default_factory=list)  # [{name, purpose, platform, url}]
+    must_have_apps: list[dict[str, str]] = Field(
+        default_factory=list
+    )  # [{name, purpose, platform, url}]
     sim_card_info: str = ""
     wifi_info: str = ""
-    transport_cards: list[dict[str, str]] = Field(default_factory=list)  # [{name, cost, where_to_buy, notes}]
+    transport_cards: list[dict[str, str]] = Field(
+        default_factory=list
+    )  # [{name, cost, where_to_buy, notes}]
     power_adapter: str = ""
-    useful_websites: list[dict[str, str]] = Field(default_factory=list)  # [{name, url, description}]
+    useful_websites: list[dict[str, str]] = Field(
+        default_factory=list
+    )  # [{name, url, description}]
 
 
 # ── Emergency & Health ───────────────────────────────────────────────────
+
 
 class EmergencyInfo(BaseModel):
     hospitals: list[PlaceCard] = Field(default_factory=list)
     pharmacies: list[PlaceCard] = Field(default_factory=list)
     insurance_notes: str = ""
-    medical_phrases: list[dict[str, str]] = Field(default_factory=list)  # [{english, local, romanized}]
+    medical_phrases: list[dict[str, str]] = Field(
+        default_factory=list
+    )  # [{english, local, romanized}]
     vaccination_tips: list[str] = Field(default_factory=list)
 
 
 # ── Packing ──────────────────────────────────────────────────────────────
+
 
 class PackingItem(BaseModel):
     item: str = ""
@@ -218,6 +243,7 @@ class PackingItem(BaseModel):
 
 
 # ── Top-level handbook ───────────────────────────────────────────────────
+
 
 class TripHandbook(BaseModel):
     """Complete structured output — the single source of truth for rendering."""
@@ -261,7 +287,9 @@ class TripHandbook(BaseModel):
     packing: list[PackingItem] = Field(default_factory=list)
 
     # Extended sections (populated when agents run enhanced searches)
-    currency_exchange_locations: list[CurrencyExchangeLocation] = Field(default_factory=list)
+    currency_exchange_locations: list[CurrencyExchangeLocation] = Field(
+        default_factory=list
+    )
     local_tips: LocalTipsApps = Field(default_factory=LocalTipsApps)
     emergency_info: EmergencyInfo = Field(default_factory=EmergencyInfo)
 

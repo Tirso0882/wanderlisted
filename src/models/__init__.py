@@ -15,18 +15,22 @@ class BudgetBreakdown(BaseModel):
     """
 
     flights: float = Field(default=0, description="Total flight costs in USD")
-    accommodation: float = Field(default=0, description="Total accommodation costs in USD")
+    accommodation: float = Field(
+        default=0, description="Total accommodation costs in USD"
+    )
     transport: float = Field(default=0, description="Local transport costs in USD")
     meals: float = Field(default=0, description="Total meal costs in USD")
     activities: float = Field(default=0, description="Activity/attraction costs in USD")
-    misc: float = Field(default=0, description="Miscellaneous costs (tips, SIM, contingency) in USD")
+    misc: float = Field(
+        default=0, description="Miscellaneous costs (tips, SIM, contingency) in USD"
+    )
     total: float = Field(default=0, description="Grand total in USD")
     per_person: float = Field(default=0, description="Per-person cost in USD")
     currency: str = Field(default="USD", description="Currency code for all amounts")
     summary: str = Field(default="", description="Brief text summary of the budget")
 
 
-from src.models.itinerary import ( # noqa: E402
+from src.models.itinerary import (  # noqa: E402
     DayPlan,
     DayWeather,
     FlightOption,

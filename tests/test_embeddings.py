@@ -1,6 +1,5 @@
 """Tests for src/rag/embeddings.py — EmbeddingConfig + EmbeddingGenerator."""
 
-import os
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -9,6 +8,7 @@ from src.rag.embeddings import EmbeddingConfig, EmbeddingGenerator
 
 
 # ── EmbeddingConfig ──────────────────────────────────────────────────────
+
 
 class TestEmbeddingConfig:
     def test_valid_config(self):
@@ -63,7 +63,9 @@ class TestEmbeddingConfig:
     def test_from_env(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test.openai.azure.com")
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-key")
-        monkeypatch.setenv("AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT", "text-embedding-3-large")
+        monkeypatch.setenv(
+            "AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT", "text-embedding-3-large"
+        )
         monkeypatch.setenv("AZURE_OPENAI_API_VERSION", "2024-02-01")
 
         cfg = EmbeddingConfig.from_env()
@@ -83,6 +85,7 @@ class TestEmbeddingConfig:
 
 
 # ── EmbeddingGenerator ───────────────────────────────────────────────────
+
 
 class TestEmbeddingGenerator:
     @patch("langchain_openai.AzureOpenAIEmbeddings")

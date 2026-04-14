@@ -34,6 +34,7 @@ async def _search_hotels_api(
         )
         if resp.status_code == 401:
             from src.tools.flights import _token_cache
+
             _token_cache.clear()
             raise httpx.HTTPStatusError(
                 "Token expired", request=resp.request, response=resp
@@ -62,6 +63,7 @@ async def _search_hotels_api(
         )
         if resp2.status_code == 401:
             from src.tools.flights import _token_cache
+
             _token_cache.clear()
             raise httpx.HTTPStatusError(
                 "Token expired", request=resp2.request, response=resp2
@@ -101,9 +103,7 @@ async def search_hotels(
             f"for {check_in_date} to {check_out_date}."
         )
 
-    results = [
-        f"Hotels in {city_code} ({check_in_date} to {check_out_date}):\n"
-    ]
+    results = [f"Hotels in {city_code} ({check_in_date} to {check_out_date}):\n"]
 
     for i, hotel_data in enumerate(offers[:5], 1):
         hotel = hotel_data.get("hotel", {})

@@ -62,10 +62,12 @@ class TestSearchWeb:
             return_value=Response(200, json=_MOCK_TAVILY_RESPONSE)
         )
 
-        await search_web.ainvoke({
-            "query": "best festivals",
-            "destinations": ["tokyo", "kyoto"],
-        })
+        await search_web.ainvoke(
+            {
+                "query": "best festivals",
+                "destinations": ["tokyo", "kyoto"],
+            }
+        )
 
         sent_body = route.calls[0].request.content
         # The query should include the destination names
@@ -79,10 +81,12 @@ class TestSearchWeb:
             return_value=Response(200, json=_MOCK_TAVILY_RESPONSE)
         )
 
-        await search_web.ainvoke({
-            "query": "Tokyo festivals in April",
-            "destinations": ["tokyo"],
-        })
+        await search_web.ainvoke(
+            {
+                "query": "Tokyo festivals in April",
+                "destinations": ["tokyo"],
+            }
+        )
 
         sent_body = route.calls[0].request.content
         # "tokyo" is already in the query, should not be appended again
@@ -132,10 +136,12 @@ class TestSearchWeb:
             return_value=Response(200, json=_MOCK_TAVILY_RESPONSE)
         )
 
-        await search_web.ainvoke({
-            "query": "Japan travel advisory",
-            "topic": "news",
-        })
+        await search_web.ainvoke(
+            {
+                "query": "Japan travel advisory",
+                "topic": "news",
+            }
+        )
 
         sent_body = route.calls[0].request.content
         assert b'"topic":"news"' in sent_body or b'"topic": "news"' in sent_body
@@ -203,15 +209,27 @@ class TestSearchHiddenGems:
     async def test_includes_interests_in_query(self, monkeypatch):
         monkeypatch.setenv("TAVILY_API_KEY", "test-key")
         route = respx.post("https://api.tavily.com/search").mock(
-            return_value=Response(200, json={"results": [
-                {"title": "Food", "url": "https://example.com/food", "content": "Street food stalls.", "score": 0.80},
-            ]})
+            return_value=Response(
+                200,
+                json={
+                    "results": [
+                        {
+                            "title": "Food",
+                            "url": "https://example.com/food",
+                            "content": "Street food stalls.",
+                            "score": 0.80,
+                        },
+                    ]
+                },
+            )
         )
 
-        await search_hidden_gems.ainvoke({
-            "destination": "Bangkok",
-            "interests": ["food", "nightlife"],
-        })
+        await search_hidden_gems.ainvoke(
+            {
+                "destination": "Bangkok",
+                "interests": ["food", "nightlife"],
+            }
+        )
 
         # Both calls should include interest terms
         for call in route.calls:

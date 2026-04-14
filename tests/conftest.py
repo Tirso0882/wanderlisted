@@ -20,7 +20,9 @@ HAS_OPENWEATHER = _key_is_set("OPENWEATHER_API_KEY")
 HAS_EXCHANGERATE = _key_is_set("EXCHANGERATE_API_KEY")
 HAS_AMADEUS = _key_is_set("AMADEUS_API_KEY") and _key_is_set("AMADEUS_API_SECRET")
 HAS_GOOGLE_MAPS = _key_is_set("GOOGLE_MAPS_API_KEY")
-HAS_AZURE_OPENAI = _key_is_set("AZURE_OPENAI_API_KEY") and _key_is_set("AZURE_OPENAI_ENDPOINT")
+HAS_AZURE_OPENAI = _key_is_set("AZURE_OPENAI_API_KEY") and _key_is_set(
+    "AZURE_OPENAI_ENDPOINT"
+)
 
 skip_no_openweather = pytest.mark.skipif(
     not HAS_OPENWEATHER, reason="OPENWEATHER_API_KEY not set"

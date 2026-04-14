@@ -19,7 +19,10 @@ class TestActivitiesAgent:
 
     def test_description_is_set(self):
         assert self.agent.description
-        assert "attraction" in self.agent.description.lower() or "experience" in self.agent.description.lower()
+        assert (
+            "attraction" in self.agent.description.lower()
+            or "experience" in self.agent.description.lower()
+        )
 
     def test_system_prompt(self):
         assert self.agent.system_prompt == ACTIVITIES_SYSTEM_PROMPT

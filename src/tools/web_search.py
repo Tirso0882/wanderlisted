@@ -117,9 +117,7 @@ async def search_web(
             content = content[:497] + "..."
 
         sections.append(
-            f"[{i}] {title} (relevance: {score:.2f})\n"
-            f"    Source: {url}\n"
-            f"    {content}"
+            f"[{i}] {title} (relevance: {score:.2f})\n    Source: {url}\n    {content}"
         )
 
     logger.info(f"Web search '{query[:60]}' → {len(results)} result(s)")
@@ -181,9 +179,7 @@ async def search_hidden_gems(
                 content = content[:497] + "..."
 
             all_sections.append(
-                f"- {title} (relevance: {score:.2f})\n"
-                f"  Source: {url}\n"
-                f"  {content}"
+                f"- {title} (relevance: {score:.2f})\n  Source: {url}\n  {content}"
             )
 
     if not all_sections:

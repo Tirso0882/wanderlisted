@@ -32,11 +32,13 @@ class TestCurrencyIntegration:
     async def test_live_usd_to_jpy(self):
         from src.tools.currency import convert_currency
 
-        result = await convert_currency.ainvoke({
-            "from_currency": "USD",
-            "to_currency": "JPY",
-            "amount": 100,
-        })
+        result = await convert_currency.ainvoke(
+            {
+                "from_currency": "USD",
+                "to_currency": "JPY",
+                "amount": 100,
+            }
+        )
         assert "USD" in result
         assert "JPY" in result
         assert "Exchange rate" in result
@@ -60,12 +62,14 @@ class TestFlightsIntegration:
     async def test_live_flight_search(self):
         from src.tools.flights import search_flights
 
-        result = await search_flights.ainvoke({
-            "origin": "JFK",
-            "destination": "LHR",
-            "departure_date": "2026-09-15",
-            "adults": 1,
-        })
+        result = await search_flights.ainvoke(
+            {
+                "origin": "JFK",
+                "destination": "LHR",
+                "departure_date": "2026-09-15",
+                "adults": 1,
+            }
+        )
         # Should find flights or say none found — either is valid
         assert "JFK" in result or "No flights found" in result
 
@@ -79,12 +83,14 @@ class TestHotelsIntegration:
         from src.tools.hotels import search_hotels
 
         try:
-            result = await search_hotels.ainvoke({
-                "city_code": "PAR",
-                "check_in_date": "2026-09-15",
-                "check_out_date": "2026-09-18",
-                "adults": 1,
-            })
+            result = await search_hotels.ainvoke(
+                {
+                    "city_code": "PAR",
+                    "check_in_date": "2026-09-15",
+                    "check_out_date": "2026-09-18",
+                    "adults": 1,
+                }
+            )
         except RetryError:
             pytest.skip("Amadeus API unavailable (rate limit or auth error)")
         assert "PAR" in result or "No hotel offers found" in result
@@ -96,12 +102,14 @@ class TestActivitiesIntegration:
     async def test_live_activities_search(self):
         from src.tools.activities import search_activities
 
-        result = await search_activities.ainvoke({
-            "city": "Tokyo, Japan",
-            "category": "food",
-            "query": "ramen",
-            "limit": 3,
-        })
+        result = await search_activities.ainvoke(
+            {
+                "city": "Tokyo, Japan",
+                "category": "food",
+                "query": "ramen",
+                "limit": 3,
+            }
+        )
         assert "Food in Tokyo" in result or "No food activities" in result
 
 

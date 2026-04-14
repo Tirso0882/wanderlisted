@@ -84,8 +84,7 @@ def search_destination_guides(
     matches = [m for m in matches if m.get("score", 0) >= _MIN_RELEVANCE]
 
     match_summary = [
-        (m["metadata"].get("source", "?"), f"{m.get('score', 0):.2f}")
-        for m in matches
+        (m["metadata"].get("source", "?"), f"{m.get('score', 0):.2f}") for m in matches
     ]
     logger.info(f"RAG '{query[:60]}' → {len(matches)} match(es) {match_summary}")
 

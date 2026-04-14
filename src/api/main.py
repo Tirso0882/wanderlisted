@@ -43,6 +43,7 @@ class _GraphDependency:
 
     async def initialize(self) -> None:
         from langgraph.checkpoint.memory import InMemorySaver
+
         checkpointer = InMemorySaver()
         self._graph = create_multiagent_travel_graph(checkpointer=checkpointer)
         logger.info("Multi-agent graph initialized")
@@ -88,7 +89,9 @@ class _ErrorHandlerMiddleware(BaseHTTPMiddleware):
         except HTTPException:
             raise
         except Exception as exc:
-            logger.error(f"Unhandled error on {request.method} {request.url.path}: {exc}")
+            logger.error(
+                f"Unhandled error on {request.method} {request.url.path}: {exc}"
+            )
             return JSONResponse(
                 status_code=500,
                 content={"detail": "An internal error occurred. Please try again."},
@@ -184,11 +187,10 @@ class SessionInfo(BaseModel):
 
 # ── Core graph runner ──────────────────────────────────────────────────────
 @traceable(run_type="chain", name="wanderlisted_chat")
-async def _run_agent(
-    message: str, session_id: str, graph: CompiledStateGraph
-) -> dict:
+async def _run_agent(message: str, session_id: str, graph: CompiledStateGraph) -> dict:
     """Run the multi-agent supervisor graph and return response data."""
     import uuid as _uuid
+
     run_id = str(_uuid.uuid4())
 
     result = await asyncio.wait_for(
@@ -209,7 +211,11 @@ async def _run_agent(
     interrupted = bool(interrupts)
     interrupt_data = None
     if interrupted and interrupts:
-        interrupt_data = interrupts[0].value if hasattr(interrupts[0], "value") else str(interrupts[0])
+        interrupt_data = (
+            interrupts[0].value
+            if hasattr(interrupts[0], "value")
+            else str(interrupts[0])
+        )
 
     return {
         "message": result["messages"][-1].content if result.get("messages") else "",
@@ -228,7 +234,9 @@ async def chat(request: ChatRequest, graph: CompiledStateGraph = Depends(_graph_
     session_id = request.session_id or str(uuid.uuid4())
 
     if not _rate_limiter.check(session_id):
-        raise HTTPException(status_code=429, detail="Rate limit exceeded. Try again shortly.")
+        raise HTTPException(
+            status_code=429, detail="Rate limit exceeded. Try again shortly."
+        )
 
     try:
         data = await _run_agent(request.message, session_id, graph)
@@ -257,7 +265,9 @@ async def chat_stream(
     session_id = request.session_id or str(uuid.uuid4())
 
     if not _rate_limiter.check(session_id):
-        raise HTTPException(status_code=429, detail="Rate limit exceeded. Try again shortly.")
+        raise HTTPException(
+            status_code=429, detail="Rate limit exceeded. Try again shortly."
+        )
 
     async def _event_generator():
         yield f"data: {json.dumps({'type': 'session', 'session_id': session_id})}\n\n"
@@ -293,9 +303,7 @@ async def chat_stream(
 
 
 @app.get("/api/v1/sessions/{session_id}", response_model=SessionInfo)
-async def get_session(
-    session_id: str, graph: CompiledStateGraph = Depends(_graph_dep)
-):
+async def get_session(session_id: str, graph: CompiledStateGraph = Depends(_graph_dep)):
     """Get session info including message count."""
     config = {"configurable": {"thread_id": session_id}}
     state = await graph.aget_state(config)
@@ -339,8 +347,11 @@ async def readiness(graph: CompiledStateGraph = Depends(_graph_dep)):
 
 # ── HITL: Resume interrupted graph execution ────────────────────────────────
 
+
 class ResumeRequest(BaseModel):
-    session_id: str = Field(..., description="The session/thread ID of the interrupted graph")
+    session_id: str = Field(
+        ..., description="The session/thread ID of the interrupted graph"
+    )
     decision: dict = Field(
         ...,
         description="The human decision, e.g. {'approved': true} or {'approved': true, 'feedback': '...'}",
@@ -396,10 +407,15 @@ async def resume_chat(
 
 # ── User Feedback Collection for LangSmith ──────────────────────────────────
 
+
 class FeedbackRequest(BaseModel):
     run_id: str = Field(..., description="LangSmith run ID to attach feedback to")
-    score: float = Field(..., ge=0.0, le=1.0, description="1.0 = thumbs up, 0.0 = thumbs down")
-    comment: str = Field(default="", max_length=1000, description="Optional feedback text")
+    score: float = Field(
+        ..., ge=0.0, le=1.0, description="1.0 = thumbs up, 0.0 = thumbs down"
+    )
+    comment: str = Field(
+        default="", max_length=1000, description="Optional feedback text"
+    )
     key: str = Field(default="user_rating", description="Feedback key name")
 
 

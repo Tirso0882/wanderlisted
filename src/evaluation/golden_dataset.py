@@ -19,7 +19,9 @@ GOLDEN_DATASET = [
         },
     },
     {
-        "inputs": {"question": "What's the cheapest flight from London to Barcelona next month?"},
+        "inputs": {
+            "question": "What's the cheapest flight from London to Barcelona next month?"
+        },
         "outputs": {
             "destinations": ["barcelona"],
             "expected_agents": ["FlightsAgent"],
@@ -35,7 +37,9 @@ GOLDEN_DATASET = [
         },
     },
     {
-        "inputs": {"question": "Flights from Los Angeles to Lima, round trip, economy class"},
+        "inputs": {
+            "question": "Flights from Los Angeles to Lima, round trip, economy class"
+        },
         "outputs": {
             "destinations": ["lima"],
             "expected_agents": ["FlightsAgent"],
@@ -43,14 +47,15 @@ GOLDEN_DATASET = [
         },
     },
     {
-        "inputs": {"question": "Business class flights from Frankfurt to Istanbul for next week"},
+        "inputs": {
+            "question": "Business class flights from Frankfurt to Istanbul for next week"
+        },
         "outputs": {
             "destinations": ["istanbul"],
             "expected_agents": ["FlightsAgent"],
             "must_contain": ["flight", "Istanbul"],
         },
     },
-
     # ── Hotel queries (4) ───────────────────────────────────────────────
     {
         "inputs": {"question": "Recommend budget hotels in Shinjuku area, Tokyo"},
@@ -69,7 +74,9 @@ GOLDEN_DATASET = [
         },
     },
     {
-        "inputs": {"question": "Family-friendly all-inclusive resorts in Cancun hotel zone"},
+        "inputs": {
+            "question": "Family-friendly all-inclusive resorts in Cancun hotel zone"
+        },
         "outputs": {
             "destinations": ["cancun"],
             "expected_agents": ["HotelsAgent"],
@@ -84,7 +91,6 @@ GOLDEN_DATASET = [
             "must_contain": ["hostel", "Barcelona"],
         },
     },
-
     # ── Destination / RAG queries (4) ───────────────────────────────────
     {
         "inputs": {"question": "What temples should I visit in Bangkok?"},
@@ -118,7 +124,6 @@ GOLDEN_DATASET = [
             "must_contain": ["scam", "pickpocket"],
         },
     },
-
     # ── Restaurant queries (4) ──────────────────────────────────────────
     {
         "inputs": {"question": "Best ramen shops in Tokyo for a foodie"},
@@ -152,7 +157,6 @@ GOLDEN_DATASET = [
             "must_contain": ["food", "Mexico"],
         },
     },
-
     # ── Activities (3) ──────────────────────────────────────────────────
     {
         "inputs": {"question": "What outdoor activities can I do in Cape Town?"},
@@ -178,7 +182,6 @@ GOLDEN_DATASET = [
             "must_contain": ["Medellín"],
         },
     },
-
     # ── Transportation (3) ──────────────────────────────────────────────
     {
         "inputs": {"question": "How do I get from Tokyo to Kyoto? Train options?"},
@@ -197,14 +200,15 @@ GOLDEN_DATASET = [
         },
     },
     {
-        "inputs": {"question": "Public transport options in Istanbul, is there a metro card?"},
+        "inputs": {
+            "question": "Public transport options in Istanbul, is there a metro card?"
+        },
         "outputs": {
             "destinations": ["istanbul"],
             "expected_agents": ["TransportationAgent"],
             "must_contain": ["Istanbulkart", "metro"],
         },
     },
-
     # ── Multi-agent full pipeline (6) ───────────────────────────────────
     {
         "inputs": {
@@ -216,9 +220,14 @@ GOLDEN_DATASET = [
         "outputs": {
             "destinations": ["barcelona"],
             "expected_agents": [
-                "FlightsAgent", "HotelsAgent", "DestinationAgent",
-                "RestaurantsAgent", "ActivitiesAgent", "TransportationAgent",
-                "BudgetAgent", "ItineraryAgent",
+                "FlightsAgent",
+                "HotelsAgent",
+                "DestinationAgent",
+                "RestaurantsAgent",
+                "ActivitiesAgent",
+                "TransportationAgent",
+                "BudgetAgent",
+                "ItineraryAgent",
             ],
             "travel_style": "moderate",
             "must_contain": ["Barcelona", "day 1", "budget"],
@@ -234,9 +243,14 @@ GOLDEN_DATASET = [
         "outputs": {
             "destinations": ["tokyo", "kyoto"],
             "expected_agents": [
-                "FlightsAgent", "HotelsAgent", "DestinationAgent",
-                "RestaurantsAgent", "ActivitiesAgent", "TransportationAgent",
-                "BudgetAgent", "ItineraryAgent",
+                "FlightsAgent",
+                "HotelsAgent",
+                "DestinationAgent",
+                "RestaurantsAgent",
+                "ActivitiesAgent",
+                "TransportationAgent",
+                "BudgetAgent",
+                "ItineraryAgent",
             ],
             "travel_style": "mid-range",
             "group_type": "family",
@@ -253,9 +267,14 @@ GOLDEN_DATASET = [
         "outputs": {
             "destinations": ["rome"],
             "expected_agents": [
-                "FlightsAgent", "HotelsAgent", "DestinationAgent",
-                "RestaurantsAgent", "ActivitiesAgent", "TransportationAgent",
-                "BudgetAgent", "ItineraryAgent",
+                "FlightsAgent",
+                "HotelsAgent",
+                "DestinationAgent",
+                "RestaurantsAgent",
+                "ActivitiesAgent",
+                "TransportationAgent",
+                "BudgetAgent",
+                "ItineraryAgent",
             ],
             "travel_style": "luxury",
             "must_contain": ["Rome", "day 1", "budget"],
@@ -271,9 +290,14 @@ GOLDEN_DATASET = [
         "outputs": {
             "destinations": ["lima", "quito"],
             "expected_agents": [
-                "FlightsAgent", "HotelsAgent", "DestinationAgent",
-                "RestaurantsAgent", "ActivitiesAgent", "TransportationAgent",
-                "BudgetAgent", "ItineraryAgent",
+                "FlightsAgent",
+                "HotelsAgent",
+                "DestinationAgent",
+                "RestaurantsAgent",
+                "ActivitiesAgent",
+                "TransportationAgent",
+                "BudgetAgent",
+                "ItineraryAgent",
             ],
             "travel_style": "budget",
             "must_contain": ["Lima", "Quito", "day 1", "budget"],
@@ -289,9 +313,14 @@ GOLDEN_DATASET = [
         "outputs": {
             "destinations": ["istanbul"],
             "expected_agents": [
-                "FlightsAgent", "HotelsAgent", "DestinationAgent",
-                "RestaurantsAgent", "ActivitiesAgent", "TransportationAgent",
-                "BudgetAgent", "ItineraryAgent",
+                "FlightsAgent",
+                "HotelsAgent",
+                "DestinationAgent",
+                "RestaurantsAgent",
+                "ActivitiesAgent",
+                "TransportationAgent",
+                "BudgetAgent",
+                "ItineraryAgent",
             ],
             "travel_style": "mid-range",
             "group_type": "couple",
@@ -308,16 +337,20 @@ GOLDEN_DATASET = [
         "outputs": {
             "destinations": ["tallinn"],
             "expected_agents": [
-                "FlightsAgent", "HotelsAgent", "DestinationAgent",
-                "RestaurantsAgent", "ActivitiesAgent", "TransportationAgent",
-                "BudgetAgent", "ItineraryAgent",
+                "FlightsAgent",
+                "HotelsAgent",
+                "DestinationAgent",
+                "RestaurantsAgent",
+                "ActivitiesAgent",
+                "TransportationAgent",
+                "BudgetAgent",
+                "ItineraryAgent",
             ],
             "travel_style": "budget",
             "group_type": "friends",
             "must_contain": ["Tallinn", "day 1", "budget"],
         },
     },
-
     # ── Shallow queries (should NOT trigger pipeline) (3) ──────────────
     {
         "inputs": {"question": "Thanks!"},
@@ -340,7 +373,6 @@ GOLDEN_DATASET = [
             "is_shallow": True,
         },
     },
-
     # ── Dietary restrictions (2) ────────────────────────────────────────
     {
         "inputs": {"question": "Plan a trip to Tokyo, I'm vegan and gluten-free"},
@@ -363,10 +395,11 @@ GOLDEN_DATASET = [
             "must_contain": ["halal", "London"],
         },
     },
-
     # ── Budget-focused (2) ──────────────────────────────────────────────
     {
-        "inputs": {"question": "Plan a budget backpacker trip to Bangkok for 2 weeks, under $1500"},
+        "inputs": {
+            "question": "Plan a budget backpacker trip to Bangkok for 2 weeks, under $1500"
+        },
         "outputs": {
             "destinations": ["bangkok"],
             "travel_style": "budget",
@@ -374,14 +407,15 @@ GOLDEN_DATASET = [
         },
     },
     {
-        "inputs": {"question": "How much does a 5-day trip to Cancun cost? Break it down."},
+        "inputs": {
+            "question": "How much does a 5-day trip to Cancun cost? Break it down."
+        },
         "outputs": {
             "destinations": ["cancun"],
             "expected_agents": ["BudgetAgent"],
             "must_contain": ["budget", "cost"],
         },
     },
-
     # ── Accessibility (2) ───────────────────────────────────────────────
     {
         "inputs": {

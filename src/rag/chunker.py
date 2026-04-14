@@ -26,34 +26,116 @@ from custom_logging import AppLogger, log_function_call
 
 # ── Wikivoyage section names ───────────────────────────────────────────
 SECTION_NAMES: set[str] = {
-    "Understand", "Get in", "Get around", "See", "Do", "Buy", "Eat",
-    "Drink", "Sleep", "Stay safe", "Stay healthy", "Connect", "Cope",
-    "Go next", "Respect", "Talk", "Learn", "Work",
+    "Understand",
+    "Get in",
+    "Get around",
+    "See",
+    "Do",
+    "Buy",
+    "Eat",
+    "Drink",
+    "Sleep",
+    "Stay safe",
+    "Stay healthy",
+    "Connect",
+    "Cope",
+    "Go next",
+    "Respect",
+    "Talk",
+    "Learn",
+    "Work",
     # Sub-sections common in Wikivoyage
-    "Budget", "Mid-range", "Splurge",
-    "By plane", "By train", "By bus", "By car", "By boat",
-    "By taxi", "By metro", "By bicycle",
+    "Budget",
+    "Mid-range",
+    "Splurge",
+    "By plane",
+    "By train",
+    "By bus",
+    "By car",
+    "By boat",
+    "By taxi",
+    "By metro",
+    "By bicycle",
 }
 
 _SECTION_PAT = re.compile(
-    r"^(" + "|".join(re.escape(n) for n in sorted(SECTION_NAMES, key=len, reverse=True)) + r")\s*$",
+    r"^("
+    + "|".join(re.escape(n) for n in sorted(SECTION_NAMES, key=len, reverse=True))
+    + r")\s*$",
     re.MULTILINE,
 )
 
 # ── Travel-domain topic keywords (for content_type classification) ──────
 _TRAVEL_TOPICS: dict[str, list[str]] = {
-    "food_and_drink": ["restaurant", "cuisine", "dish", "food", "eat", "drink",
-                       "café", "bar", "street food", "market"],
-    "accommodation": ["hotel", "hostel", "guesthouse", "airbnb", "sleep",
-                      "budget", "mid-range", "splurge", "booking"],
-    "transportation": ["bus", "train", "metro", "taxi", "airport", "flight",
-                       "ferry", "bicycle", "get around", "bts", "skytrain"],
-    "sightseeing": ["temple", "museum", "palace", "monument", "park",
-                    "landmark", "cathedral", "ruins", "gallery"],
-    "practical": ["visa", "currency", "safety", "scam", "embassy",
-                  "insurance", "sim card", "wifi", "connect", "cope"],
-    "culture": ["etiquette", "custom", "festival", "language", "respect",
-                "tradition", "religion", "dress code"],
+    "food_and_drink": [
+        "restaurant",
+        "cuisine",
+        "dish",
+        "food",
+        "eat",
+        "drink",
+        "café",
+        "bar",
+        "street food",
+        "market",
+    ],
+    "accommodation": [
+        "hotel",
+        "hostel",
+        "guesthouse",
+        "airbnb",
+        "sleep",
+        "budget",
+        "mid-range",
+        "splurge",
+        "booking",
+    ],
+    "transportation": [
+        "bus",
+        "train",
+        "metro",
+        "taxi",
+        "airport",
+        "flight",
+        "ferry",
+        "bicycle",
+        "get around",
+        "bts",
+        "skytrain",
+    ],
+    "sightseeing": [
+        "temple",
+        "museum",
+        "palace",
+        "monument",
+        "park",
+        "landmark",
+        "cathedral",
+        "ruins",
+        "gallery",
+    ],
+    "practical": [
+        "visa",
+        "currency",
+        "safety",
+        "scam",
+        "embassy",
+        "insurance",
+        "sim card",
+        "wifi",
+        "connect",
+        "cope",
+    ],
+    "culture": [
+        "etiquette",
+        "custom",
+        "festival",
+        "language",
+        "respect",
+        "tradition",
+        "religion",
+        "dress code",
+    ],
 }
 
 
@@ -91,7 +173,9 @@ class DocumentChunker:
         if default_chunk_overlap < 0:
             raise ValueError("default_chunk_overlap cannot be negative")
         if default_chunk_overlap >= default_chunk_size:
-            raise ValueError("default_chunk_overlap must be less than default_chunk_size")
+            raise ValueError(
+                "default_chunk_overlap must be less than default_chunk_size"
+            )
 
         self.logger = AppLogger(logger_name=logger_name, level="DEBUG")
         self.default_chunk_size = default_chunk_size
@@ -130,13 +214,18 @@ class DocumentChunker:
             chunks = self._chunk_single(doc, chunk_size, chunk_overlap)
             all_chunks.extend(chunks)
 
-        self.logger.info(f"Produced {len(all_chunks)} chunks from {len(docs)} document(s)")
+        self.logger.info(
+            f"Produced {len(all_chunks)} chunks from {len(docs)} document(s)"
+        )
         return all_chunks
 
     # ── Internal: per-document chunking ──────────────────────────────────
 
     def _chunk_single(
-        self, doc: Document, chunk_size: int, chunk_overlap: int,
+        self,
+        doc: Document,
+        chunk_size: int,
+        chunk_overlap: int,
     ) -> list[Document]:
         """Choose the best strategy for a single document.
 
@@ -157,7 +246,9 @@ class DocumentChunker:
         # Strategy 1: Section-level (Wikivoyage guides)
         sections = self._split_on_sections(text)
         if len(sections) > 1:
-            self.logger.debug(f"  {source}: section-level → {len(sections)} raw sections")
+            self.logger.debug(
+                f"  {source}: section-level → {len(sections)} raw sections"
+            )
             chunks = self._build_section_chunks(sections, doc.metadata, destination)
             if chunks:
                 return chunks
@@ -170,7 +261,9 @@ class DocumentChunker:
 
         # Strategy 3: Recursive character splitting (fallback / PDFs)
         self.logger.debug(f"  {source}: recursive fallback")
-        return self._split_recursive(text, doc.metadata, destination, chunk_size, chunk_overlap)
+        return self._split_recursive(
+            text, doc.metadata, destination, chunk_size, chunk_overlap
+        )
 
     # ── Section-level splitting ──────────────────────────────────────────
 
@@ -233,7 +326,9 @@ class DocumentChunker:
             else:
                 parts = self._subsplit_at_paragraphs(text, self.max_section_size)
                 for i, part in enumerate(parts):
-                    final.append((f"{name} ({i+1})" if len(parts) > 1 else name, part))
+                    final.append(
+                        (f"{name} ({i + 1})" if len(parts) > 1 else name, part)
+                    )
 
         # Build Document objects with metadata
         chunks: list[Document] = []
@@ -254,7 +349,10 @@ class DocumentChunker:
     # ── Markdown header splitting ────────────────────────────────────────
 
     def _split_on_markdown_headers(
-        self, text: str, base_meta: dict, destination: str,
+        self,
+        text: str,
+        base_meta: dict,
+        destination: str,
     ) -> list[Document]:
         headers_to_split_on = [
             ("#", "Header 1"),
@@ -319,7 +417,7 @@ class DocumentChunker:
             meta = self._make_chunk_metadata(
                 base_meta=base_meta,
                 destination=destination,
-                section=f"part_{idx+1}",
+                section=f"part_{idx + 1}",
                 chunk_index=idx,
                 total_chunks=total,
                 chunk_method="recursive",
@@ -390,7 +488,9 @@ class DocumentChunker:
         return parts
 
     @staticmethod
-    def _normalise_input(documents: Union[str, Document, list[Document]]) -> list[Document]:
+    def _normalise_input(
+        documents: Union[str, Document, list[Document]],
+    ) -> list[Document]:
         """Accept str, single Document, or list and return a list."""
         if isinstance(documents, str):
             return [Document(page_content=documents, metadata={})]

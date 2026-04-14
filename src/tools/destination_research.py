@@ -5,7 +5,6 @@ to web search is a **code-level guarantee**, not a prompt suggestion.
 Includes a TTL cache for Tavily results to control API costs.
 """
 
-import asyncio
 import hashlib
 import time
 from typing import Optional
@@ -14,7 +13,6 @@ from langchain_core.tools import tool
 
 from custom_logging import AppLogger
 from src.tools.destination_rag import (
-    _HIGH_CONFIDENCE,
     search_destination_guides,
 )
 from src.tools.web_search import _tavily_search
@@ -85,11 +83,7 @@ async def _cached_tavily_search(query: str, max_results: int = 5) -> str:
         content = r.get("content", "")
         if len(content) > 500:
             content = content[:497] + "..."
-        sections.append(
-            f"[W{i}] {title}\n"
-            f"     Source: {url}\n"
-            f"     {content}"
-        )
+        sections.append(f"[W{i}] {title}\n     Source: {url}\n     {content}")
 
     formatted = "\n\n".join(sections)
     _set_cached(query, formatted)
@@ -99,6 +93,7 @@ async def _cached_tavily_search(query: str, max_results: int = 5) -> str:
 # ---------------------------------------------------------------------------
 #  Composite research tool
 # ---------------------------------------------------------------------------
+
 
 @tool
 async def research_destination(
@@ -125,11 +120,13 @@ async def research_destination(
                       guide search (e.g. ["tokyo", "kyoto"]).
     """
     # --- Layer 1: RAG (always runs) ---
-    rag_result = search_destination_guides.invoke({
-        "query": query,
-        "destinations": destinations,
-        "top_k": 5,
-    })
+    rag_result = search_destination_guides.invoke(
+        {
+            "query": query,
+            "destinations": destinations,
+            "top_k": 5,
+        }
+    )
 
     # Parse confidence from the RAG result header
     rag_has_results = "Guide confidence:" in rag_result
@@ -150,9 +147,7 @@ async def research_destination(
         # Build a destination-enriched query for Tavily
         web_query = query
         if destinations:
-            missing = [
-                d for d in destinations if d.lower() not in query.lower()
-            ]
+            missing = [d for d in destinations if d.lower() not in query.lower()]
             if missing:
                 web_query = f"{query} {' '.join(missing)}"
 

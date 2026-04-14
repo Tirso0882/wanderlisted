@@ -16,11 +16,18 @@ from pydantic import BaseModel, Field
 # ── Layer 1: Code-Based Evaluators (fast, free, deterministic) ────────────
 
 
-VALID_AGENT_NAMES = frozenset({
-    "FlightsAgent", "HotelsAgent", "DestinationAgent",
-    "RestaurantsAgent", "ActivitiesAgent", "TransportationAgent",
-    "BudgetAgent", "ItineraryAgent",
-})
+VALID_AGENT_NAMES = frozenset(
+    {
+        "FlightsAgent",
+        "HotelsAgent",
+        "DestinationAgent",
+        "RestaurantsAgent",
+        "ActivitiesAgent",
+        "TransportationAgent",
+        "BudgetAgent",
+        "ItineraryAgent",
+    }
+)
 
 
 def correct_tool_routing(inputs: dict, outputs: dict) -> dict:
@@ -29,15 +36,30 @@ def correct_tool_routing(inputs: dict, outputs: dict) -> dict:
     tools_used = outputs.get("tools_called", [])
 
     if "flight" in question or "fly" in question:
-        score = int("search_flights" in tools_used or "FlightsAgent" in outputs.get("agents_routed", []))
+        score = int(
+            "search_flights" in tools_used
+            or "FlightsAgent" in outputs.get("agents_routed", [])
+        )
     elif "hotel" in question or "stay" in question or "accommodation" in question:
-        score = int("search_hotels" in tools_used or "HotelsAgent" in outputs.get("agents_routed", []))
+        score = int(
+            "search_hotels" in tools_used
+            or "HotelsAgent" in outputs.get("agents_routed", [])
+        )
     elif "weather" in question or "temperature" in question:
-        score = int("get_weather" in tools_used or "DestinationAgent" in outputs.get("agents_routed", []))
+        score = int(
+            "get_weather" in tools_used
+            or "DestinationAgent" in outputs.get("agents_routed", [])
+        )
     elif "restaurant" in question or "eat" in question or "food" in question:
-        score = int("search_activities" in tools_used or "RestaurantsAgent" in outputs.get("agents_routed", []))
+        score = int(
+            "search_activities" in tools_used
+            or "RestaurantsAgent" in outputs.get("agents_routed", [])
+        )
     elif "budget" in question or "cost" in question:
-        score = int("calculate_budget" in tools_used or "BudgetAgent" in outputs.get("agents_routed", []))
+        score = int(
+            "calculate_budget" in tools_used
+            or "BudgetAgent" in outputs.get("agents_routed", [])
+        )
     else:
         score = 1  # Non-specific query → any routing is acceptable
 
@@ -85,8 +107,14 @@ def handbook_section_completeness(outputs: dict) -> dict:
     """Check that the generated handbook contains all expected sections."""
     output = outputs.get("output", "").lower()
     required_sections = [
-        "flight", "hotel", "budget", "safety", "itinerary",
-        "day 1", "restaurant", "activit",
+        "flight",
+        "hotel",
+        "budget",
+        "safety",
+        "itinerary",
+        "day 1",
+        "restaurant",
+        "activit",
     ]
     found = sum(1 for s in required_sections if s in output)
     score = found / len(required_sections)
@@ -100,6 +128,7 @@ def handbook_section_completeness(outputs: dict) -> dict:
 
 class _RAGScore(BaseModel):
     """Structured score from RAG evaluation judge."""
+
     score: float = Field(description="Score between 0.0 and 1.0", ge=0.0, le=1.0)
     reasoning: str = Field(description="Brief justification for the score")
 
@@ -134,7 +163,11 @@ def context_precision(inputs: dict, reference_outputs: dict, outputs: dict) -> d
         "Score 0-1: what fraction of the retrieved contexts are relevant "
         "to answering the question correctly? Irrelevant contexts score 0."
     )
-    return {"score": result["score"], "key": "context_precision", "comment": result["reasoning"]}
+    return {
+        "score": result["score"],
+        "key": "context_precision",
+        "comment": result["reasoning"],
+    }
 
 
 def context_recall(inputs: dict, reference_outputs: dict, outputs: dict) -> dict:
@@ -147,7 +180,11 @@ def context_recall(inputs: dict, reference_outputs: dict, outputs: dict) -> dict
         "can be attributed to the retrieved contexts? "
         "1.0 means every claim is supported by the contexts."
     )
-    return {"score": result["score"], "key": "context_recall", "comment": result["reasoning"]}
+    return {
+        "score": result["score"],
+        "key": "context_recall",
+        "comment": result["reasoning"],
+    }
 
 
 def context_entity_recall(inputs: dict, reference_outputs: dict, outputs: dict) -> dict:
@@ -159,7 +196,11 @@ def context_entity_recall(inputs: dict, reference_outputs: dict, outputs: dict) 
         "from the reference answer. Score 0-1: what fraction of those entities "
         "appear in the retrieved contexts?"
     )
-    return {"score": result["score"], "key": "context_entity_recall", "comment": result["reasoning"]}
+    return {
+        "score": result["score"],
+        "key": "context_entity_recall",
+        "comment": result["reasoning"],
+    }
 
 
 def noise_sensitivity(inputs: dict, reference_outputs: dict, outputs: dict) -> dict:
@@ -173,7 +214,11 @@ def noise_sensitivity(inputs: dict, reference_outputs: dict, outputs: dict) -> d
         "Score 0-1: how well did the agent ignore irrelevant contexts "
         "and produce a correct answer? 1.0 means no noise influence."
     )
-    return {"score": result["score"], "key": "noise_sensitivity", "comment": result["reasoning"]}
+    return {
+        "score": result["score"],
+        "key": "noise_sensitivity",
+        "comment": result["reasoning"],
+    }
 
 
 def response_relevancy(inputs: dict, outputs: dict) -> dict:
@@ -185,7 +230,11 @@ def response_relevancy(inputs: dict, outputs: dict) -> dict:
         "1.0 = perfectly on-topic and complete. "
         "0.0 = completely off-topic or answers a different question."
     )
-    return {"score": result["score"], "key": "response_relevancy", "comment": result["reasoning"]}
+    return {
+        "score": result["score"],
+        "key": "response_relevancy",
+        "comment": result["reasoning"],
+    }
 
 
 def faithfulness(inputs: dict, outputs: dict) -> dict:
@@ -198,7 +247,11 @@ def faithfulness(inputs: dict, outputs: dict) -> dict:
         "the retrieved contexts? Claims not in the context are hallucinations. "
         "1.0 = fully grounded, 0.0 = entirely hallucinated."
     )
-    return {"score": result["score"], "key": "faithfulness", "comment": result["reasoning"]}
+    return {
+        "score": result["score"],
+        "key": "faithfulness",
+        "comment": result["reasoning"],
+    }
 
 
 # ── Layer 2: LLM-as-Judge Evaluator (0–3 quality scale) ──────────────────
@@ -206,6 +259,7 @@ def faithfulness(inputs: dict, outputs: dict) -> dict:
 
 class TravelQualityScore(BaseModel):
     """Structured score from the LLM judge."""
+
     score: int = Field(
         description=(
             "Quality score 0-3. "
@@ -215,9 +269,7 @@ class TravelQualityScore(BaseModel):
         ge=0,
         le=3,
     )
-    reasoning: str = Field(
-        description="One-sentence justification for the score"
-    )
+    reasoning: str = Field(description="One-sentence justification for the score")
 
 
 JUDGE_SYSTEM_PROMPT = """You are an expert travel advisor evaluating AI-generated
@@ -242,10 +294,13 @@ def travel_quality_judge(inputs: dict, outputs: dict) -> dict:
         model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": JUDGE_SYSTEM_PROMPT},
-            {"role": "user", "content": (
-                f"User query: {inputs.get('question', '')}\n\n"
-                f"Agent response:\n{outputs.get('output', 'No response')[:3000]}"
-            )},
+            {
+                "role": "user",
+                "content": (
+                    f"User query: {inputs.get('question', '')}\n\n"
+                    f"Agent response:\n{outputs.get('output', 'No response')[:3000]}"
+                ),
+            },
         ],
         response_format=TravelQualityScore,
     )
@@ -291,11 +346,14 @@ def ranked_preference(inputs: dict, outputs: list[dict]) -> list:
         model="gpt-4o",
         messages=[
             {"role": "system", "content": "You are an impartial travel advisor judge."},
-            {"role": "user", "content": _PAIRWISE_PROMPT.format(
-                question=inputs.get("question", ""),
-                answer_a=outputs[0].get("output", "N/A")[:2000],
-                answer_b=outputs[1].get("output", "N/A")[:2000],
-            )},
+            {
+                "role": "user",
+                "content": _PAIRWISE_PROMPT.format(
+                    question=inputs.get("question", ""),
+                    answer_a=outputs[0].get("output", "N/A")[:2000],
+                    answer_b=outputs[1].get("output", "N/A")[:2000],
+                ),
+            },
         ],
         response_format=Preference,
     )
@@ -318,7 +376,11 @@ def calibration_report(human_scores: list[int], judge_scores: list[int]) -> dict
     """
     n = len(human_scores)
     if n == 0:
-        return {"exact_match_pct": 0, "within_one_pct": 0, "mean_absolute_error": float("inf")}
+        return {
+            "exact_match_pct": 0,
+            "within_one_pct": 0,
+            "mean_absolute_error": float("inf"),
+        }
 
     exact_match = sum(h == j for h, j in zip(human_scores, judge_scores)) / n
     within_one = sum(abs(h - j) <= 1 for h, j in zip(human_scores, judge_scores)) / n
@@ -352,13 +414,25 @@ def production_quality_monitor(root_run, example=None) -> dict:
     if len(output) < 20:
         return {"key": "quality", "score": 0.2, "comment": "Suspiciously short"}
 
-    if any(err in output.lower() for err in ["error", "failed", "exception", "traceback"]):
+    if any(
+        err in output.lower() for err in ["error", "failed", "exception", "traceback"]
+    ):
         return {"key": "quality", "score": 0.1, "comment": "Contains error markers"}
 
     # Tier 2: Pattern checks
     travel_keywords = [
-        "tokyo", "bangkok", "barcelona", "paris", "cancun", "london",
-        "hotel", "flight", "restaurant", "day 1", "budget", "safety",
+        "tokyo",
+        "bangkok",
+        "barcelona",
+        "paris",
+        "cancun",
+        "london",
+        "hotel",
+        "flight",
+        "restaurant",
+        "day 1",
+        "budget",
+        "safety",
     ]
     has_travel_content = any(kw in output.lower() for kw in travel_keywords)
     if not has_travel_content and len(output) > 200:
@@ -371,7 +445,11 @@ def production_quality_monitor(root_run, example=None) -> dict:
                 {"question": root_run.inputs.get("question", "")},
                 {"output": output},
             )
-            return {"key": "quality", "score": result["score"] / 3.0, "comment": result.get("comment", "")}
+            return {
+                "key": "quality",
+                "score": result["score"] / 3.0,
+                "comment": result.get("comment", ""),
+            }
         except Exception:
             pass
 

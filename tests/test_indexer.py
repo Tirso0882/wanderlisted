@@ -1,8 +1,6 @@
 """Tests for src/rag/indexer.py — vector index building + staleness detection."""
 
 import json
-import os
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -19,6 +17,7 @@ from src.rag.indexer import (
 
 
 # ── Fixtures ─────────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def guides_dir(tmp_path):
@@ -64,8 +63,18 @@ def large_guide_dir(tmp_path):
     d = tmp_path / "guides"
     d.mkdir()
     sections = []
-    section_names = ["Understand", "Get in", "Get around", "See", "Do",
-                     "Buy", "Eat", "Drink", "Sleep", "Stay safe"]
+    section_names = [
+        "Understand",
+        "Get in",
+        "Get around",
+        "See",
+        "Do",
+        "Buy",
+        "Eat",
+        "Drink",
+        "Sleep",
+        "Stay safe",
+    ]
     for name in section_names:
         content = (
             f"This is a detailed travel guide section about {name.lower()}. "
@@ -74,13 +83,13 @@ def large_guide_dir(tmp_path):
         )
         sections.append(f"{name}\n{content}\n")
     (d / "big_guide.md").write_text(
-        "# Big Destination Guide\n\nA comprehensive guide.\n\n"
-        + "\n".join(sections)
+        "# Big Destination Guide\n\nA comprehensive guide.\n\n" + "\n".join(sections)
     )
     return d
 
 
 # ── _hash_file ───────────────────────────────────────────────────────────
+
 
 class TestHashFile:
     def test_consistent_hash(self, tmp_path):
@@ -97,6 +106,7 @@ class TestHashFile:
 
 
 # ── _compute_manifest ────────────────────────────────────────────────────
+
 
 class TestComputeManifest:
     def test_manifest_lists_all_md_files(self, guides_dir):
@@ -117,6 +127,7 @@ class TestComputeManifest:
 
 
 # ── _is_stale ────────────────────────────────────────────────────────────
+
 
 class TestIsStale:
     def test_stale_when_no_cache(self, guides_dir):
@@ -152,6 +163,7 @@ class TestIsStale:
 
 
 # ── _load_and_chunk ──────────────────────────────────────────────────────
+
 
 class TestLoadAndChunk:
     def test_produces_chunks_with_metadata(self, guides_dir):
@@ -194,6 +206,7 @@ class TestLoadAndChunk:
 
 # ── build_index ──────────────────────────────────────────────────────────
 
+
 class TestBuildIndex:
     def test_returns_none_when_no_guides(self, tmp_path):
         d = tmp_path / "empty"
@@ -203,7 +216,9 @@ class TestBuildIndex:
     @patch("src.rag.indexer._load_and_chunk")
     @patch("src.rag.indexer._get_pinecone_index")
     @patch("src.rag.indexer._get_embedding_generator")
-    def test_builds_index_when_stale(self, mock_get_emb, mock_get_idx, mock_chunk, guides_dir, tmp_path):
+    def test_builds_index_when_stale(
+        self, mock_get_emb, mock_get_idx, mock_chunk, guides_dir, tmp_path
+    ):
         """Stale manifest → re-chunk, re-embed and upsert into Pinecone."""
         cache_dir = tmp_path / "cache"
 
@@ -217,11 +232,20 @@ class TestBuildIndex:
         mock_get_idx.return_value = mock_index
 
         mock_chunk.return_value = [
-            Document(page_content="Test chunk", metadata={"source": "test.md", "destination": "Test", "section": "intro"}),
+            Document(
+                page_content="Test chunk",
+                metadata={
+                    "source": "test.md",
+                    "destination": "Test",
+                    "section": "intro",
+                },
+            ),
         ]
 
-        with patch("src.rag.indexer.CACHE_DIR", cache_dir), \
-             patch("src.rag.indexer.MANIFEST_PATH", cache_dir / "manifest.json"):
+        with (
+            patch("src.rag.indexer.CACHE_DIR", cache_dir),
+            patch("src.rag.indexer.MANIFEST_PATH", cache_dir / "manifest.json"),
+        ):
             result = build_index(guides_dir)
 
         mock_index.delete.assert_called_once_with(delete_all=True, namespace=NAMESPACE)
@@ -230,7 +254,9 @@ class TestBuildIndex:
 
     @patch("src.rag.indexer._get_pinecone_index")
     @patch("src.rag.indexer._get_embedding_generator")
-    def test_skips_reembed_when_fresh(self, mock_get_emb, mock_get_idx, guides_dir, tmp_path):
+    def test_skips_reembed_when_fresh(
+        self, mock_get_emb, mock_get_idx, guides_dir, tmp_path
+    ):
         """Fresh manifest → return index without re-upserting."""
         cache_dir = tmp_path / "cache"
         cache_dir.mkdir()
@@ -244,8 +270,10 @@ class TestBuildIndex:
         mock_index = MagicMock()
         mock_get_idx.return_value = mock_index
 
-        with patch("src.rag.indexer.CACHE_DIR", cache_dir), \
-             patch("src.rag.indexer.MANIFEST_PATH", manifest_path):
+        with (
+            patch("src.rag.indexer.CACHE_DIR", cache_dir),
+            patch("src.rag.indexer.MANIFEST_PATH", manifest_path),
+        ):
             result = build_index(guides_dir)
 
         mock_index.upsert.assert_not_called()

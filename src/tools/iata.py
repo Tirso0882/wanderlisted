@@ -30,8 +30,10 @@ def _load_iata_db() -> None:
     contains "international" (heuristic: that's usually the main one).
     """
     # First pass: collect all entries grouped by city
-    _city_entries: dict[str, list[tuple[str, str]]] = {}   # city → [(code, airport_name)]
-    _airport_entries: list[tuple[str, str]] = []            # [(airport_name_lower, code)]
+    _city_entries: dict[
+        str, list[tuple[str, str]]
+    ] = {}  # city → [(code, airport_name)]
+    _airport_entries: list[tuple[str, str]] = []  # [(airport_name_lower, code)]
 
     with open(_CSV_PATH, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
@@ -74,6 +76,7 @@ _load_iata_db()
 
 # ── Public helpers ────────────────────────────────────────────────────────
 
+
 def get_airport_country(iata_code: str) -> str:
     """Return the country name for a given IATA airport code, or empty string."""
     return _COUNTRY_BY_CODE.get(iata_code.upper().strip(), "")
@@ -84,24 +87,65 @@ def iata_to_flag_emoji(iata_code: str) -> str:
     country = get_airport_country(iata_code)
     # Map common country names to ISO-3166-1 alpha-2 codes for flag emoji
     _NAME_TO_ISO: dict[str, str] = {
-        "united states": "US", "united kingdom": "GB", "france": "FR",
-        "germany": "DE", "japan": "JP", "spain": "ES", "italy": "IT",
-        "netherlands": "NL", "canada": "CA", "australia": "AU",
-        "brazil": "BR", "mexico": "MX", "colombia": "CO", "peru": "PE",
-        "argentina": "AR", "chile": "CL", "turkey": "TR", "egypt": "EG",
-        "morocco": "MA", "south africa": "ZA", "china": "CN", "india": "IN",
-        "south korea": "KR", "thailand": "TH", "singapore": "SG",
-        "united arab emirates": "AE", "qatar": "QA", "portugal": "PT",
-        "greece": "GR", "poland": "PL", "russia": "RU", "ukraine": "UA",
-        "sweden": "SE", "norway": "NO", "denmark": "DK", "finland": "FI",
-        "switzerland": "CH", "austria": "AT", "belgium": "BE",
-        "czech republic": "CZ", "hungary": "HU", "romania": "RO",
-        "new zealand": "NZ", "indonesia": "ID", "malaysia": "MY",
-        "philippines": "PH", "vietnam": "VN", "kenya": "KE",
-        "ethiopia": "ET", "nigeria": "NG", "ghana": "GH",
-        "israel": "IL", "saudi arabia": "SA", "iran": "IR",
-        "taiwan": "TW", "hong kong": "HK", "pakistan": "PK",
-        "bangladesh": "BD", "sri lanka": "LK",
+        "united states": "US",
+        "united kingdom": "GB",
+        "france": "FR",
+        "germany": "DE",
+        "japan": "JP",
+        "spain": "ES",
+        "italy": "IT",
+        "netherlands": "NL",
+        "canada": "CA",
+        "australia": "AU",
+        "brazil": "BR",
+        "mexico": "MX",
+        "colombia": "CO",
+        "peru": "PE",
+        "argentina": "AR",
+        "chile": "CL",
+        "turkey": "TR",
+        "egypt": "EG",
+        "morocco": "MA",
+        "south africa": "ZA",
+        "china": "CN",
+        "india": "IN",
+        "south korea": "KR",
+        "thailand": "TH",
+        "singapore": "SG",
+        "united arab emirates": "AE",
+        "qatar": "QA",
+        "portugal": "PT",
+        "greece": "GR",
+        "poland": "PL",
+        "russia": "RU",
+        "ukraine": "UA",
+        "sweden": "SE",
+        "norway": "NO",
+        "denmark": "DK",
+        "finland": "FI",
+        "switzerland": "CH",
+        "austria": "AT",
+        "belgium": "BE",
+        "czech republic": "CZ",
+        "hungary": "HU",
+        "romania": "RO",
+        "new zealand": "NZ",
+        "indonesia": "ID",
+        "malaysia": "MY",
+        "philippines": "PH",
+        "vietnam": "VN",
+        "kenya": "KE",
+        "ethiopia": "ET",
+        "nigeria": "NG",
+        "ghana": "GH",
+        "israel": "IL",
+        "saudi arabia": "SA",
+        "iran": "IR",
+        "taiwan": "TW",
+        "hong kong": "HK",
+        "pakistan": "PK",
+        "bangladesh": "BD",
+        "sri lanka": "LK",
     }
     iso = _NAME_TO_ISO.get(country.lower())
     if not iso:
@@ -133,8 +177,11 @@ def lookup_iata_code(location: str) -> str:
 
     # Substring match — catches "tallinn" inside "tallinn-ulemiste international"
     if len(key) >= 4:
-        matches = [(name, code) for name, code in _IATA_BY_NAME.items()
-                   if key in name and len(name) > len(key)]
+        matches = [
+            (name, code)
+            for name, code in _IATA_BY_NAME.items()
+            if key in name and len(name) > len(key)
+        ]
         if matches:
             # Prefer the shortest name (most specific match)
             best_name, best_code = min(matches, key=lambda x: len(x[0]))
@@ -145,15 +192,12 @@ def lookup_iata_code(location: str) -> str:
     if candidates:
         best = candidates[0]
         code = _IATA_BY_NAME[best]
-        alternatives = ", ".join(
-            f"{_IATA_BY_NAME[c]} ({c})" for c in candidates[1:]
-        )
+        alternatives = ", ".join(f"{_IATA_BY_NAME[c]} ({c})" for c in candidates[1:])
         result = f"{code} — closest match for '{location}' (matched '{best}')"
         if alternatives:
             result += f". Other possibilities: {alternatives}"
         return result
 
     return (
-        f"No IATA code found for '{location}'. "
-        "Try a major city name or airport name."
+        f"No IATA code found for '{location}'. Try a major city name or airport name."
     )

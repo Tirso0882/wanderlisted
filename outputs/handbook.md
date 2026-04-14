@@ -1,40 +1,131 @@
-# 10 Days in Japan
+# 5-Day Tokyo & Kamakura Trip
 
-**Dates:** 2026-04-10 — 2026-04-20  
-**Destinations:** Tokyo, Kyoto  
+**Dates:** 2026-11-10 — 2026-11-15  
+**Destinations:** Tokyo, Kamakura  
 **Style:** Mid-Range  
-**Budget:** $4,000 USD  
+**Budget:** $3,000 USD  
 
 ## Safety
 
-Japan — Level 1: Exercise Normal Precautions
+Japan is considered very safe for travelers with low crime rates and excellent infrastructure. Normal precautions are sufficient.
 
 ## Flights
 
-- **Flight 1:** JFK → NRT | NH 110 | 2026-04-10 11:00 → 2026-04-11 14:30
-  - **Price:** $1,784 USD
+- **Flight 1:** JFK → NRT | CX841 | 2026-11-10T09:00:00 → 2026-11-11T20:20:00
+  - **Price:** $2,136 USD
+- **Flight 2:** JFK → NRT | CX843 | 2026-11-10T01:45:00 → 2026-11-11T13:10:00
+  - **Price:** $2,136 USD
+- **Flight 3:** JFK → NRT | CX843 | 2026-11-10T01:45:00 → 2026-11-11T14:10:00
+  - **Price:** $2,136 USD
+- **Flight 4:** JFK → NRT | CX831 | 2026-11-10T13:40:00 → 2026-11-12T06:30:00
+  - **Price:** $2,136 USD
+- **Flight 5:** JFK → NRT | CX841 | 2026-11-10T09:00:00 → 2026-11-12T06:30:00
+  - **Price:** $2,136 USD
 
 ## Hotels
 
-- **Hotel Gracery Shinjuku** ★★★★ | $140/night | 2026-04-11 → 2026-04-15
+- **Hotel Tavinos Asakusa** ★★★★ | $140/night |  → 
+- **KAIKA Tokyo by THE SHARE HOTELS** ★★★★ | $155/night |  → 
 
 ## Day-by-Day Itinerary
 
-### Day 1 — 2026-04-11 · Tokyo
-
-**Weather:** ⛅ 14–21°C, 20% rain
+### Day 1 — 2026-11-11 · Tokyo
 
 **Morning**
 
-- Meiji Shrine ⭐ 4.6 | 1-1 Yoyogikamizonocho, Shibuya
+- Narita Express to Asakusa ⭐ 4.6 | Narita International Airport
+
+**Afternoon**
+
+- Senso-ji Temple ⭐ 4.5 | 2 Chome-3-1 Asakusa, Taito City, Tokyo
 
 **Evening**
 
-- 🍽 Ichiran Ramen Shibuya | $$ | 1-22-7 Jinnan, Shibuya
+- 🍽 Daikokuya Tempura | $$ | 1 Chome-38-10 Asakusa, Taito City, Tokyo
 
-> 💡 **Cultural Tip:** At Meiji Shrine, bow once before entering the torii gate. Walk on the sides — the centre path is for the deity.
+> 💡 **Cultural Tip:** Bow slightly when entering temples and restaurants.
 
-**Day cost:** $85
+**Day cost:** $75
+
+---
+
+### Day 2 — 2026-11-12 · Tokyo
+
+**Morning**
+
+- Meiji Shrine ⭐ 4.6 | 1-1 Yoyogikamizonocho, Shibuya City, Tokyo
+
+**Afternoon**
+
+- Harajuku Backstreets ⭐ 4.4 | Harajuku, Shibuya City, Tokyo
+
+**Evening**
+
+- 🍽 Uobei Sushi | $ | 1 Chome-21-15 Dogenzaka, Shibuya City, Tokyo
+
+> 💡 **Cultural Tip:** Photography is allowed outdoors, but avoid close-up shots of people without permission.
+
+**Day cost:** $40
+
+---
+
+### Day 3 — 2026-11-13 · Kamakura
+
+**Morning**
+
+- JR Yokosuka Line to Kamakura ⭐ 4.5 | Tokyo Station
+
+**Afternoon**
+
+- Great Buddha of Kamakura ⭐ 4.5 | 4 Chome-2-28 Hase, Kamakura
+
+**Evening**
+
+- 🍽 Matsubara-an | $$ | 4 Chome-10-3 Yuigahama, Kamakura
+
+> 💡 **Cultural Tip:** Keep voices low on trains and respect quiet temple spaces.
+
+**Day cost:** $82
+
+---
+
+### Day 4 — 2026-11-14 · Tokyo
+
+**Morning**
+
+- Yanaka Ginza ⭐ 4.4 | Yanaka, Taito City, Tokyo
+
+**Afternoon**
+
+- Nezu Shrine ⭐ 4.5 | 1 Chome-28-9 Nezu, Bunkyo City, Tokyo
+
+**Evening**
+
+- 🍽 Omoide Yokocho Yakitori | $$ | 1 Chome-2 Nishishinjuku, Shinjuku City, Tokyo
+
+> 💡 **Cultural Tip:** Cash is still preferred at small eateries.
+
+**Day cost:** $60
+
+---
+
+### Day 5 — 2026-11-15 · Tokyo
+
+**Morning**
+
+- Tsukiji Outer Market ⭐ 4.5 | 4 Chome-16-2 Tsukiji, Chuo City, Tokyo
+
+**Afternoon**
+
+- Ginza Shopping Walk ⭐ 4.6 | Ginza, Chuo City, Tokyo
+
+**Evening**
+
+- Narita Express to Airport ⭐ 4.6 | Tokyo Station
+
+> 💡 **Cultural Tip:** Arrive early at the airport; international check-in can be time-consuming.
+
+**Day cost:** $55
 
 ---
 
@@ -42,30 +133,32 @@ Japan — Level 1: Exercise Normal Precautions
 
 | Category | Amount |
 |---|---|
-| Flights | $1,784 |
-| Hotels | $980 |
-| Meals | $320 |
-| Activities | $150 |
-| Transport | $106 |
-| Misc | $80 |
-| **Total** | $3,420 |
-
-## Phrasebook
-
-| English | Local | Romanized |
-|---|---|---|
-| Hello | こんにちは | Konnichiwa |
-| Thank you | ありがとう | Arigatō |
-| Excuse me | すみません | Sumimasen |
+| Flights | $2,000 |
+| Hotels | $620 |
+| Meals | $400 |
+| Activities | $60 |
+| Transport | $120 |
+| **Total** | $3,000 |
 
 ## Packing List
 
-- ☑ Light layers — 14–24°C range
-- ☑ Compact rain jacket — Rain on days 3, 5
-- ☑ Passport — Valid until Oct 2027
-- ☑ Portable WiFi — ¥900/day at airport
-- ☑ Clean socks — Shoe removal at temples
+- ☑ Lightweight waterproof jacket — Protects against occasional November rain while staying breathable
+- ☑ Comfortable walking shoes — Long days on foot exploring neighborhoods and temples
+- ☑ Warm layers (sweater or fleece) — Allows easy layering for cool mornings and evenings
+- ☐ Scarf — Adds warmth and style without bulk
+- ☐ Compact umbrella — Quick protection from sudden showers
+- ☑ Passport — Required for international travel and hotel check-in
+- ☐ Printed flight and hotel confirmations — Backup in case of phone or connectivity issues
+- ☑ Camera or mirrorless camera — High-quality images of street scenes and temples
+- ☑ Extra camera batteries and memory cards — Prevents missing shots during long days out
+- ☐ Portable power bank — Keeps phone and camera charged on the go
+- ☑ Personal medications — May be hard to find exact equivalents abroad
+- ☐ Basic first-aid kit — Covers minor blisters or aches from walking
+- ☑ Cash (Japanese yen) — Many small restaurants and temples prefer cash
+- ☑ Credit/debit cards — Backup payment method
+- ☑ Small daypack — Carries camera, water, and essentials comfortably
+- ☐ Reusable water bottle — Stays hydrated while walking
 
 
 ---
-*Generated by Wanderlisted · *
+*Generated by Wanderlisted · April 09, 2026 at 11:17*

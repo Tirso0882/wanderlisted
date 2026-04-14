@@ -6,7 +6,6 @@ Tests each node function in isolation by injecting mock dependencies
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langgraph.graph import END
 
@@ -23,11 +22,11 @@ from src.agent.stage4_graph import (
     budget_node,
     itinerary_node,
     synthesize_node,
+    render_handbook_node,
     # HITL gate nodes
     safety_review_node,
     budget_review_node,
     human_review_node,
-    # Routing functions
     route_after_triage,
     route_after_supervisor,
     route_after_parallel,
@@ -35,9 +34,6 @@ from src.agent.stage4_graph import (
     route_after_budget,
     route_after_budget_review,
     route_after_human_review,
-    # Constants
-    PARALLEL_AGENTS,
-    AGENT_TO_NODE,
 )
 
 
@@ -46,7 +42,12 @@ from src.agent.stage4_graph import (
 
 class TestBuildUserProfileContext:
     def test_empty_state(self):
-        state = {"messages": [], "destinations": [], "travel_style": "", "group_type": ""}
+        state = {
+            "messages": [],
+            "destinations": [],
+            "travel_style": "",
+            "group_type": "",
+        }
         assert build_user_profile_context(state) == ""
 
     def test_destinations_only(self):
@@ -129,7 +130,11 @@ class TestBuildContextMessages:
         # profile + context + original message
         assert len(result) == 3
         assert any("tokyo" in m.content for m in result if isinstance(m, SystemMessage))
-        assert any("Hotels results" in m.content for m in result if isinstance(m, SystemMessage))
+        assert any(
+            "Hotels results" in m.content
+            for m in result
+            if isinstance(m, SystemMessage)
+        )
 
     def test_skips_empty_agent_messages(self):
         state = {
@@ -392,7 +397,10 @@ class TestSynthesizeNode:
         mock_llm = AsyncMock()
         mock_llm.ainvoke.return_value = AIMessage(content="Based on earlier data...")
 
-        state = {"messages": [HumanMessage(content="summary?")], "itinerary_components": {}}
+        state = {
+            "messages": [HumanMessage(content="summary?")],
+            "itinerary_components": {},
+        }
         result = await synthesize_node(state, llm=mock_llm)
 
         assert result["current_agent"] == "synthesize"
@@ -407,7 +415,9 @@ class TestSafetyReviewNode:
         state = {
             "itinerary_components": {
                 "destination": {
-                    "messages": [AIMessage(content="Japan is very safe. Level 1 advisory.")],
+                    "messages": [
+                        AIMessage(content="Japan is very safe. Level 1 advisory.")
+                    ],
                 },
             },
             "safety_acknowledged": False,
@@ -443,8 +453,16 @@ class TestSafetyReviewNode:
         ]
         for text in danger_texts:
             safety_text = text.lower()
-            danger_keywords = ["do not travel", "level 4", "advisory level: red", "reconsider travel", "level 3"]
-            assert any(kw in safety_text for kw in danger_keywords), f"Missed danger: {text}"
+            danger_keywords = [
+                "do not travel",
+                "level 4",
+                "advisory level: red",
+                "reconsider travel",
+                "level 3",
+            ]
+            assert any(kw in safety_text for kw in danger_keywords), (
+                f"Missed danger: {text}"
+            )
 
 
 # ── Budget review node tests ────────────────────────────────────────────────
@@ -561,15 +579,24 @@ class TestRouteAfterSafetyReview:
         assert route_after_safety_review(state) == END
 
     def test_approved_with_budget_goes_to_budget(self):
-        state = {"hitl_action": "approved", "itinerary_components": {"routing": ["BudgetAgent"]}}
+        state = {
+            "hitl_action": "approved",
+            "itinerary_components": {"routing": ["BudgetAgent"]},
+        }
         assert route_after_safety_review(state) == "budget"
 
     def test_approved_with_itinerary_goes_to_itinerary(self):
-        state = {"hitl_action": "approved", "itinerary_components": {"routing": ["ItineraryAgent"]}}
+        state = {
+            "hitl_action": "approved",
+            "itinerary_components": {"routing": ["ItineraryAgent"]},
+        }
         assert route_after_safety_review(state) == "itinerary"
 
     def test_approved_no_sequential_ends(self):
-        state = {"hitl_action": "approved", "itinerary_components": {"routing": ["FlightsAgent"]}}
+        state = {
+            "hitl_action": "approved",
+            "itinerary_components": {"routing": ["FlightsAgent"]},
+        }
         assert route_after_safety_review(state) == END
 
 
@@ -584,11 +611,17 @@ class TestRouteAfterBudgetReview:
         assert route_after_budget_review(state) == END
 
     def test_approved_with_itinerary_routes(self):
-        state = {"hitl_action": "approved", "itinerary_components": {"routing": ["ItineraryAgent"]}}
+        state = {
+            "hitl_action": "approved",
+            "itinerary_components": {"routing": ["ItineraryAgent"]},
+        }
         assert route_after_budget_review(state) == "itinerary"
 
     def test_approved_no_itinerary_ends(self):
-        state = {"hitl_action": "approved", "itinerary_components": {"routing": ["BudgetAgent"]}}
+        state = {
+            "hitl_action": "approved",
+            "itinerary_components": {"routing": ["BudgetAgent"]},
+        }
         assert route_after_budget_review(state) == END
 
 
@@ -604,3 +637,393 @@ class TestRouteAfterHumanReview:
     def test_edited_renders(self):
         state = {"hitl_action": "edited"}
         assert route_after_human_review(state) == "render_handbook"
+
+
+# ── Safety review HITL interrupt paths ───────────────────────────────────────
+
+
+class TestSafetyReviewInterrupt:
+    @patch("src.agent.stage4_graph.interrupt")
+    async def test_dangerous_approved(self, mock_interrupt):
+        mock_interrupt.return_value = {"approved": True}
+        state = {
+            "itinerary_components": {
+                "destination": {
+                    "messages": [
+                        AIMessage(content="Level 4: Do not travel to this area")
+                    ],
+                },
+            },
+            "safety_acknowledged": False,
+        }
+        result = await safety_review_node(state)
+        assert result["hitl_action"] == "approved"
+        assert result["safety_acknowledged"] is True
+        mock_interrupt.assert_called_once()
+
+    @patch("src.agent.stage4_graph.interrupt")
+    async def test_dangerous_rejected(self, mock_interrupt):
+        mock_interrupt.return_value = {"approved": False}
+        state = {
+            "itinerary_components": {
+                "destination": {
+                    "messages": [AIMessage(content="Level 4: Do not travel")],
+                },
+            },
+            "safety_acknowledged": False,
+        }
+        result = await safety_review_node(state)
+        assert result["hitl_action"] == "rejected"
+        assert "cancelled" in result["messages"][0].content.lower()
+
+    @patch("src.agent.stage4_graph.interrupt")
+    async def test_reconsider_travel_triggers_interrupt(self, mock_interrupt):
+        mock_interrupt.return_value = {"approved": True}
+        state = {
+            "itinerary_components": {
+                "destination": {
+                    "messages": [
+                        AIMessage(content="Level 3: Reconsider travel advisory")
+                    ],
+                },
+            },
+            "safety_acknowledged": False,
+        }
+        result = await safety_review_node(state)
+        assert result["hitl_action"] == "approved"
+
+    async def test_tool_message_content_is_checked(self):
+        """ToolMessage content should also be scanned for danger keywords."""
+        state = {
+            "itinerary_components": {
+                "destination": {
+                    "messages": [
+                        ToolMessage(content="Safe to visit. Level 1.", tool_call_id="x")
+                    ],
+                },
+            },
+            "safety_acknowledged": False,
+        }
+        result = await safety_review_node(state)
+        # Level 1 is not dangerous
+        assert result["current_agent"] == "safety_review"
+        assert "hitl_action" not in result
+
+
+# ── Budget review HITL interrupt paths ───────────────────────────────────────
+
+
+class TestBudgetReviewInterrupt:
+    @patch("src.agent.stage4_graph.interrupt")
+    async def test_overspend_approved(self, mock_interrupt):
+        mock_interrupt.return_value = {"approved": True}
+        state = {
+            "itinerary_components": {
+                "budget_structured": {"total": 5000, "target_budget": 3000},
+            },
+            "messages": [HumanMessage(content="Plan my trip")],
+            "budget_adjustment_accepted": False,
+        }
+        result = await budget_review_node(state)
+        assert result["hitl_action"] == "approved"
+        assert result["budget_adjustment_accepted"] is True
+        mock_interrupt.assert_called_once()
+
+    @patch("src.agent.stage4_graph.interrupt")
+    async def test_overspend_approved_with_feedback(self, mock_interrupt):
+        mock_interrupt.return_value = {
+            "approved": True,
+            "feedback": "Use budget hotels",
+        }
+        state = {
+            "itinerary_components": {
+                "budget_structured": {"total": 4500, "target_budget": 3000},
+            },
+            "messages": [],
+            "budget_adjustment_accepted": False,
+        }
+        result = await budget_review_node(state)
+        assert result["hitl_action"] == "approved"
+        assert result["human_feedback"] == "Use budget hotels"
+
+    @patch("src.agent.stage4_graph.interrupt")
+    async def test_overspend_rejected(self, mock_interrupt):
+        mock_interrupt.return_value = {"approved": False, "feedback": "Too expensive"}
+        state = {
+            "itinerary_components": {
+                "budget_structured": {"total": 6000, "target_budget": 3000},
+            },
+            "messages": [],
+            "budget_adjustment_accepted": False,
+        }
+        result = await budget_review_node(state)
+        assert result["hitl_action"] == "rejected"
+        assert result["human_feedback"] == "Too expensive"
+        assert "adjustment" in result["messages"][0].content.lower()
+
+
+# ── Human review HITL interrupt paths ────────────────────────────────────────
+
+
+class TestHumanReviewInterrupt:
+    @patch("src.agent.stage4_graph.interrupt")
+    async def test_approved_no_feedback(self, mock_interrupt):
+        mock_interrupt.return_value = {"approved": True}
+        state = {
+            "itinerary_components": {
+                "flights": {"messages": [AIMessage(content="Flight found")]},
+                "itinerary": {"messages": [AIMessage(content="Day 1: Tokyo")]},
+            },
+        }
+        result = await human_review_node(state)
+        assert result["hitl_action"] == "approved"
+        assert result["current_agent"] == "human_review"
+
+    @patch("src.agent.stage4_graph.interrupt")
+    async def test_approved_with_feedback(self, mock_interrupt):
+        mock_interrupt.return_value = {
+            "approved": True,
+            "feedback": "Add more food stops",
+        }
+        state = {
+            "itinerary_components": {
+                "itinerary": {"messages": [AIMessage(content="Day 1: Arrive")]},
+            },
+        }
+        result = await human_review_node(state)
+        assert result["hitl_action"] == "edited"
+        assert result["human_feedback"] == "Add more food stops"
+        assert "Noted your feedback" in result["messages"][0].content
+
+    @patch("src.agent.stage4_graph.interrupt")
+    async def test_rejected(self, mock_interrupt):
+        mock_interrupt.return_value = {"approved": False}
+        state = {"itinerary_components": {}}
+        result = await human_review_node(state)
+        assert result["hitl_action"] == "rejected"
+        assert "cancelled" in result["messages"][0].content.lower()
+
+    @patch("src.agent.stage4_graph.interrupt")
+    async def test_builds_component_summary_in_interrupt(self, mock_interrupt):
+        mock_interrupt.return_value = {"approved": True}
+        state = {
+            "itinerary_components": {
+                "flights": {"messages": []},
+                "hotels": {"messages": []},
+                "restaurants": {"messages": []},
+                "activities": {"messages": []},
+                "destination": {"messages": []},
+                "transportation": {"messages": []},
+                "budget": {"messages": []},
+                "itinerary": {"messages": [AIMessage(content="Day 1 preview")]},
+            },
+        }
+        await human_review_node(state)
+        call_args = mock_interrupt.call_args[0][0]
+        assert len(call_args["components_available"]) == 8
+
+
+# ── Budget node structured extraction success path ───────────────────────────
+
+
+class TestBudgetNodeStructured:
+    async def test_extracts_structured_budget(self):
+        mock_llm = MagicMock()
+        mock_executor = AsyncMock()
+
+        # The executor receives enriched messages and appends its own
+        budget_msg = AIMessage(
+            content="Budget: $3,500 total. Flights $800, Hotels $1200."
+        )
+
+        async def _fake_invoke(input_dict):
+            return {"messages": input_dict["messages"] + [budget_msg]}
+
+        mock_executor.ainvoke = _fake_invoke
+
+        # Mock structured output extraction success
+        mock_structured = AsyncMock()
+        mock_budget = MagicMock()
+        mock_budget.model_dump.return_value = {
+            "flights": 800,
+            "accommodation": 1200,
+            "transport": 200,
+            "meals": 500,
+            "activities": 300,
+            "misc": 500,
+            "total": 3500,
+        }
+        mock_structured.ainvoke.return_value = mock_budget
+        mock_llm.with_structured_output.return_value = mock_structured
+
+        state = {
+            "messages": [HumanMessage(content="budget?")],
+            "itinerary_components": {"completed_agents": []},
+        }
+        result = await budget_node(state, llm=mock_llm, executor=mock_executor)
+
+        assert result["current_agent"] == "budget"
+        assert "budget_structured" in result["itinerary_components"]
+        assert result["itinerary_components"]["budget_structured"]["flights"] == 800
+
+
+# ── Render handbook node tests ───────────────────────────────────────────────
+
+
+class TestRenderHandbookNode:
+    def _mock_llm(self):
+        """Create a mock LLM that returns defaults for all structured extractions."""
+        mock = MagicMock()
+
+        async def _fake_ainvoke(msgs):
+            return mock._default_return
+
+        mock_structured = AsyncMock()
+        mock_structured.ainvoke = _fake_ainvoke
+
+        def _with_structured_output(model_cls, **kwargs):
+            # Return the default instance of whatever model is requested
+            mock._default_return = model_cls()
+            return mock_structured
+
+        mock.with_structured_output = _with_structured_output
+        return mock
+
+    async def test_empty_components_returns_no_data_message(self, monkeypatch):
+        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
+        mock_llm = self._mock_llm()
+        state = {
+            "messages": [HumanMessage(content="render")],
+            "itinerary_components": {},
+            "destinations": [],
+            "travel_style": "",
+            "group_type": "",
+            "dietary_restrictions": [],
+            "accessibility_needs": [],
+        }
+        result = await render_handbook_node(state, llm=mock_llm)
+        assert result["current_agent"] == "render_handbook"
+        assert "no agent data" in result["messages"][0].content.lower()
+
+    async def test_renders_handbook_with_agent_data(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
+        # Patch the renderer to write to tmp_path
+        monkeypatch.setattr(
+            "src.agent.stage4_graph.HandbookRenderer.write_outputs",
+            lambda self, handbook, output_dir="outputs": {
+                "html": tmp_path / "handbook.html",
+                "markdown": tmp_path / "handbook.md",
+                "json": tmp_path / "handbook.json",
+            },
+        )
+
+        mock_llm = self._mock_llm()
+        state = {
+            "messages": [HumanMessage(content="Plan Tokyo trip")],
+            "itinerary_components": {
+                "flights": {
+                    "messages": [AIMessage(content="Found JFK→NRT for $800")],
+                },
+                "hotels": {
+                    "messages": [AIMessage(content="Shinjuku hotel $120/night")],
+                },
+                "destination": {
+                    "messages": [AIMessage(content="Tokyo is safe. Level 1.")],
+                },
+                "restaurants": {
+                    "messages": [AIMessage(content="Ramen shop rated 4.8")],
+                },
+                "activities": {
+                    "messages": [AIMessage(content="Visit Senso-ji temple")],
+                },
+                "transportation": {
+                    "messages": [AIMessage(content="JR Pass recommended")],
+                },
+                "budget": {
+                    "messages": [AIMessage(content="Total: $3500")],
+                },
+                "itinerary": {
+                    "messages": [AIMessage(content="Day 1: Arrive Narita")],
+                },
+            },
+            "destinations": ["tokyo"],
+            "travel_style": "mid-range",
+            "group_type": "couple",
+            "dietary_restrictions": [],
+            "accessibility_needs": [],
+        }
+        result = await render_handbook_node(state, llm=mock_llm)
+        assert result["current_agent"] == "render_handbook"
+        assert "Handbook Generated" in result["messages"][0].content
+        assert "handbook_paths" in result
+
+    async def test_renders_with_budget_structured(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
+        monkeypatch.setattr(
+            "src.agent.stage4_graph.HandbookRenderer.write_outputs",
+            lambda self, handbook, output_dir="outputs": {
+                "html": tmp_path / "h.html",
+                "markdown": tmp_path / "h.md",
+                "json": tmp_path / "h.json",
+            },
+        )
+
+        mock_llm = self._mock_llm()
+        state = {
+            "messages": [HumanMessage(content="Plan trip")],
+            "itinerary_components": {
+                "flights": {
+                    "messages": [AIMessage(content="Flight data")],
+                },
+                "budget_structured": {
+                    "flights": 800,
+                    "accommodation": 1200,
+                    "transport": 200,
+                    "meals": 500,
+                    "activities": 300,
+                    "misc": 100,
+                    "total": 3100,
+                    "per_person": 1550,
+                    "summary": "Mid-range budget",
+                },
+            },
+            "destinations": ["paris"],
+            "travel_style": "mid-range",
+            "group_type": "",
+            "dietary_restrictions": [],
+            "accessibility_needs": [],
+        }
+        result = await render_handbook_node(state, llm=mock_llm)
+        assert result["current_agent"] == "render_handbook"
+        assert "handbook_paths" in result
+
+    async def test_renders_with_tool_messages(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
+        monkeypatch.setattr(
+            "src.agent.stage4_graph.HandbookRenderer.write_outputs",
+            lambda self, handbook, output_dir="outputs": {
+                "html": tmp_path / "h.html",
+                "markdown": tmp_path / "h.md",
+                "json": tmp_path / "h.json",
+            },
+        )
+
+        mock_llm = self._mock_llm()
+        state = {
+            "messages": [HumanMessage(content="Plan")],
+            "itinerary_components": {
+                "destination": {
+                    "messages": [
+                        ToolMessage(content="Safety data from API", tool_call_id="t1"),
+                        AIMessage(content="Tokyo is very safe"),
+                    ],
+                },
+            },
+            "destinations": ["tokyo"],
+            "travel_style": "",
+            "group_type": "",
+            "dietary_restrictions": [],
+            "accessibility_needs": [],
+        }
+        result = await render_handbook_node(state, llm=mock_llm)
+        assert result["current_agent"] == "render_handbook"

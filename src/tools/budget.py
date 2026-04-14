@@ -9,33 +9,15 @@ from langchain_core.tools import tool
 
 # Daily baselines per person in USD (mid-range)
 _REGION_BASELINES: dict[str, dict[str, float]] = {
-    "east asia": {
-        "meals": 40, "transport": 15, "activities": 20, "misc": 10
-    },
-    "southeast asia": {
-        "meals": 20, "transport": 8, "activities": 12, "misc": 8
-    },
-    "western europe": {
-        "meals": 55, "transport": 20, "activities": 25, "misc": 15
-    },
-    "eastern europe": {
-        "meals": 30, "transport": 10, "activities": 15, "misc": 8
-    },
-    "north america": {
-        "meals": 50, "transport": 25, "activities": 30, "misc": 15
-    },
-    "south america": {
-        "meals": 25, "transport": 10, "activities": 15, "misc": 8
-    },
-    "middle east": {
-        "meals": 40, "transport": 20, "activities": 20, "misc": 12
-    },
-    "oceania": {
-        "meals": 50, "transport": 22, "activities": 25, "misc": 15
-    },
-    "africa": {
-        "meals": 25, "transport": 15, "activities": 20, "misc": 10
-    },
+    "east asia": {"meals": 40, "transport": 15, "activities": 20, "misc": 10},
+    "southeast asia": {"meals": 20, "transport": 8, "activities": 12, "misc": 8},
+    "western europe": {"meals": 55, "transport": 20, "activities": 25, "misc": 15},
+    "eastern europe": {"meals": 30, "transport": 10, "activities": 15, "misc": 8},
+    "north america": {"meals": 50, "transport": 25, "activities": 30, "misc": 15},
+    "south america": {"meals": 25, "transport": 10, "activities": 15, "misc": 8},
+    "middle east": {"meals": 40, "transport": 20, "activities": 20, "misc": 12},
+    "oceania": {"meals": 50, "transport": 22, "activities": 25, "misc": 15},
+    "africa": {"meals": 25, "transport": 15, "activities": 20, "misc": 10},
 }
 
 _STYLE_MULTIPLIERS: dict[str, float] = {
@@ -73,10 +55,7 @@ def calculate_budget(
     baseline = _REGION_BASELINES.get(region_key)
     if not baseline:
         available = ", ".join(sorted(_REGION_BASELINES.keys()))
-        return (
-            f"Unknown region '{destination_region}'. "
-            f"Available regions: {available}"
-        )
+        return f"Unknown region '{destination_region}'. Available regions: {available}"
 
     multiplier = _STYLE_MULTIPLIERS.get(style_key, 1.0)
 
@@ -92,8 +71,12 @@ def calculate_budget(
     total_misc = daily_misc * duration_days * num_travelers
 
     grand_total = (
-        flight_cost + hotel_cost + total_meals
-        + total_transport + total_activities + total_misc
+        flight_cost
+        + hotel_cost
+        + total_meals
+        + total_transport
+        + total_activities
+        + total_misc
     )
 
     lines = [
@@ -105,14 +88,12 @@ def calculate_budget(
         f"{'  (not yet searched)' if flight_cost == 0 else ''}",
         f"  🏨 Hotels:       ${hotel_cost:>10,.2f}"
         f"{'  (not yet searched)' if hotel_cost == 0 else ''}",
-        f"  🍱 Meals:        ${total_meals:>10,.2f}"
-        f"  (${daily_meals:.0f}/person/day)",
+        f"  🍱 Meals:        ${total_meals:>10,.2f}  (${daily_meals:.0f}/person/day)",
         f"  🚅 Transport:    ${total_transport:>10,.2f}"
         f"  (${daily_transport:.0f}/person/day)",
         f"  🎟️  Activities:   ${total_activities:>10,.2f}"
         f"  (${daily_activities:.0f}/person/day)",
-        f"  🛍️  Misc:         ${total_misc:>10,.2f}"
-        f"  (${daily_misc:.0f}/person/day)",
+        f"  🛍️  Misc:         ${total_misc:>10,.2f}  (${daily_misc:.0f}/person/day)",
         f"  {'─' * 40}",
         f"  💰 TOTAL:        ${grand_total:>10,.2f}",
     ]

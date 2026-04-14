@@ -3,10 +3,11 @@
 import pytest
 from langchain_core.documents import Document
 
-from src.rag.chunker import DocumentChunker, SECTION_NAMES
+from src.rag.chunker import DocumentChunker
 
 
 # ── Fixtures ─────────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def chunker():
@@ -70,14 +71,13 @@ def markdown_header_doc():
 def plain_text_doc():
     """Document with no recognisable headings (e.g. raw PDF text)."""
     return Document(
-        page_content=(
-            "This is a long travel document without any headers. " * 30
-        ),
+        page_content=("This is a long travel document without any headers. " * 30),
         metadata={"source": "plain_travel.pdf"},
     )
 
 
 # ── Constructor ──────────────────────────────────────────────────────────
+
 
 class TestConstructor:
     def test_valid_init(self):
@@ -98,6 +98,7 @@ class TestConstructor:
 
 
 # ── Section-level splitting ──────────────────────────────────────────────
+
 
 class TestSectionSplitting:
     def test_wikivoyage_sections_detected(self, chunker, wikivoyage_doc):
@@ -132,6 +133,7 @@ class TestSectionSplitting:
 
 # ── Markdown header fallback ─────────────────────────────────────────────
 
+
 class TestMarkdownHeaderFallback:
     def test_markdown_headers_detected(self, chunker, markdown_header_doc):
         chunks = chunker.chunk_documents(markdown_header_doc)
@@ -145,6 +147,7 @@ class TestMarkdownHeaderFallback:
 
 # ── Recursive fallback ──────────────────────────────────────────────────
 
+
 class TestRecursiveFallback:
     def test_plain_text_chunked(self, chunker, plain_text_doc):
         chunks = chunker.chunk_documents(plain_text_doc)
@@ -157,6 +160,7 @@ class TestRecursiveFallback:
 
 # ── Input normalisation ─────────────────────────────────────────────────
 
+
 class TestInputNormalisation:
     def test_accepts_string(self, chunker):
         chunks = chunker.chunk_documents("Hello world. " * 100)
@@ -166,7 +170,9 @@ class TestInputNormalisation:
         chunks = chunker.chunk_documents(wikivoyage_doc)
         assert len(chunks) >= 1
 
-    def test_accepts_list_of_documents(self, chunker, wikivoyage_doc, markdown_header_doc):
+    def test_accepts_list_of_documents(
+        self, chunker, wikivoyage_doc, markdown_header_doc
+    ):
         chunks = chunker.chunk_documents([wikivoyage_doc, markdown_header_doc])
         sources = {c.metadata["source"] for c in chunks}
         assert "bangkok.md" in sources
@@ -182,15 +188,18 @@ class TestInputNormalisation:
 
 # ── Sub-splitting and merging ────────────────────────────────────────────
 
+
 class TestSubsplitAndMerge:
     def test_large_section_subsplit(self):
         """Sections > max_section_size should be sub-split at paragraph breaks."""
         chunker = DocumentChunker(max_section_size=300, min_chunk_size=50)
         # Build a big Eat section with paragraph breaks so sub-splitting can work
-        eat_paragraphs = "\n\n".join([
-            f"Paragraph {i}: This restaurant has amazing food and great service." 
-            for i in range(20)
-        ])
+        eat_paragraphs = "\n\n".join(
+            [
+                f"Paragraph {i}: This restaurant has amazing food and great service."
+                for i in range(20)
+            ]
+        )
         big_section = (
             "# Guide\n\n"
             "Understand\nThis is a wonderful travel destination with rich history and culture.\n\n"
@@ -209,7 +218,9 @@ class TestSubsplitAndMerge:
             "# Guide\n\nIntro.\n\n"
             "See\nA temple.\n\n"
             "Do\nA park.\n\n"
-            "Buy\nA market with many stalls selling local goods and souvenirs. " * 10 + "\n"
+            "Buy\nA market with many stalls selling local goods and souvenirs. "
+            * 10
+            + "\n"
         )
         doc = Document(page_content=small_sections, metadata={"source": "test.md"})
         chunks = chunker.chunk_documents(doc)
@@ -219,17 +230,25 @@ class TestSubsplitAndMerge:
 
 # ── Metadata completeness ───────────────────────────────────────────────
 
+
 class TestMetadataCompleteness:
     def test_all_required_metadata_keys(self, chunker, wikivoyage_doc):
         chunks = chunker.chunk_documents(wikivoyage_doc)
         required = {
-            "source", "destination", "section", "chunk_index",
-            "chunk_position", "chunk_method", "chunk_length",
-            "content_type", "processing_timestamp",
+            "source",
+            "destination",
+            "section",
+            "chunk_index",
+            "chunk_position",
+            "chunk_method",
+            "chunk_length",
+            "content_type",
+            "processing_timestamp",
         }
         for chunk in chunks:
-            assert required.issubset(chunk.metadata.keys()), \
+            assert required.issubset(chunk.metadata.keys()), (
                 f"Missing keys: {required - set(chunk.metadata.keys())}"
+            )
 
     def test_chunk_position_format(self, chunker, wikivoyage_doc):
         chunks = chunker.chunk_documents(wikivoyage_doc)

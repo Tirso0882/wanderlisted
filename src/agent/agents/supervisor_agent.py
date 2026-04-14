@@ -1,18 +1,23 @@
 """Supervisor agent that routes queries to specialized sub-agents via LLM."""
 
-from typing import Optional
-
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
 from src.agent.agents.base import SpecializedAgent
 from src.agent.prompts import SUPERVISOR_SYSTEM_PROMPT
 
-VALID_AGENT_NAMES = frozenset({
-    "FlightsAgent", "HotelsAgent", "DestinationAgent", "BudgetAgent",
-    "RestaurantsAgent", "ActivitiesAgent", "TransportationAgent",
-    "ItineraryAgent",
-})
+VALID_AGENT_NAMES = frozenset(
+    {
+        "FlightsAgent",
+        "HotelsAgent",
+        "DestinationAgent",
+        "BudgetAgent",
+        "RestaurantsAgent",
+        "ActivitiesAgent",
+        "TransportationAgent",
+        "ItineraryAgent",
+    }
+)
 
 
 class RoutingDecision(BaseModel):
@@ -65,7 +70,9 @@ class SupervisorAgent(SpecializedAgent):
     """Supervisor agent that routes user queries to appropriate specialized agents."""
 
     name = "SupervisorAgent"
-    description = "Coordinator that routes travel planning queries to specialized sub-agents"
+    description = (
+        "Coordinator that routes travel planning queries to specialized sub-agents"
+    )
 
     @property
     def tools(self):
@@ -77,7 +84,9 @@ class SupervisorAgent(SpecializedAgent):
         return SUPERVISOR_SYSTEM_PROMPT
 
     async def aget_routing_decision(
-        self, user_query: str, existing_data_summary: str = "",
+        self,
+        user_query: str,
+        existing_data_summary: str = "",
     ) -> RoutingDecision:
         """Use the LLM with structured output to classify the query.
 

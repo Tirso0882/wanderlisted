@@ -112,6 +112,5 @@ def get_embeddings(**overrides) -> Embeddings:
         return OpenAIEmbeddings(**(defaults | overrides))
 
     raise ValueError(
-        f"Unknown EMBEDDINGS_PROVIDER: {provider!r}. "
-        f"Supported: {_SUPPORTED_EMBEDDINGS}"
+        f"Unknown EMBEDDINGS_PROVIDER: {provider!r}. Supported: {_SUPPORTED_EMBEDDINGS}"
     )

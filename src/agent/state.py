@@ -8,14 +8,16 @@ class TravelAgentState(MessagesState):
 
     session_id: str = ""
     current_agent: str = "supervisor"  # Track which agent is active
-    itinerary_components: dict[str, Any] = {}  # Accumulated results (flights, hotels, etc.)
+    itinerary_components: dict[
+        str, Any
+    ] = {}  # Accumulated results (flights, hotels, etc.)
 
     # Confirmed destination cities — used to scope RAG metadata filtering
     destinations: list[str] = []
 
     # User profiling — passed to every subagent for personalized results
-    travel_style: str = ""          # e.g. "budget", "mid-range", "luxury"
-    group_type: str = ""            # e.g. "solo", "couple", "family", "friends"
+    travel_style: str = ""  # e.g. "budget", "mid-range", "luxury"
+    group_type: str = ""  # e.g. "solo", "couple", "family", "friends"
     accessibility_needs: list[str] = []  # e.g. ["wheelchair", "limited mobility"]
     dietary_restrictions: list[str] = []  # e.g. ["vegetarian", "halal", "gluten-free"]
 
@@ -23,7 +25,7 @@ class TravelAgentState(MessagesState):
     handbook_paths: dict[str, str] = {}  # {"html": "outputs/handbook.html", ...}
 
     # HITL (Human-in-the-Loop) — Phase 4
-    human_feedback: str = ""                # Free-text feedback from user
-    hitl_action: str = ""                   # Last HITL action: "approved", "rejected", "edited"
-    safety_acknowledged: bool = False       # User acknowledged safety advisory
+    human_feedback: str = ""  # Free-text feedback from user
+    hitl_action: str = ""  # Last HITL action: "approved", "rejected", "edited"
+    safety_acknowledged: bool = False  # User acknowledged safety advisory
     budget_adjustment_accepted: bool = False  # User accepted budget adjustment

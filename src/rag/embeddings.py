@@ -10,7 +10,7 @@ Wraps any LangChain ``Embeddings`` backend with:
 
 import os
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 from langchain_core.embeddings import Embeddings as BaseEmbeddings
@@ -93,6 +93,7 @@ class EmbeddingGenerator:
         else:
             # Provider-agnostic: use the central factory
             from src.agent.llm import get_embeddings
+
             self._model = get_embeddings()
             self._batch_size = batch_size
             self._max_retries = max_retries
@@ -101,6 +102,7 @@ class EmbeddingGenerator:
     @staticmethod
     def _build_azure_model(config: EmbeddingConfig) -> BaseEmbeddings:
         from langchain_openai import AzureOpenAIEmbeddings
+
         return AzureOpenAIEmbeddings(
             azure_deployment=config.deployment,
             azure_endpoint=config.endpoint,
@@ -145,7 +147,9 @@ class EmbeddingGenerator:
         )
         return all_vectors
 
-    def _embed_batch_with_retry(self, texts: list[str]) -> tuple[list[list[float]], int]:
+    def _embed_batch_with_retry(
+        self, texts: list[str]
+    ) -> tuple[list[list[float]], int]:
         """Embed one batch with exponential backoff on failure."""
         retries = 0
         for attempt in range(self._max_retries):
@@ -159,7 +163,7 @@ class EmbeddingGenerator:
                 return vectors, retries
             except Exception as e:
                 retries += 1
-                delay = self._retry_delay * (2 ** attempt)
+                delay = self._retry_delay * (2**attempt)
                 self.logger.warning(
                     f"  Embed attempt {attempt + 1} failed: {e} — "
                     f"retrying in {delay:.1f}s"
@@ -167,9 +171,7 @@ class EmbeddingGenerator:
                 if attempt < self._max_retries - 1:
                     time.sleep(delay)
                 else:
-                    self.logger.error(
-                        f"  Failed after {self._max_retries} attempts"
-                    )
+                    self.logger.error(f"  Failed after {self._max_retries} attempts")
                     raise
         # unreachable but keeps mypy happy
         raise RuntimeError("embed retry loop exited unexpectedly")

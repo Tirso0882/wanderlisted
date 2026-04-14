@@ -103,10 +103,7 @@ async def search_flights(
 
     offers = data.get("data", [])
     if not offers:
-        return (
-            f"No flights found from {origin} to {destination} "
-            f"on {departure_date}."
-        )
+        return f"No flights found from {origin} to {destination} on {departure_date}."
 
     results = [f"Top {len(offers)} flights from {origin} → {destination}:\n"]
 
@@ -155,9 +152,12 @@ async def search_flights(
             ret_arr_airport = ret_segs[-1]["arrival"]["iataCode"]
             ret_dep = ret_segs[0]["departure"]["at"]
             ret_arr = ret_segs[-1]["arrival"]["at"]
-            ret_dur = ret.get("duration", "N/A").replace(
-                "PT", ""
-            ).replace("H", "h ").replace("M", "m")
+            ret_dur = (
+                ret.get("duration", "N/A")
+                .replace("PT", "")
+                .replace("H", "h ")
+                .replace("M", "m")
+            )
             ret_stops = len(ret_segs) - 1
             results.append(
                 f"     Return: {ret_dep_airport} → {ret_arr_airport}\n"

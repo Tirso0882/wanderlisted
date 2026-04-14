@@ -1,6 +1,6 @@
 """Tests for LangSmith evaluators in src/evaluation/evaluators.py."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from src.evaluation.evaluators import (
     correct_destination,
@@ -230,7 +230,10 @@ async def test_non_empty_response_error():
 async def test_non_empty_response_error_later_in_text():
     """Error keyword after first 50 chars should still pass."""
     result = non_empty_response(
-        outputs={"output": "Here is a great travel plan. " * 3 + "Also handle errors gracefully."},
+        outputs={
+            "output": "Here is a great travel plan. " * 3
+            + "Also handle errors gracefully."
+        },
     )
     assert result["score"] == 1
 
@@ -295,6 +298,7 @@ async def test_calibration_report_mixed():
 
 # ── RAG Evaluators (mock LLM calls) ─────────────────────────────────────────
 
+
 def _mock_rag_judge(score: float, reasoning: str = "test"):
     """Create a mock for _ask_rag_judge returning a fixed score."""
     return patch(
@@ -331,7 +335,12 @@ async def test_context_entity_recall_returns_correct_key():
         result = context_entity_recall(
             inputs={},
             reference_outputs={"reference": "Wat Pho and Wat Arun are top temples."},
-            outputs={"retrieved_contexts": ["Wat Pho is the oldest temple.", "Wat Arun overlooks the river."]},
+            outputs={
+                "retrieved_contexts": [
+                    "Wat Pho is the oldest temple.",
+                    "Wat Arun overlooks the river.",
+                ]
+            },
         )
     assert result["key"] == "context_entity_recall"
     assert result["score"] == 1.0
@@ -344,7 +353,10 @@ async def test_noise_sensitivity_returns_correct_key():
             reference_outputs={"reference": "Sushi, ramen, tempura."},
             outputs={
                 "output": "Top foods include sushi and ramen.",
-                "retrieved_contexts": ["Tokyo ramen is famous.", "Paris has the Eiffel Tower."],
+                "retrieved_contexts": [
+                    "Tokyo ramen is famous.",
+                    "Paris has the Eiffel Tower.",
+                ],
             },
         )
     assert result["key"] == "noise_sensitivity"
@@ -367,7 +379,9 @@ async def test_faithfulness_returns_correct_key():
             inputs={},
             outputs={
                 "output": "Pad Thai costs 40-60 baht from street vendors.",
-                "retrieved_contexts": ["Pad Thai costs 40-60 baht at street stalls in Bangkok."],
+                "retrieved_contexts": [
+                    "Pad Thai costs 40-60 baht at street stalls in Bangkok."
+                ],
             },
         )
     assert result["key"] == "faithfulness"

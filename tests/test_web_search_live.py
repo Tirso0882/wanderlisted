@@ -21,9 +21,11 @@ def _require_tavily_key():
 
 class TestSearchWebLive:
     async def test_basic_travel_query(self):
-        result = await search_web.ainvoke({
-            "query": "best time to visit Tokyo 2026",
-        })
+        result = await search_web.ainvoke(
+            {
+                "query": "best time to visit Tokyo 2026",
+            }
+        )
 
         assert len(result) > 50
         assert "No relevant web results" not in result
@@ -31,19 +33,23 @@ class TestSearchWebLive:
         assert "http" in result
 
     async def test_destination_scoped_query(self):
-        result = await search_web.ainvoke({
-            "query": "festivals and events April",
-            "destinations": ["barcelona"],
-        })
+        result = await search_web.ainvoke(
+            {
+                "query": "festivals and events April",
+                "destinations": ["barcelona"],
+            }
+        )
 
         assert len(result) > 50
         assert "No relevant web results" not in result
 
     async def test_news_topic(self):
-        result = await search_web.ainvoke({
-            "query": "Japan travel advisory",
-            "topic": "news",
-        })
+        result = await search_web.ainvoke(
+            {
+                "query": "Japan travel advisory",
+                "topic": "news",
+            }
+        )
 
         assert len(result) > 20
         assert "http" in result
@@ -51,10 +57,12 @@ class TestSearchWebLive:
 
 class TestSearchHiddenGemsLive:
     async def test_hidden_gems_with_interests(self):
-        result = await search_hidden_gems.ainvoke({
-            "destination": "Tokyo",
-            "interests": ["food", "street art"],
-        })
+        result = await search_hidden_gems.ainvoke(
+            {
+                "destination": "Tokyo",
+                "interests": ["food", "street art"],
+            }
+        )
 
         assert len(result) > 50
         assert "Hidden gems" in result or "http" in result
@@ -62,9 +70,11 @@ class TestSearchHiddenGemsLive:
 
     async def test_hidden_gems_uncovered_destination(self):
         """Test a destination that likely has NO curated RAG guide."""
-        result = await search_hidden_gems.ainvoke({
-            "destination": "Marrakech",
-        })
+        result = await search_hidden_gems.ainvoke(
+            {
+                "destination": "Marrakech",
+            }
+        )
 
         assert len(result) > 50
         assert "No hidden gem recommendations" not in result

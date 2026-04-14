@@ -35,12 +35,12 @@ Usage:
 import asyncio
 import os
 import re
-from typing import Any, Literal
+from typing import Any
 
 from langchain.agents import create_agent
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langgraph.graph import StateGraph, START, END
-from langgraph.types import interrupt, Command
+from langgraph.types import interrupt
 from langsmith import traceable
 
 from src.agent.llm import get_llm
@@ -48,7 +48,6 @@ from src.agent.state import TravelAgentState
 from src.agent.prompts import (
     SYNTHESIZE_SYSTEM_PROMPT,
     TRIAGE_SYSTEM_PROMPT,
-    HANDBOOK_ASSEMBLY_PROMPT,
 )
 from src.models import BudgetBreakdown
 from src.models.itinerary import (
@@ -78,13 +77,24 @@ import config as app_config
 # ── Routing lists from config (with sensible defaults) ────────────────────
 _routing_cfg = app_config.get("routing") or {}
 
-PARALLEL_AGENTS = _routing_cfg.get("parallel_agents", [
-    "FlightsAgent", "HotelsAgent", "DestinationAgent",
-    "RestaurantsAgent", "ActivitiesAgent", "TransportationAgent",
-])
-SEQUENTIAL_AGENTS = _routing_cfg.get("sequential_agents", [
-    "BudgetAgent", "ItineraryAgent",
-])
+PARALLEL_AGENTS = _routing_cfg.get(
+    "parallel_agents",
+    [
+        "FlightsAgent",
+        "HotelsAgent",
+        "DestinationAgent",
+        "RestaurantsAgent",
+        "ActivitiesAgent",
+        "TransportationAgent",
+    ],
+)
+SEQUENTIAL_AGENTS = _routing_cfg.get(
+    "sequential_agents",
+    [
+        "BudgetAgent",
+        "ItineraryAgent",
+    ],
+)
 
 ALL_AGENTS = PARALLEL_AGENTS + SEQUENTIAL_AGENTS
 
@@ -118,7 +128,9 @@ def build_user_profile_context(state: TravelAgentState) -> str:
     if state.get("accessibility_needs"):
         parts.append(f"Accessibility needs: {', '.join(state['accessibility_needs'])}")
     if state.get("dietary_restrictions"):
-        parts.append(f"Dietary restrictions: {', '.join(state['dietary_restrictions'])}")
+        parts.append(
+            f"Dietary restrictions: {', '.join(state['dietary_restrictions'])}"
+        )
     if not parts:
         return ""
     return "USER PROFILE:\n" + "\n".join(parts)
@@ -148,8 +160,7 @@ def build_context_messages(state: TravelAgentState) -> list:
         if key in components:
             agent_msgs = components[key].get("messages", [])
             summary = " ".join(
-                m.content for m in agent_msgs
-                if isinstance(m, AIMessage) and m.content
+                m.content for m in agent_msgs if isinstance(m, AIMessage) and m.content
             )
             if summary:
                 parts.append(f"[{label}]\n{summary}")
@@ -164,8 +175,7 @@ def build_context_messages(state: TravelAgentState) -> list:
     if parts:
         context = (
             "Here is what specialist agents found. "
-            "Use this context to give a more informed answer.\n\n"
-            + "\n\n".join(parts)
+            "Use this context to give a more informed answer.\n\n" + "\n\n".join(parts)
         )
         msgs.insert(0, SystemMessage(content=context))
     return msgs
@@ -185,8 +195,12 @@ async def run_agent(
     executor = executors[agent_name]
     enriched = build_context_messages(state)
     result = await executor.ainvoke({"messages": enriched})
-    new_msgs = result["messages"][len(enriched):]
-    return {"messages": new_msgs, "data_key": AGENT_TO_NODE[agent_name], "result": result}
+    new_msgs = result["messages"][len(enriched) :]
+    return {
+        "messages": new_msgs,
+        "data_key": AGENT_TO_NODE[agent_name],
+        "result": result,
+    }
 
 
 # ── HITL gate nodes (module-level, testable) ──────────────────────────────
@@ -210,26 +224,38 @@ async def safety_review_node(state: TravelAgentState) -> dict:
             safety_text += content.lower()
 
     # Check for dangerous advisory levels
-    danger_keywords = ["do not travel", "level 4", "advisory level: red", "reconsider travel", "level 3"]
+    danger_keywords = [
+        "do not travel",
+        "level 4",
+        "advisory level: red",
+        "reconsider travel",
+        "level 3",
+    ]
     is_dangerous = any(kw in safety_text for kw in danger_keywords)
 
     if is_dangerous and not state.get("safety_acknowledged"):
         # Interrupt — user must acknowledge
-        decision = interrupt({
-            "type": "safety_warning",
-            "message": (
-                "⚠️ SAFETY ADVISORY: The destination has a high-risk travel advisory. "
-                "Review the safety information and decide whether to proceed."
-            ),
-            "action_required": "Respond with {'approved': true} to proceed or {'approved': false} to cancel.",
-        })
+        decision = interrupt(
+            {
+                "type": "safety_warning",
+                "message": (
+                    "⚠️ SAFETY ADVISORY: The destination has a high-risk travel advisory. "
+                    "Review the safety information and decide whether to proceed."
+                ),
+                "action_required": "Respond with {'approved': true} to proceed or {'approved': false} to cancel.",
+            }
+        )
 
         if not decision.get("approved", False):
             return {
-                "messages": [AIMessage(content=(
-                    "🛑 Trip planning cancelled due to safety advisory. "
-                    "Consider alternative destinations or check back when conditions improve."
-                ))],
+                "messages": [
+                    AIMessage(
+                        content=(
+                            "🛑 Trip planning cancelled due to safety advisory. "
+                            "Consider alternative destinations or check back when conditions improve."
+                        )
+                    )
+                ],
                 "current_agent": "safety_review",
                 "hitl_action": "rejected",
             }
@@ -270,33 +296,39 @@ async def budget_review_node(state: TravelAgentState) -> dict:
 
     overspend = total_estimated - target_budget
     if overspend > 500 and not state.get("budget_adjustment_accepted"):
-        decision = interrupt({
-            "type": "budget_warning",
-            "message": (
-                f"💰 BUDGET ALERT: Your estimated trip cost (${total_estimated:,.0f}) "
-                f"exceeds your target budget (${target_budget:,.0f}) by ${overspend:,.0f}."
-            ),
-            "estimated_total": total_estimated,
-            "target_budget": target_budget,
-            "overspend": overspend,
-            "suggestions": [
-                "Switch to budget hotels to save ~20%",
-                "Reduce trip by 1-2 days",
-                "Choose economy flights",
-                "Cut optional activities",
-            ],
-            "action_required": (
-                "Respond with {'approved': true} to proceed as-is, "
-                "or {'approved': true, 'feedback': 'your adjustments'} to adjust."
-            ),
-        })
+        decision = interrupt(
+            {
+                "type": "budget_warning",
+                "message": (
+                    f"💰 BUDGET ALERT: Your estimated trip cost (${total_estimated:,.0f}) "
+                    f"exceeds your target budget (${target_budget:,.0f}) by ${overspend:,.0f}."
+                ),
+                "estimated_total": total_estimated,
+                "target_budget": target_budget,
+                "overspend": overspend,
+                "suggestions": [
+                    "Switch to budget hotels to save ~20%",
+                    "Reduce trip by 1-2 days",
+                    "Choose economy flights",
+                    "Cut optional activities",
+                ],
+                "action_required": (
+                    "Respond with {'approved': true} to proceed as-is, "
+                    "or {'approved': true, 'feedback': 'your adjustments'} to adjust."
+                ),
+            }
+        )
 
         if not decision.get("approved", False):
             return {
-                "messages": [AIMessage(content=(
-                    "🔄 Budget adjustment requested. Please provide updated "
-                    "budget preferences and I'll re-plan accordingly."
-                ))],
+                "messages": [
+                    AIMessage(
+                        content=(
+                            "🔄 Budget adjustment requested. Please provide updated "
+                            "budget preferences and I'll re-plan accordingly."
+                        )
+                    )
+                ],
                 "current_agent": "budget_review",
                 "hitl_action": "rejected",
                 "human_feedback": decision.get("feedback", ""),
@@ -347,24 +379,30 @@ async def human_review_node(state: TravelAgentState) -> dict:
             itinerary_preview += m.content[:2000]
             break
 
-    decision = interrupt({
-        "type": "itinerary_review",
-        "message": "📋 Your travel plan is ready for review before generating the final handbook.",
-        "components_available": summary_parts,
-        "itinerary_preview": itinerary_preview[:2000],
-        "action_required": (
-            "Respond with {'approved': true} to generate the handbook, "
-            "{'approved': true, 'feedback': 'changes...'} to proceed with notes, "
-            "or {'approved': false} to cancel."
-        ),
-    })
+    decision = interrupt(
+        {
+            "type": "itinerary_review",
+            "message": "📋 Your travel plan is ready for review before generating the final handbook.",
+            "components_available": summary_parts,
+            "itinerary_preview": itinerary_preview[:2000],
+            "action_required": (
+                "Respond with {'approved': true} to generate the handbook, "
+                "{'approved': true, 'feedback': 'changes...'} to proceed with notes, "
+                "or {'approved': false} to cancel."
+            ),
+        }
+    )
 
     if not decision.get("approved", False):
         return {
-            "messages": [AIMessage(content=(
-                "📝 Handbook generation cancelled. Let me know what you'd like to change "
-                "and I'll adjust the itinerary."
-            ))],
+            "messages": [
+                AIMessage(
+                    content=(
+                        "📝 Handbook generation cancelled. Let me know what you'd like to change "
+                        "and I'll adjust the itinerary."
+                    )
+                )
+            ],
             "current_agent": "human_review",
             "hitl_action": "rejected",
             "human_feedback": decision.get("feedback", ""),
@@ -373,7 +411,11 @@ async def human_review_node(state: TravelAgentState) -> dict:
     feedback = decision.get("feedback", "")
     if feedback:
         return {
-            "messages": [AIMessage(content=f"📝 Noted your feedback: {feedback}. Generating handbook with adjustments.")],
+            "messages": [
+                AIMessage(
+                    content=f"📝 Noted your feedback: {feedback}. Generating handbook with adjustments."
+                )
+            ],
             "current_agent": "human_review",
             "hitl_action": "edited",
             "human_feedback": feedback,
@@ -393,36 +435,44 @@ async def triage_node(state: TravelAgentState, *, llm) -> dict:
     """Lightweight classifier: decide if the query needs the full pipeline (deep)
     or can be answered directly (shallow)."""
     last_message = state["messages"][-1]
-    response = await llm.ainvoke([
-        SystemMessage(content=TRIAGE_SYSTEM_PROMPT),
-        HumanMessage(content=last_message.content),
-    ])
+    response = await llm.ainvoke(
+        [
+            SystemMessage(content=TRIAGE_SYSTEM_PROMPT),
+            HumanMessage(content=last_message.content),
+        ]
+    )
     classification = response.content.strip().lower()
     # Default to deep if the LLM returns anything unexpected
     route = "shallow" if classification == "shallow" else "deep"
     return {"current_agent": f"triage:{route}"}
 
 
-@traceable(run_type="chain", name="shallow_reply_node", tags=["wanderlisted", "shallow"])
+@traceable(
+    run_type="chain", name="shallow_reply_node", tags=["wanderlisted", "shallow"]
+)
 async def shallow_reply_node(state: TravelAgentState, *, llm) -> dict:
     """Answer simple queries (greetings, confirmations, clarifications)
     without invoking the supervisor or any specialist agents."""
     enriched = build_context_messages(state)
-    response = await llm.ainvoke([
-        SystemMessage(
-            content=(
-                "You are a friendly travel planning assistant called Wanderlisted. "
-                "Answer the user's casual message briefly. If they seem to want "
-                "travel planning help, invite them to ask about destinations, "
-                "flights, hotels, activities, or budgets."
+    response = await llm.ainvoke(
+        [
+            SystemMessage(
+                content=(
+                    "You are a friendly travel planning assistant called Wanderlisted. "
+                    "Answer the user's casual message briefly. If they seem to want "
+                    "travel planning help, invite them to ask about destinations, "
+                    "flights, hotels, activities, or budgets."
+                ),
             ),
-        ),
-        *enriched,
-    ])
+            *enriched,
+        ]
+    )
     return {"messages": [response], "current_agent": "shallow_reply"}
 
 
-@traceable(run_type="chain", name="supervisor_node", tags=["wanderlisted", "supervisor"])
+@traceable(
+    run_type="chain", name="supervisor_node", tags=["wanderlisted", "supervisor"]
+)
 async def supervisor_node(state: TravelAgentState, *, supervisor_agent) -> dict:
     """Use the LLM to classify the query and decide which specialists to invoke."""
     components = state.get("itinerary_components", {})
@@ -455,7 +505,8 @@ async def supervisor_node(state: TravelAgentState, *, supervisor_agent) -> dict:
 
     last_message = state["messages"][-1]
     decision = await supervisor_agent.aget_routing_decision(
-        last_message.content, existing_summary,
+        last_message.content,
+        existing_summary,
     )
 
     # Ensure ItineraryAgent is always included when BudgetAgent is routed
@@ -467,7 +518,9 @@ async def supervisor_node(state: TravelAgentState, *, supervisor_agent) -> dict:
     new_destinations = decision.destinations or state.get("destinations", [])
     new_travel_style = decision.travel_style or state.get("travel_style", "")
     new_group_type = decision.group_type or state.get("group_type", "")
-    new_accessibility = decision.accessibility_needs or state.get("accessibility_needs", [])
+    new_accessibility = decision.accessibility_needs or state.get(
+        "accessibility_needs", []
+    )
     new_dietary = decision.dietary_restrictions or state.get("dietary_restrictions", [])
 
     return {
@@ -486,7 +539,9 @@ async def supervisor_node(state: TravelAgentState, *, supervisor_agent) -> dict:
     }
 
 
-@traceable(run_type="chain", name="parallel_dispatch_node", tags=["wanderlisted", "parallel"])
+@traceable(
+    run_type="chain", name="parallel_dispatch_node", tags=["wanderlisted", "parallel"]
+)
 async def parallel_dispatch_node(state: TravelAgentState, *, executors: dict) -> dict:
     """Run all requested parallel agents concurrently, then return merged results."""
     components = state.get("itinerary_components", {})
@@ -538,7 +593,7 @@ async def budget_node(state: TravelAgentState, *, llm, executor) -> dict:
     """Sequential budget node — runs budget agent and extracts structured data."""
     enriched = build_context_messages(state)
     result = await executor.ainvoke({"messages": enriched})
-    new_msgs = result["messages"][len(enriched):]
+    new_msgs = result["messages"][len(enriched) :]
     components = state.get("itinerary_components", {})
 
     # Extract structured budget from the agent's free-text output
@@ -549,14 +604,16 @@ async def budget_node(state: TravelAgentState, *, llm, executor) -> dict:
     if budget_text:
         try:
             structured_llm = llm.with_structured_output(BudgetBreakdown)
-            budget_data = await structured_llm.ainvoke([
-                SystemMessage(
-                    content="Extract the budget breakdown from the following text. "
-                    "Return all monetary amounts in the currency mentioned. "
-                    "If a field is not mentioned, leave it as 0."
-                ),
-                HumanMessage(content=budget_text),
-            ])
+            budget_data = await structured_llm.ainvoke(
+                [
+                    SystemMessage(
+                        content="Extract the budget breakdown from the following text. "
+                        "Return all monetary amounts in the currency mentioned. "
+                        "If a field is not mentioned, leave it as 0."
+                    ),
+                    HumanMessage(content=budget_text),
+                ]
+            )
         except Exception:
             pass  # Fall back to unstructured — budget_data stays None
 
@@ -567,7 +624,8 @@ async def budget_node(state: TravelAgentState, *, llm, executor) -> dict:
             **components,
             "budget": result,
             **({"budget_structured": budget_data.model_dump()} if budget_data else {}),
-            "completed_agents": components.get("completed_agents", []) + ["BudgetAgent"],
+            "completed_agents": components.get("completed_agents", [])
+            + ["BudgetAgent"],
         },
     }
 
@@ -577,7 +635,7 @@ async def itinerary_node(state: TravelAgentState, *, executor) -> dict:
     """Sequential itinerary node — assembles itinerary from prior agent data."""
     enriched = build_context_messages(state)
     result = await executor.ainvoke({"messages": enriched})
-    new_msgs = result["messages"][len(enriched):]
+    new_msgs = result["messages"][len(enriched) :]
     components = state.get("itinerary_components", {})
     return {
         "messages": new_msgs,
@@ -585,12 +643,15 @@ async def itinerary_node(state: TravelAgentState, *, executor) -> dict:
         "itinerary_components": {
             **components,
             "itinerary": result,
-            "completed_agents": components.get("completed_agents", []) + ["ItineraryAgent"],
+            "completed_agents": components.get("completed_agents", [])
+            + ["ItineraryAgent"],
         },
     }
 
 
-@traceable(run_type="chain", name="render_handbook_node", tags=["wanderlisted", "render"])
+@traceable(
+    run_type="chain", name="render_handbook_node", tags=["wanderlisted", "render"]
+)
 async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
     """Extract structured data from all agent outputs via per-section LLM
     extractions, post-process photo URLs and route maps, then render the
@@ -598,7 +659,11 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
     from datetime import datetime
     from pydantic import BaseModel, Field as PydanticField
     from src.agent.renderer import _pick_palette, _get_season
-    from src.tools.google_maps import places_photo_url, directions_embed_url, lookup_place_photo
+    from src.tools.google_maps import (
+        places_photo_url,
+        directions_embed_url,
+        lookup_place_photo,
+    )
 
     components = state.get("itinerary_components", {})
 
@@ -623,31 +688,45 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
     budget_text = _agent_text("budget")
     itinerary_text = _agent_text("itinerary")
 
-    all_text = "\n\n".join(filter(None, [
-        f"[FLIGHTS]\n{flights_text}" if flights_text else "",
-        f"[HOTELS]\n{hotels_text}" if hotels_text else "",
-        f"[DESTINATION]\n{destination_text}" if destination_text else "",
-        f"[RESTAURANTS]\n{restaurants_text}" if restaurants_text else "",
-        f"[ACTIVITIES]\n{activities_text}" if activities_text else "",
-        f"[TRANSPORTATION]\n{transportation_text}" if transportation_text else "",
-        f"[BUDGET]\n{budget_text}" if budget_text else "",
-        f"[ITINERARY]\n{itinerary_text}" if itinerary_text else "",
-    ]))
+    all_text = "\n\n".join(
+        filter(
+            None,
+            [
+                f"[FLIGHTS]\n{flights_text}" if flights_text else "",
+                f"[HOTELS]\n{hotels_text}" if hotels_text else "",
+                f"[DESTINATION]\n{destination_text}" if destination_text else "",
+                f"[RESTAURANTS]\n{restaurants_text}" if restaurants_text else "",
+                f"[ACTIVITIES]\n{activities_text}" if activities_text else "",
+                f"[TRANSPORTATION]\n{transportation_text}"
+                if transportation_text
+                else "",
+                f"[BUDGET]\n{budget_text}" if budget_text else "",
+                f"[ITINERARY]\n{itinerary_text}" if itinerary_text else "",
+            ],
+        )
+    )
 
     # Debug: log text sizes for each section
     from custom_logging import AppLogger as _AL
+
     _render_log = _AL(logger_name="agent.render_handbook", level="DEBUG")
     for _sec_name, _sec_text in [
-        ("flights", flights_text), ("hotels", hotels_text),
-        ("destination", destination_text), ("restaurants", restaurants_text),
-        ("activities", activities_text), ("transportation", transportation_text),
-        ("budget", budget_text), ("itinerary", itinerary_text),
+        ("flights", flights_text),
+        ("hotels", hotels_text),
+        ("destination", destination_text),
+        ("restaurants", restaurants_text),
+        ("activities", activities_text),
+        ("transportation", transportation_text),
+        ("budget", budget_text),
+        ("itinerary", itinerary_text),
     ]:
         _render_log.debug(f"Section '{_sec_name}': {len(_sec_text)} chars")
 
     if not all_text.strip():
         return {
-            "messages": [AIMessage(content="No agent data available to generate handbook.")],
+            "messages": [
+                AIMessage(content="No agent data available to generate handbook.")
+            ],
             "current_agent": "render_handbook",
         }
 
@@ -686,7 +765,9 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
 
     async def _extract(model_cls, text: str, instruction: str, max_retries: int = 2):
         if not text.strip():
-            _render_log.debug(f"_extract({model_cls.__name__}): empty text, returning default")
+            _render_log.debug(
+                f"_extract({model_cls.__name__}): empty text, returning default"
+            )
             return model_cls()
         s_llm = llm.with_structured_output(model_cls, method="function_calling")
         msgs = [
@@ -701,18 +782,27 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
                     for field_name in ("flights", "hotels", "days", "packing"):
                         val = getattr(result, field_name, None)
                         if isinstance(val, list) and len(val) == 0:
-                            _render_log.debug(f"_extract({model_cls.__name__}): empty {field_name}, retrying")
-                            result = await s_llm.ainvoke([
-                                SystemMessage(content=instruction + "\nIMPORTANT: Extract ALL items. Do NOT return an empty list."),
-                                HumanMessage(content=text[:15000]),
-                            ])
+                            _render_log.debug(
+                                f"_extract({model_cls.__name__}): empty {field_name}, retrying"
+                            )
+                            result = await s_llm.ainvoke(
+                                [
+                                    SystemMessage(
+                                        content=instruction
+                                        + "\nIMPORTANT: Extract ALL items. Do NOT return an empty list."
+                                    ),
+                                    HumanMessage(content=text[:15000]),
+                                ]
+                            )
                             break
                 _render_log.debug(f"_extract({model_cls.__name__}): success")
                 return result
             except Exception as exc:
                 if "429" in str(exc) and attempt < max_retries:
                     wait = 2 ** (attempt + 1)
-                    _render_log.debug(f"_extract({model_cls.__name__}): rate limited, waiting {wait}s (attempt {attempt+1})")
+                    _render_log.debug(
+                        f"_extract({model_cls.__name__}): rate limited, waiting {wait}s (attempt {attempt + 1})"
+                    )
                     await asyncio.sleep(wait)
                 else:
                     _render_log.error(f"_extract({model_cls.__name__}): FAILED {exc!r}")
@@ -779,7 +869,12 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
 
     handbook = TripHandbook(
         # Meta
-        trip_title=meta_ex.trip_title or ("Trip to " + ", ".join(d.title() for d in destinations) if destinations else "Your Travel Handbook"),
+        trip_title=meta_ex.trip_title
+        or (
+            "Trip to " + ", ".join(d.title() for d in destinations)
+            if destinations
+            else "Your Travel Handbook"
+        ),
         origin_city=meta_ex.origin_city,
         destinations=destinations,
         start_date=meta_ex.start_date,
@@ -866,9 +961,14 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
         _inject_photos(hotel)
         if hotel.name and not hotel.map_embed_url:
             from urllib.parse import quote_plus
+
             maps_key = os.environ.get("GOOGLE_MAPS_API_KEY", "")
             if maps_key:
-                q = quote_plus(f"{hotel.name}, {hotel.neighbourhood}" if hotel.neighbourhood else hotel.name)
+                q = quote_plus(
+                    f"{hotel.name}, {hotel.neighbourhood}"
+                    if hotel.neighbourhood
+                    else hotel.name
+                )
                 hotel.map_embed_url = f"https://www.google.com/maps/embed/v1/place?key={maps_key}&q={q}&zoom=15"
 
     for day in handbook.days:
@@ -893,7 +993,11 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
             for act in block.activities:
                 if not act.photo_urls and act.name:
                     cards_needing_photos.append(act)
-            if block.restaurant and not block.restaurant.photo_urls and block.restaurant.name:
+            if (
+                block.restaurant
+                and not block.restaurant.photo_urls
+                and block.restaurant.name
+            ):
                 cards_needing_photos.append(block.restaurant)
 
     if cards_needing_photos:
@@ -923,7 +1027,9 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
                     day_places.append(act.name)
             if block.restaurant:
                 if block.restaurant.latitude and block.restaurant.longitude:
-                    day_places.append(f"{block.restaurant.latitude},{block.restaurant.longitude}")
+                    day_places.append(
+                        f"{block.restaurant.latitude},{block.restaurant.longitude}"
+                    )
                 elif block.restaurant.name:
                     day_places.append(block.restaurant.name)
 
@@ -963,14 +1069,18 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
     }
 
 
-@traceable(run_type="chain", name="synthesize_node", tags=["wanderlisted", "synthesize"])
+@traceable(
+    run_type="chain", name="synthesize_node", tags=["wanderlisted", "synthesize"]
+)
 async def synthesize_node(state: TravelAgentState, *, llm) -> dict:
     """Answer follow-up questions from existing specialist data without re-running tools."""
     enriched = build_context_messages(state)
-    response = await llm.ainvoke([
-        SystemMessage(content=SYNTHESIZE_SYSTEM_PROMPT),
-        *enriched,
-    ])
+    response = await llm.ainvoke(
+        [
+            SystemMessage(content=SYNTHESIZE_SYSTEM_PROMPT),
+            *enriched,
+        ]
+    )
     return {
         "messages": [response],
         "current_agent": "synthesize",
@@ -1097,12 +1207,20 @@ def create_multiagent_travel_graph(checkpointer=None):
     # Nodes — thin wrappers that inject dependencies into module-level functions
     builder.add_node("triage", lambda s: triage_node(s, llm=llm))
     builder.add_node("shallow_reply", lambda s: shallow_reply_node(s, llm=llm))
-    builder.add_node("supervisor", lambda s: supervisor_node(s, supervisor_agent=_supervisor_agent))
-    builder.add_node("parallel_dispatch", lambda s: parallel_dispatch_node(s, executors=_executors))
+    builder.add_node(
+        "supervisor", lambda s: supervisor_node(s, supervisor_agent=_supervisor_agent)
+    )
+    builder.add_node(
+        "parallel_dispatch", lambda s: parallel_dispatch_node(s, executors=_executors)
+    )
     builder.add_node("safety_review", safety_review_node)
-    builder.add_node("budget", lambda s: budget_node(s, llm=llm, executor=_executors["BudgetAgent"]))
+    builder.add_node(
+        "budget", lambda s: budget_node(s, llm=llm, executor=_executors["BudgetAgent"])
+    )
     builder.add_node("budget_review", budget_review_node)
-    builder.add_node("itinerary", lambda s: itinerary_node(s, executor=_executors["ItineraryAgent"]))
+    builder.add_node(
+        "itinerary", lambda s: itinerary_node(s, executor=_executors["ItineraryAgent"])
+    )
     builder.add_node("human_review", human_review_node)
     builder.add_node("render_handbook", lambda s: render_handbook_node(s, llm=llm))
     builder.add_node("synthesize", lambda s: synthesize_node(s, llm=llm))
@@ -1111,54 +1229,82 @@ def create_multiagent_travel_graph(checkpointer=None):
     builder.add_edge(START, "triage")
 
     # triage -> shallow_reply | supervisor
-    builder.add_conditional_edges("triage", route_after_triage, {
-        "shallow_reply": "shallow_reply",
-        "supervisor": "supervisor",
-    })
+    builder.add_conditional_edges(
+        "triage",
+        route_after_triage,
+        {
+            "shallow_reply": "shallow_reply",
+            "supervisor": "supervisor",
+        },
+    )
 
     # shallow_reply always ends
     builder.add_edge("shallow_reply", END)
 
     # supervisor -> parallel_dispatch | budget | itinerary | synthesize | END
-    builder.add_conditional_edges("supervisor", route_after_supervisor, {
-        "parallel_dispatch": "parallel_dispatch",
-        "budget": "budget",
-        "itinerary": "itinerary",
-        "synthesize": "synthesize",
-        END: END,
-    })
+    builder.add_conditional_edges(
+        "supervisor",
+        route_after_supervisor,
+        {
+            "parallel_dispatch": "parallel_dispatch",
+            "budget": "budget",
+            "itinerary": "itinerary",
+            "synthesize": "synthesize",
+            END: END,
+        },
+    )
 
     # parallel_dispatch -> safety_review (always)
-    builder.add_conditional_edges("parallel_dispatch", route_after_parallel, {
-        "safety_review": "safety_review",
-    })
+    builder.add_conditional_edges(
+        "parallel_dispatch",
+        route_after_parallel,
+        {
+            "safety_review": "safety_review",
+        },
+    )
 
     # safety_review -> budget | itinerary | END
-    builder.add_conditional_edges("safety_review", route_after_safety_review, {
-        "budget": "budget",
-        "itinerary": "itinerary",
-        END: END,
-    })
+    builder.add_conditional_edges(
+        "safety_review",
+        route_after_safety_review,
+        {
+            "budget": "budget",
+            "itinerary": "itinerary",
+            END: END,
+        },
+    )
 
     # budget -> budget_review (always)
-    builder.add_conditional_edges("budget", route_after_budget, {
-        "budget_review": "budget_review",
-    })
+    builder.add_conditional_edges(
+        "budget",
+        route_after_budget,
+        {
+            "budget_review": "budget_review",
+        },
+    )
 
     # budget_review -> itinerary | END
-    builder.add_conditional_edges("budget_review", route_after_budget_review, {
-        "itinerary": "itinerary",
-        END: END,
-    })
+    builder.add_conditional_edges(
+        "budget_review",
+        route_after_budget_review,
+        {
+            "itinerary": "itinerary",
+            END: END,
+        },
+    )
 
     # itinerary -> human_review -> render_handbook -> END
     builder.add_edge("itinerary", "human_review")
 
     # human_review -> render_handbook | END
-    builder.add_conditional_edges("human_review", route_after_human_review, {
-        "render_handbook": "render_handbook",
-        END: END,
-    })
+    builder.add_conditional_edges(
+        "human_review",
+        route_after_human_review,
+        {
+            "render_handbook": "render_handbook",
+            END: END,
+        },
+    )
 
     builder.add_edge("render_handbook", END)
     builder.add_edge("synthesize", END)
