@@ -18,7 +18,15 @@ filterwarnings = [
 
 [tool.coverage.run]
 source = ["src"]
-omit = ["src/api/*"]
+omit = [
+    "src/api/*",
+    "src/mcp_server.py",           # MCP stdio server — tested via integration
+    "src/agent/agent.py",          # Stage 1 entrypoint — imports LLM at module level
+    "src/agent/graph.py",          # LangGraph Studio entrypoint — imports LLM at module level
+    "src/agent/llm.py",            # LLM factory — config glue, each branch needs real provider SDK
+    "src/agent/renderer.py",       # HTML rendering — no business logic
+    "src/evaluation/golden_dataset.py",  # Pure data, no logic
+]
 
 [tool.coverage.report]
 show_missing = true
