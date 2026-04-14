@@ -10,10 +10,22 @@ env:
   PYTHON_VERSION: "3.12"
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  AMADEUS_API_KEY: "test"
+  AMADEUS_API_SECRET: "test"
+  AMADEUS_BASE_URL: "https://test.api.amadeus.com"
+  GOOGLE_MAPS_API_KEY: "test"
+  OPENWEATHER_API_KEY: "test"
+  PINECONE_API_KEY: "test"
+  PINECONE_INDEX_NAME: "test"
+  AZURE_OPENAI_API_KEY: "test"
+  AZURE_OPENAI_ENDPOINT: "https://test.openai.azure.com"
+  AZURE_OPENAI_DEPLOYMENT_NAME: "test"
+  AZURE_OPENAI_API_VERSION: "2024-12-01-preview"
+  TAVILY_API_KEY: "test"
 
 jobs:
   # ──────────────────────────────────────────────────────────────────
-  # Job 1: Lint — fast fail on code style
+  # Job 1: Lint + format — fast fail on code style
   # ──────────────────────────────────────────────────────────────────
   lint:
     runs-on: ubuntu-latest
@@ -22,11 +34,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
       - run: pip install ruff
       - run: ruff check src/ tests/ scripts/
+      - run: ruff format --check src/ tests/ scripts/
 
   # ──────────────────────────────────────────────────────────────────
-  # Job 2: Unit tests — all tests that don't call live APIs
+  # Job 2: Unit tests + coverage — fail-fast, 80% minimum
   # ──────────────────────────────────────────────────────────────────
   test:
     runs-on: ubuntu-latest
@@ -37,50 +51,10 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
       - run: pip install -r requirements.txt
-      - run: pytest tests/ -x --tb=short -q -m "not integration"
-        env:
-          AMADEUS_API_KEY: "test"
-          AMADEUS_API_SECRET: "test"
-          AMADEUS_BASE_URL: "https://test.api.amadeus.com"
-          GOOGLE_MAPS_API_KEY: "test"
-          OPENWEATHER_API_KEY: "test"
-          PINECONE_API_KEY: "test"
-          PINECONE_INDEX_NAME: "test"
-          AZURE_OPENAI_API_KEY: "test"
-          AZURE_OPENAI_ENDPOINT: "https://test.openai.azure.com"
-          AZURE_OPENAI_DEPLOYMENT_NAME: "test"
-          AZURE_OPENAI_API_VERSION: "2024-12-01-preview"
-          TAVILY_API_KEY: "test"
+      - run: pytest tests/ -x --tb=short -q -m "not integration" --cov=src --cov-report=term-missing --cov-fail-under=80
 
   # ──────────────────────────────────────────────────────────────────
-  # Job 3: Coverage — fail if below 80%
-  # ──────────────────────────────────────────────────────────────────
-  coverage:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
-      - run: pip install -r requirements.txt
-      - run: pytest --cov=src tests/ -m "not integration" --cov-report=term-missing --cov-fail-under=80
-        env:
-          AMADEUS_API_KEY: "test"
-          AMADEUS_API_SECRET: "test"
-          AMADEUS_BASE_URL: "https://test.api.amadeus.com"
-          GOOGLE_MAPS_API_KEY: "test"
-          OPENWEATHER_API_KEY: "test"
-          PINECONE_API_KEY: "test"
-          PINECONE_INDEX_NAME: "test"
-          AZURE_OPENAI_API_KEY: "test"
-          AZURE_OPENAI_ENDPOINT: "https://test.openai.azure.com"
-          AZURE_OPENAI_DEPLOYMENT_NAME: "test"
-          AZURE_OPENAI_API_VERSION: "2024-12-01-preview"
-          TAVILY_API_KEY: "test"
-
-  # ──────────────────────────────────────────────────────────────────
-  # Job 4: Layer 1 evaluators — code-based, deterministic, free
+  # Job 3: Layer 1 evaluators — code-based, deterministic, free
   # Validates routing, budget completeness, handbook sections
   # ──────────────────────────────────────────────────────────────────
   eval-layer1:
@@ -93,25 +67,12 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt
       - run: pytest tests/test_evaluators.py -x --tb=short -q
-        env:
-          AMADEUS_API_KEY: "test"
-          AMADEUS_API_SECRET: "test"
-          AMADEUS_BASE_URL: "https://test.api.amadeus.com"
-          GOOGLE_MAPS_API_KEY: "test"
-          OPENWEATHER_API_KEY: "test"
-          PINECONE_API_KEY: "test"
-          PINECONE_INDEX_NAME: "test"
-          AZURE_OPENAI_API_KEY: "test"
-          AZURE_OPENAI_ENDPOINT: "https://test.openai.azure.com"
-          AZURE_OPENAI_DEPLOYMENT_NAME: "test"
-          AZURE_OPENAI_API_VERSION: "2024-12-01-preview"
-          TAVILY_API_KEY: "test"
 
   # ──────────────────────────────────────────────────────────────────
-  # Job 5: Build + push Docker image (main branch only)
+  # Job 4: Build + push Docker image (main branch only)
   # ──────────────────────────────────────────────────────────────────
   build-and-push:
-    needs: [lint, test, coverage, eval-layer1]
+    needs: [lint, test, eval-layer1]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
