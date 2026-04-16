@@ -37,6 +37,8 @@ import os
 import re
 from typing import Any
 
+import functools
+
 from langchain.agents import create_agent
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langgraph.graph import StateGraph, START, END
@@ -1205,25 +1207,25 @@ def create_multiagent_travel_graph(checkpointer=None):
     builder = StateGraph(TravelAgentState)
 
     # Nodes — thin wrappers that inject dependencies into module-level functions
-    builder.add_node("triage", lambda s: triage_node(s, llm=llm))
-    builder.add_node("shallow_reply", lambda s: shallow_reply_node(s, llm=llm))
+    builder.add_node("triage", functools.partial(triage_node, llm=llm))
+    builder.add_node("shallow_reply", functools.partial(shallow_reply_node, llm=llm))
     builder.add_node(
-        "supervisor", lambda s: supervisor_node(s, supervisor_agent=_supervisor_agent)
+        "supervisor", functools.partial(supervisor_node, supervisor_agent=_supervisor_agent)
     )
     builder.add_node(
-        "parallel_dispatch", lambda s: parallel_dispatch_node(s, executors=_executors)
+        "parallel_dispatch", functools.partial(parallel_dispatch_node, executors=_executors)
     )
     builder.add_node("safety_review", safety_review_node)
     builder.add_node(
-        "budget", lambda s: budget_node(s, llm=llm, executor=_executors["BudgetAgent"])
+        "budget", functools.partial(budget_node, llm=llm, executor=_executors["BudgetAgent"])
     )
     builder.add_node("budget_review", budget_review_node)
     builder.add_node(
-        "itinerary", lambda s: itinerary_node(s, executor=_executors["ItineraryAgent"])
+        "itinerary", functools.partial(itinerary_node, executor=_executors["ItineraryAgent"])
     )
     builder.add_node("human_review", human_review_node)
-    builder.add_node("render_handbook", lambda s: render_handbook_node(s, llm=llm))
-    builder.add_node("synthesize", lambda s: synthesize_node(s, llm=llm))
+    builder.add_node("render_handbook", functools.partial(render_handbook_node, llm=llm))
+    builder.add_node("synthesize", functools.partial(synthesize_node, llm=llm))
 
     # START -> triage
     builder.add_edge(START, "triage")

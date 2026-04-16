@@ -6,8 +6,15 @@ services:
     env_file: .env
     volumes:
       - ./knowledge_base:/app/knowledge_base
+      - logs:/app/logs
     depends_on:
       - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   redis:
     image: redis:7-alpine
@@ -27,3 +34,4 @@ services:
 
 volumes:
   pgdata:
+  logs:

@@ -1,0 +1,16 @@
+# NodePort service: exposes port 30080 on the kind node, which maps to
+# hostPort 8000 on your Mac via the kind-config.yaml extraPortMappings.
+# Result: curl http://localhost:8000/api/v1/health works without port-forward.
+apiVersion: v1
+kind: Service
+metadata:
+  name: wanderlisted-api
+  namespace: wanderlisted
+spec:
+  selector:
+    app: wanderlisted-api
+  type: NodePort
+  ports:
+    - port: 80          # Service port inside the cluster
+      targetPort: 8000  # Container port
+      nodePort: 30080   # Node port — must match kind-config.yaml containerPort

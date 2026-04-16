@@ -10,6 +10,10 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+# CA certificates (needed for LangSmith and other HTTPS clients)
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
 # Non-root user — security best practice
 RUN addgroup --system app && adduser --system --ingroup app app
 
@@ -25,6 +29,9 @@ COPY pyproject.toml .
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
+
+# Create writable logs dir before dropping privileges
+RUN mkdir -p logs && chown app:app logs
 
 USER app
 

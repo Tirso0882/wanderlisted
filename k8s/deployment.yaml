@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wanderlisted-api
+  namespace: wanderlisted
+  labels:
+    app: wanderlisted-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: wanderlisted-api
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: wanderlisted-api
+    spec:
+      containers:
+        - name: api
+          # Use the locally built image loaded via `make k8s-load`
+          image: wanderlisted:local
+          # Never pull — the image is loaded into kind directly
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8000
+          # Non-sensitive config from ConfigMap
+          envFrom:
+            - configMapRef:
+                name: wanderlisted-config
+            # All API keys and sensitive values from the Secret
+            - secretRef:
+                name: wanderlisted-secrets
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "2Gi"
+          # Liveness: is the process alive?
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8000
+            initialDelaySeconds: 20
+            periodSeconds: 30
+            failureThreshold: 3
+          # Readiness: is the graph initialized and ready to serve?
+          readinessProbe:
+            httpGet:
+              path: /api/v1/ready
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 3
+          # Startup: give the graph up to 60s to compile on first boot
+          startupProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8000
+            failureThreshold: 30
+            periodSeconds: 2
