@@ -1,7 +1,6 @@
 """Tavily-powered web search for real-time travel intelligence."""
 
 import os
-from typing import Optional
 
 import httpx
 from langchain_core.tools import tool
@@ -52,7 +51,7 @@ async def _tavily_search(
 @tool
 async def search_web(
     query: str,
-    destinations: Optional[list[str]] = None,
+    destinations: list[str] = [],
     topic: str = "general",
 ) -> str:
     """Search the web for real-time travel information using Tavily.
@@ -127,7 +126,7 @@ async def search_web(
 @tool
 async def search_hidden_gems(
     destination: str,
-    interests: Optional[list[str]] = None,
+    interests: list[str] = [],
 ) -> str:
     """Search the web specifically for hidden gems, local favorites, and
     off-the-beaten-path experiences at a destination.

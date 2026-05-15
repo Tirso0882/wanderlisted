@@ -15,7 +15,6 @@ Each tool is stateless and safe to use inside any subagent.
 
 import os
 import time
-from typing import Optional
 from urllib.parse import urlencode
 
 import httpx
@@ -330,7 +329,7 @@ def get_directions(
     origin: str,
     destination: str,
     mode: str = "transit",
-    departure_time: Optional[str] = None,
+    departure_time: str = "",
 ) -> str:
     """Get directions between two points using Google Directions API.
 
@@ -465,7 +464,7 @@ def compute_route(
     origin: str,
     destination: str,
     travel_mode: str = "DRIVE",
-    waypoints: Optional[str] = None,
+    waypoints: str = "",
 ) -> str:
     """Compute an optimised route using Google Routes API.
 
@@ -549,7 +548,8 @@ def compute_route(
 def optimize_day_route(
     stops: str,
     start_location: str,
-    end_location: Optional[str] = None,
+    end_location: str = "",
+    travel_mode: str = "DRIVE",
 ) -> str:
     """Optimize the order of stops for a day trip using Google Route Optimization.
 
@@ -560,6 +560,7 @@ def optimize_day_route(
                "Senso-ji Temple, Tokyo Tower, Meiji Shrine, Tsukiji Market".
         start_location: Starting point (hotel address or "lat,lng").
         end_location: End point — defaults to start_location (round trip).
+        travel_mode: DRIVE, WALK, BICYCLE, TRANSIT, TWO_WHEELER.
     """
     key = _api_key()
     if not end_location:
@@ -589,7 +590,7 @@ def optimize_day_route(
         "origin": _make_wp(start_location),
         "destination": _make_wp(end_location),
         "intermediates": [_make_wp(s) for s in stop_list],
-        "travelMode": "DRIVE",
+        "travelMode": travel_mode,
         "optimizeWaypointOrder": True,
     }
 
@@ -637,7 +638,7 @@ def optimize_day_route(
         )
 
     return (
-        f"Optimised day route ({len(stop_list)} stops):\n"
+        f"Optimised day route ({len(stop_list)} stops, mode={travel_mode}):\n"
         f"Total distance: {total_km:.1f} km\n"
         f"Total duration: {total_dur}\n\n"
         f"Order:\n"
@@ -654,7 +655,7 @@ def optimize_day_route(
 @tool
 def get_timezone(
     location: str,
-    timestamp: Optional[int] = None,
+    timestamp: int = 0,
 ) -> str:
     """Get timezone information for a location using Google Time Zone API.
 
@@ -671,7 +672,7 @@ def get_timezone(
         if not location:
             return "Could not geocode the provided location."
 
-    if timestamp is None:
+    if not timestamp:
         timestamp = int(time.time())
 
     params = {

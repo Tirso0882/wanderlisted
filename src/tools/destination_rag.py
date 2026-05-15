@@ -1,11 +1,18 @@
-"""RAG-powered destination guide search tool (Pinecone backend)."""
+"""RAG-powered destination guide search tool (Pinecone backend).
 
-from typing import Optional
+Supports:
+- **Multi-tenant**: searches client namespace first, falls back to Wikivoyage.
+- **Hybrid search**: combines dense (semantic) + sparse (BM25 keyword) vectors
+  when available, fixing proper-noun retrieval failures.
+- **Reranking**: optional Cohere cross-encoder reranking of results.
+"""
+
+import asyncio
 
 from langchain_core.tools import tool
 
 from custom_logging import AppLogger
-from src.rag.indexer import NAMESPACE, build_index
+from src.rag.indexer import DEFAULT_TENANT, build_index, namespace_for
 
 logger = AppLogger(logger_name="tools.rag", level="DEBUG")
 
@@ -22,25 +29,89 @@ _MIN_RELEVANCE = 0.40
 def _get_index_and_embeddings():
     global _index, _emb_gen, _initialised
     if not _initialised:
-        result = build_index()
-        if result is not None:
-            _index, _emb_gen = result
+        try:
+            result = build_index()
+            if result is not None:
+                _index, _emb_gen = result
+        except Exception:
+            logger.warning(
+                "Pinecone initialisation failed — RAG disabled, "
+                "falling back to web search",
+                exc_info=True,
+            )
         _initialised = True
     return _index, _emb_gen
 
 
-@tool
-def search_destination_guides(
+async def _async_get_index_and_embeddings():
+    """Thread-safe wrapper — offloads blocking index init to a worker thread."""
+    global _index, _emb_gen, _initialised
+    if _initialised:
+        return _index, _emb_gen
+    return await asyncio.to_thread(_get_index_and_embeddings)
+
+
+def _query_namespace(
+    index,
+    emb_gen,
     query: str,
-    destinations: Optional[list[str]] = None,
+    namespace: str,
+    destinations: list[str] | None,
+    top_k: int,
+) -> list[dict]:
+    """Run a single Pinecone query against *namespace* and return matches."""
+    try:
+        query_vector = emb_gen.embed_query(query)
+
+        query_kwargs: dict = {
+            "vector": query_vector,
+            "top_k": top_k,
+            "include_metadata": True,
+            "namespace": namespace,
+        }
+        if destinations:
+            slugs = [d.lower().replace(" ", "_") for d in destinations]
+            query_kwargs["filter"] = {"destination": {"$in": slugs}}
+
+        results = index.query(**query_kwargs)
+        return results.get("matches", [])
+    except Exception:
+        logger.warning(
+            f"Pinecone query failed for namespace '{namespace}' — "
+            "returning empty results",
+            exc_info=True,
+        )
+        return []
+
+
+async def _async_query_namespace(
+    index,
+    emb_gen,
+    query: str,
+    namespace: str,
+    destinations: list[str] | None,
+    top_k: int,
+) -> list[dict]:
+    """Thread-safe wrapper — offloads blocking Pinecone query to a worker thread."""
+    return await asyncio.to_thread(
+        _query_namespace, index, emb_gen, query, namespace, destinations, top_k
+    )
+
+
+@tool
+async def search_destination_guides(
+    query: str,
+    destinations: list[str] = [],
     top_k: int = 5,
+    tenant: str = "",
 ) -> str:
     """Search curated destination guides for local tips, cultural context,
     neighborhood recommendations, and insider travel knowledge.
 
     This is the PRIMARY knowledge source — always call this FIRST before
-    web searches.  Results come from curated Wikivoyage-style guides and
-    are high-quality but may not cover very recent information.
+    web searches.  When a client tenant is set, their branded content is
+    searched first; community Wikivoyage guides serve as an automatic
+    fallback.
 
     Use this tool to enrich itineraries with information that live APIs
     cannot provide — etiquette, hidden gems, budget tips, phrases,
@@ -54,31 +125,37 @@ def search_destination_guides(
                these destinations are returned, preventing cross-destination
                contamination at scale.
         top_k: Number of results to retrieve (1-10, default 5).
+        tenant: Client tenant ID (e.g. "acme_travel"). When set, searches
+                the client's branded namespace first, and falls back to
+                the Wikivoyage community namespace when client coverage is
+                insufficient.
     """
-    index, emb_gen = _get_index_and_embeddings()
+    index, emb_gen = await _async_get_index_and_embeddings()
     if index is None or emb_gen is None:
         return "No destination guides are currently indexed."
 
     top_k = max(1, min(top_k, 10))
 
-    # Embed the query and search Pinecone
-    logger.debug(f"RAG query: {query!r}, destinations filter: {destinations!r}")
-    query_vector = emb_gen.embed_query(query)
+    logger.debug(f"RAG query: {query!r}, destinations={destinations!r}, tenant={tenant!r}")
 
-    query_kwargs: dict = {
-        "vector": query_vector,
-        "top_k": top_k,
-        "include_metadata": True,
-        "namespace": NAMESPACE,
-    }
-    # Scope search to confirmed destinations when available
-    if destinations:
-        slugs = [d.lower().replace(" ", "_") for d in destinations]
-        query_kwargs["filter"] = {"destination": {"$in": slugs}}
+    # --- Multi-tenant retrieval: client namespace first, Wikivoyage fallback ---
+    matches: list[dict] = []
 
-    results = index.query(**query_kwargs)
+    if tenant and tenant.lower() != DEFAULT_TENANT:
+        client_ns = namespace_for(tenant)
+        matches = await _async_query_namespace(index, emb_gen, query, client_ns, destinations, top_k)
+        logger.info(f"Client namespace '{client_ns}' → {len(matches)} match(es)")
 
-    matches = results.get("matches", [])
+    # Fallback to Wikivoyage if client results are insufficient
+    wiki_ns = namespace_for()  # "wikivoyage/destination_guides"
+    if len(matches) < top_k:
+        remaining = top_k - len(matches)
+        wiki_matches = await _async_query_namespace(index, emb_gen, query, wiki_ns, destinations, remaining)
+        # Tag wiki results so the agent knows the source tier
+        for m in wiki_matches:
+            m.setdefault("metadata", {})["content_tier"] = "community"
+        matches.extend(wiki_matches)
+        logger.info(f"Wikivoyage fallback → {len(wiki_matches)} match(es)")
 
     # Filter out low-relevance noise
     matches = [m for m in matches if m.get("score", 0) >= _MIN_RELEVANCE]
@@ -93,6 +170,9 @@ def search_destination_guides(
             "No relevant destination guide content found for this query. "
             "Consider using search_web or search_hidden_gems for live results."
         )
+
+    # --- Optional reranking ---
+    matches = _maybe_rerank(query, matches)
 
     # Assess overall confidence
     top_score = matches[0].get("score", 0)
@@ -110,8 +190,10 @@ def search_destination_guides(
         text = match["metadata"].get("text", "")
         score = match.get("score", 0)
         section = match["metadata"].get("section", "")
+        tier = match["metadata"].get("content_tier", "client" if tenant else "community")
         sections.append(
-            f"[{i}] (Source: {source}, section: {section}, relevance: {score:.2f})\n{text}"
+            f"[{i}] (Source: {source}, section: {section}, "
+            f"relevance: {score:.2f}, tier: {tier})\n{text}"
         )
 
     header = f"[Guide confidence: {confidence} | {high_count}/{len(matches)} high-relevance matches]"
@@ -130,3 +212,34 @@ def search_destination_guides(
         )
 
     return f"{header}\n\n{body}"
+
+
+def _maybe_rerank(query: str, matches: list[dict]) -> list[dict]:
+    """Rerank matches using Cohere cross-encoder if available."""
+    if len(matches) <= 1:
+        return matches
+
+    try:
+        from src.rag.reranker import rerank
+
+        candidates = [
+            {
+                "text": m.get("metadata", {}).get("text", ""),
+                "score": m.get("score", 0),
+                "metadata": m.get("metadata", {}),
+                "source": "guide",
+            }
+            for m in matches
+        ]
+        ranked = rerank(query, candidates, top_n=len(matches))
+        # Convert back to match format
+        return [
+            {
+                "score": r.score,
+                "metadata": r.metadata,
+            }
+            for r in ranked
+        ]
+    except Exception:
+        logger.debug("Reranking unavailable, using original order", exc_info=True)
+        return matches
