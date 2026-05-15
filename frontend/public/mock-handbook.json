@@ -1,0 +1,1230 @@
+{
+  "trip_title": "Mexico City (Roma Norte/Condesa) boutique stay + local food/arts itinerary",
+  "traveller_names": [],
+  "origin_city": "",
+  "destinations": [
+    "mexico-city"
+  ],
+  "start_date": "2027-01-10",
+  "end_date": "2027-01-15",
+  "total_budget_usd": 0.0,
+  "travel_style": "mid_range",
+  "group_type": "couple",
+  "dietary_restrictions": [],
+  "accessibility_needs": [],
+  "route_cities": [
+    "Ciudad de México"
+  ],
+  "route_transport": [
+    "local transit (metro/uber/walking)"
+  ],
+  "flights": [],
+  "hotels": [
+    {
+      "name": "Casa Mali by Dominion",
+      "star_rating": 0,
+      "neighbourhood": "Hipódromo, Cuauhtémoc, Ciudad de México",
+      "price_per_night_usd": 0.0,
+      "total_price_usd": 0.0,
+      "room_type": "",
+      "bed_type": "",
+      "check_in": "",
+      "check_out": "",
+      "amenities": [],
+      "cancellation_policy": "",
+      "booking_url": "",
+      "booking_com_url": "",
+      "google_hotels_url": "",
+      "latitude": 19.4101878,
+      "longitude": -99.1701384,
+      "photo_urls": [
+        "https://places.googleapis.com/v1/places/ChIJGSbIU0D_0YURrylilye2LTw/photos/Ab43m-sL8amZpDUFFbDGcOWvhl4K090WrZCVHIobJ2lnrn_RJKuIX7Ob-rUF4D8x69Qnc6eo3ohw9EOqnQdkIqexjzbgYR6Vg6iQabbCsFynY1oG8p93tsPqXBIgxYu2Xf-DZ6FXLKQqiQo0gAQhrulDn0zWZoANFgc1uQ-ajRh3gdJvFYsgJUUk_m8xlTAz0rtz_I9iU3TAU5L3lA602XvH-9NtrpvfzsZ29k3zsk_zcVSXaBLvb9HMaAUSYBJYcJcxSpp8ACFbLWgrw8BQJeBWuGgPnitzCmpsu52xYtHkhBVpzQ/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+      ],
+      "google_maps_url": "https://maps.google.com/?cid=4336322297387428271&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
+      "website_url": "https://www.dominioncondesa.com/",
+      "description": "Chic accommodations with kitchenettes in a polished hotel featuring breakfast & a rooftop patio.",
+      "distance_from_center_km": 0.0,
+      "nearby_attractions": [],
+      "map_embed_url": "https://www.google.com/maps/embed/v1/place?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&q=Casa+Mali+by+Dominion%2C+Hip%C3%B3dromo%2C+Cuauht%C3%A9moc%2C+Ciudad+de+M%C3%A9xico&zoom=15"
+    },
+    {
+      "name": "Hotel Villa Condesa",
+      "star_rating": 0,
+      "neighbourhood": "Roma Nte., Cuauhtémoc, Ciudad de México",
+      "price_per_night_usd": 0.0,
+      "total_price_usd": 0.0,
+      "room_type": "",
+      "bed_type": "",
+      "check_in": "",
+      "check_out": "",
+      "amenities": [],
+      "cancellation_policy": "",
+      "booking_url": "",
+      "booking_com_url": "",
+      "google_hotels_url": "",
+      "latitude": 19.416860399999997,
+      "longitude": -99.1725933,
+      "photo_urls": [
+        "https://places.googleapis.com/v1/places/ChIJ77VSfEb_0YUR18ulo2pelBc/photos/Ab43m-uN4zPFdXd99lIb0yZ4KzTZ9i0cYp3kpdfFt80PlLbrZz6MUfRTfFeYVME6f53KahmGzeSaxT8CZ16I99FiFnyi2mVr2b-NKxJxfJMk1MIlh1o0XVNQDAV0x34-4NfRXx083liwpcL6TVQgpE4KDxx-r7lZ9hUzPobVb6uJv3faYm32npohrh11HuxrEbrZnJ-hw-Oz9rDpRcoZUKgmS6i14dltqAbkBQp_I8oeu74NrI40QZC412odUFL6lALTDvNSHdVnMH1TQG0t8BQVX4yU0sUX3BOAB1rXkdgn7RAMvVndq3J7WEXjT4nrXtkE6HmUJ2mml0xYqIVnbeG8ttepr1t3sbdvOxQWLEnbj5khRT7F_yn7sdMM1PgtB3BqsyT-32id3XaY1_ipn0-DYJKhfaD8i022YsAsC2AhdstKxQ/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+      ],
+      "google_maps_url": "https://maps.google.com/?cid=1699086771530615767&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
+      "website_url": "http://www.villacondesa.com.mx/",
+      "description": "Unfussy rooms in an upscale hotel offering a garden, a restaurant & a lounge with a fireplace.",
+      "distance_from_center_km": 0.0,
+      "nearby_attractions": [],
+      "map_embed_url": "https://www.google.com/maps/embed/v1/place?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&q=Hotel+Villa+Condesa%2C+Roma+Nte.%2C+Cuauht%C3%A9moc%2C+Ciudad+de+M%C3%A9xico&zoom=15"
+    },
+    {
+      "name": "La Valise mx City, an SLH Hotel",
+      "star_rating": 0,
+      "neighbourhood": "Roma Nte., Cuauhtémoc, Ciudad de México",
+      "price_per_night_usd": 0.0,
+      "total_price_usd": 0.0,
+      "room_type": "",
+      "bed_type": "",
+      "check_in": "",
+      "check_out": "",
+      "amenities": [],
+      "cancellation_policy": "",
+      "booking_url": "",
+      "booking_com_url": "",
+      "google_hotels_url": "",
+      "latitude": 19.4190845,
+      "longitude": -99.1630579,
+      "photo_urls": [
+        "https://places.googleapis.com/v1/places/ChIJFUXg7Tn_0YUR3q1zT3j9wcQ/photos/Ab43m-u0q0jpeK-NDp4u8E1p7aYUJreCRiKzS6gfmnBRA9UEnu6_aniIAdQ06bASoRohThZ1x83RVO4Qz0olxozs-TUhJM770z6iDPeuKRae0sX70MM6XIq1b9OxutuckUYiGd-BVTzoiaKo2V8rBkTX4CO8zt78FYlthaD8BSQrwwj7j0WKbNZ6wrtXqMZgu1dWRo2RIrWJXqEAYbYWUK9cBGslYjXo4VxP7wIX4NTg_4XTzlDFy8IbNNE_cUNCkSg-OG_sKXtW8p6u_KoRhqJGHAgvKrSDXZlP97KTzB9wc2nNLA/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+      ],
+      "google_maps_url": "https://maps.google.com/?cid=14177891795109916126&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
+      "website_url": "https://www.lavalisecdmx.com/",
+      "description": "Trendy, individually furnished suites in a polished property featuring complimentary Wi-Fi.",
+      "distance_from_center_km": 0.0,
+      "nearby_attractions": [],
+      "map_embed_url": "https://www.google.com/maps/embed/v1/place?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&q=La+Valise+mx+City%2C+an+SLH+Hotel%2C+Roma+Nte.%2C+Cuauht%C3%A9moc%2C+Ciudad+de+M%C3%A9xico&zoom=15"
+    },
+    {
+      "name": "Casa Decu",
+      "star_rating": 0,
+      "neighbourhood": "Hipódromo Condesa, Cuauhtémoc, Ciudad de México",
+      "price_per_night_usd": 0.0,
+      "total_price_usd": 0.0,
+      "room_type": "",
+      "bed_type": "",
+      "check_in": "",
+      "check_out": "",
+      "amenities": [],
+      "cancellation_policy": "",
+      "booking_url": "",
+      "booking_com_url": "",
+      "google_hotels_url": "",
+      "latitude": 19.4087934,
+      "longitude": -99.1712067,
+      "photo_urls": [
+        "https://places.googleapis.com/v1/places/ChIJPcZfxUH_0YURkNkmHn0Sj50/photos/Ab43m-tNszs_2hm5g2JG5azRpQD3nHOUA5mkX4mxFrqUiZ_brUWWCmSxX7dQbEw99vI6VzSLA9SL2-RhK1LKWl7MK5YbVTp-VW4_rNZxa0U_LgoUUOMIMTYcXdv95cnhIaK6sjY1wOaUBtCsrs8nW4TEnLbrShPnw1xlk_Ig8rN9g0Rq13rv2QUijyBQ1jF-PBGgVDm7z0Gpk3jTqijHFKw2LQrULuyRsf8sj0j1o28EVUXwhDZJf9chg59dqFrRBtOKQALREXs7xncUW6t1ygKMMcbirFPuYkPg2jAexX6R0ck/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+      ],
+      "google_maps_url": "https://maps.google.com/?cid=11353313514210384272&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
+      "website_url": "http://decuhotels.com/casa-decu",
+      "description": "Stylish rooms & suites in a hip hotel featuring a rooftop garden & a gym, plus complimentary Wi-Fi.",
+      "distance_from_center_km": 0.0,
+      "nearby_attractions": [],
+      "map_embed_url": "https://www.google.com/maps/embed/v1/place?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&q=Casa+Decu%2C+Hip%C3%B3dromo+Condesa%2C+Cuauht%C3%A9moc%2C+Ciudad+de+M%C3%A9xico&zoom=15"
+    }
+  ],
+  "days": [
+    {
+      "day_number": 1,
+      "date": "2027-01-10",
+      "city": "Mexico City",
+      "weather": {
+        "date": "2027-01-10",
+        "condition": "Cool morning, mild afternoon (dry season)",
+        "emoji": "🌤️",
+        "temp_low_c": 8.0,
+        "temp_high_c": 20.0,
+        "rain_probability_pct": 5,
+        "packing_tip": "Layers: warm jacket/sweater in the morning + lighter layer for afternoons."
+      },
+      "time_blocks": [
+        {
+          "period": "morning",
+          "activities": [
+            {
+              "name": "Check-in + neighborhood drift (Roma Norte → Condesa)",
+              "category": "Get oriented / walking",
+              "rating": null,
+              "review_count": 0,
+              "price_level": "",
+              "address": "Roma Norte / Hipódromo Condesa, Cuauhtémoc, Ciudad de México, CDMX, Mexico",
+              "description": "Drop bags, then do a slow, no-agenda walk to get the rhythm of your block and nearby parks.",
+              "website_url": "",
+              "google_maps_url": "",
+              "photo_urls": [],
+              "opening_hours": [],
+              "latitude": 19.4145,
+              "longitude": -99.1713,
+              "estimated_cost_usd": 0.0,
+              "estimated_duration_minutes": 120
+            }
+          ],
+          "restaurant": null,
+          "transit": [],
+          "subtotal_usd": 0.0
+        },
+        {
+          "period": "afternoon",
+          "activities": [
+            {
+              "name": "Mercado Medellín",
+              "category": "Market / food hall",
+              "rating": 4.4,
+              "review_count": 16756,
+              "price_level": "",
+              "address": "Mercado Medellín #20, Campeche 101, Roma Sur, Cuauhtémoc, 06760 Ciudad de México, CDMX, Mexico",
+              "description": "Indoor produce market with stalls—great for an easy first “local food” lunch (tacos/soups/fruit).",
+              "website_url": "https://mexicocity.cdmx.gob.mx/venues/mercado-medellin/?lang=es",
+              "google_maps_url": "https://maps.google.com/?cid=3201368549878217095&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
+              "photo_urls": [
+                "https://places.googleapis.com/v1/places/ChIJ48KvaD7_0YURhzmZCryLbSw/photos/Ab43m-vYVQ_yKtjWM7EAh_XDKHPgZ6dyrK94StsDIl9S-zsFkN4HHQL0wiFYKASpAux0kEC3n8bDQw4yhuq-PxSgIXjqd73Z4XYHtLmpwAdsHMUGXlmLkIlOU2uyAWAo-1FQgWv2ONJXPoVxDm4_ACcFEp4N1HBXmRPXp98AtNfSHZS-CT4qiTj4FqEstFi8mbFldJSsXsfiCwOiwQL4cXFnQcVHqX-6VoXSRxT84eX2HQIUAzWK1RjozJIq2-I0-W5AHF_6oWBGWI-V4Apjr5kh-4dCI8Ev4LpFb_nX6XOWLcdalVudrZshHSUvje-dek6ZCfyvsxnvWTy6swJFGhnYXY_05TZkJCwLiFUSW3QCyxhEwsKQc-t-t6eEjRnwOmhlzUVYvwqEfXQMZe4pLJoy7PsKV2S_CueoyEomUl7MJfTYKQ/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+              ],
+              "opening_hours": [],
+              "latitude": 19.4104231,
+              "longitude": -99.1633804,
+              "estimated_cost_usd": 18.0,
+              "estimated_duration_minutes": 90
+            }
+          ],
+          "restaurant": null,
+          "transit": [
+            {
+              "mode": "transit",
+              "from_place": "La Valise mx City (Roma Norte)",
+              "to_place": "Mercado Medellín",
+              "distance_text": "~3–5 km",
+              "duration_text": "~20–25 min (ride)",
+              "transit_line": "Uber/Taxi (approx.)",
+              "instructions": "Head to Mercado Medellín for a relaxed market lunch; don’t overthink it—order what looks busy at the counter.",
+              "booking_url": "",
+              "fare_estimate_usd": 4.0
+            }
+          ],
+          "subtotal_usd": 18.0
+        },
+        {
+          "period": "evening",
+          "activities": [
+            {
+              "name": "Jazzatlán Capital",
+              "category": "Live music / cocktails",
+              "rating": 4.6,
+              "review_count": 2075,
+              "price_level": "$$",
+              "address": "Guanajuato 239, Roma Nte., Cuauhtémoc, 06700 Ciudad de México, CDMX, Mexico",
+              "description": "Bohemian wine-sharing vibe with live music—good for an “end the night like locals” moment.",
+              "website_url": "https://linktr.ee/jazzatlancapital",
+              "google_maps_url": "https://maps.google.com/?cid=9072297591703007155&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
+              "photo_urls": [
+                "https://places.googleapis.com/v1/places/ChIJwzBiHjn_0YURs-8WspdG530/photos/Ab43m-vdsFcTufC6pCxvnqYMrCCEyPLy1W3N79z8DYPTNC7c_JswHBWZg0b748bq6ww1HFp9HDGifj8z1yKRDJ0sGW2oFfxXSZrxq1LoYxOaVGaV7Wj9wynfhbTf0rdAVjk1-DSeEdzo6zracq7iriWZzYSxkXhY5raWjn9-reOqb7LM-mDh-CWKko5e4LDTie8br_USd1GzBsKs-zixGOF3q1UPrMEPmNpfCHK6KbrIDjHElZCBNpt0DTrKrovhvZxqQbnkhvr3EwDGDaTv2ERXmvdBZatlGRcs8FcrfHbImIv9eg/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+              ],
+              "opening_hours": [],
+              "latitude": 19.4159187,
+              "longitude": -99.1648283,
+              "estimated_cost_usd": 30.0,
+              "estimated_duration_minutes": 120
+            }
+          ],
+          "restaurant": null,
+          "transit": [
+            {
+              "mode": "walk",
+              "from_place": "Mercado Medellín area",
+              "to_place": "Jazzatlán Capital",
+              "distance_text": "~2–4 km",
+              "duration_text": "~35–55 min walk",
+              "transit_line": "",
+              "instructions": "If it’s not too cold for you, walk partway back; otherwise take a quick ride to save energy.",
+              "booking_url": "",
+              "fare_estimate_usd": 0.0
+            }
+          ],
+          "subtotal_usd": 30.0
+        }
+      ],
+      "cultural_tip": "",
+      "daily_cost_usd": 48.0,
+      "walking_km": 6.0,
+      "route_map_url": "https://www.google.com/maps/embed/v1/directions?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&origin=19.4145%2C-99.1713&destination=19.4159187%2C-99.1648283&mode=walking&waypoints=19.4104231%2C-99.1633804"
+    },
+    {
+      "day_number": 2,
+      "date": "2027-01-11",
+      "city": "Mexico City",
+      "weather": {
+        "date": "2027-01-11",
+        "condition": "Cool morning, mild afternoon (dry season)",
+        "emoji": "⛅",
+        "temp_low_c": 7.0,
+        "temp_high_c": 20.0,
+        "rain_probability_pct": 5,
+        "packing_tip": "Coffee- and park-friendly layers: beanie + light jacket for mornings; t-shirt under a sweater for afternoons."
+      },
+      "time_blocks": [
+        {
+          "period": "morning",
+          "activities": [
+            {
+              "name": "Medellín Market (leftovers / breakfast bites)",
+              "category": "Market breakfast",
+              "rating": 4.4,
+              "review_count": 16756,
+              "price_level": "",
+              "address": "Mercado Medellín #20, Campeche 101, Roma Sur, Cuauhtémoc, 06760 Ciudad de México, CDMX, Mexico",
+              "description": "Start with quick fruit/juice + one warm bite (taco/soup) from whoever is busiest at the stall.",
+              "website_url": "https://mexicocity.cdmx.gob.mx/venues/mercado-medellin/?lang=es",
+              "google_maps_url": "https://maps.google.com/?cid=3201368549878217095&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
+              "photo_urls": [
+                "https://places.googleapis.com/v1/places/ChIJ48KvaD7_0YURhzmZCryLbSw/photos/Ab43m-vYVQ_yKtjWM7EAh_XDKHPgZ6dyrK94StsDIl9S-zsFkN4HHQL0wiFYKASpAux0kEC3n8bDQw4yhuq-PxSgIXjqd73Z4XYHtLmpwAdsHMUGXlmLkIlOU2uyAWAo-1FQgWv2ONJXPoVxDm4_ACcFEp4N1HBXmRPXp98AtNfSHZS-CT4qiTj4FqEstFi8mbFldJSsXsfiCwOiwQL4cXFnQcVHqX-6VoXSRxT84eX2HQIUAzWK1RjozJIq2-I0-W5AHF_6oWBGWI-V4Apjr5kh-4dCI8Ev4LpFb_nX6XOWLcdalVudrZshHSUvje-dek6ZCfyvsxnvWTy6swJFGhnYXY_05TZkJCwLiFUSW3QCyxhEwsKQc-t-t6eEjRnwOmhlzUVYvwqEfXQMZe4pLJoy7PsKV2S_CueoyEomUl7MJfTYKQ/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+              ],
+              "opening_hours": [],
+              "latitude": 19.4104231,
+              "longitude": -99.1633804,
+              "estimated_cost_usd": 12.0,
+              "estimated_duration_minutes": 75
+            }
+          ],
+          "restaurant": null,
+          "transit": [
+            {
+              "mode": "transit",
+              "from_place": "La Valise mx City (Roma Norte)",
+              "to_place": "Mercado Medellín",
+              "distance_text": "~3–5 km",
+              "duration_text": "~20–25 min (ride)",
+              "transit_line": "Uber/Taxi (approx.)",
+              "instructions": "Go early-ish so you can eat fast and still have a long walking afternoon.",
+              "booking_url": "",
+              "fare_estimate_usd": 4.0
+            }
+          ],
+          "subtotal_usd": 12.0
+        },
+        {
+          "period": "afternoon",
+          "activities": [
+            {
+              "name": "Mercado de Artesanías La Ciudadela",
+              "category": "Artisan market",
+              "rating": 4.5,
+              "review_count": 33695,
+              "price_level": "",
+              "address": "Balderas S/N, Colonia Centro, Centro, Cuauhtémoc, 06040 Ciudad de México, CDMX, Mexico",
+              "description": "Pick up traditional crafts/folk art—best when you wander without a strict shopping list.",
+              "website_url": "https://www.facebook.com/MERCADODEARTESANIASLACIUDADELA",
+              "google_maps_url": "https://maps.google.com/?cid=4782874056937184&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
+              "photo_urls": [
+                "https://places.googleapis.com/v1/places/ChIJQ9Gr0Sr_0YUR4E4rpf_9EAA/photos/Ab43m-uMjW7Us0NZzrO1vtNcP3op-7FlKUmivfoAs86nhUCjBa8KRF6KyR7pX4KIRHxPsUXapO6rw3EpwBUD1F3n5PhcYtSXC-PPbGuqueyxByMJxcopWrXWkV_S-2VxL3kNLfLHjVqfi2yQhpAa8mo7iuu2rc-7_V-8EYyRUfZkCB2tZPFQejQBziwyKJCTd_-lzyipLyIcu70cS4YosO59AfeZ1VUwhA2kOt53PlvZN7zIZdz_I1WJYHuTnkSljv245T0q7jQfye3vlF0NIKIOaSqYGDuddaGA2UoSIYAd2KAeOPiAea6ZhUliubeZDy_j21Pyyvk5lX_ShBamFenEq360E24VemYQUxtivAO5OIwRhEnp8l-FOzKDxx0e3XDEDQuGZYEK8z397TI8x7sV1lc1L8KpDoqFr0N2q9plLLclY8S_/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+              ],
+              "opening_hours": [],
+              "latitude": 19.4308122,
+              "longitude": -99.14936929999999,
+              "estimated_cost_usd": 20.0,
+              "estimated_duration_minutes": 120
+            }
+          ],
+          "restaurant": null,
+          "transit": [
+            {
+              "mode": "transit",
+              "from_place": "Mercado Medellín",
+              "to_place": "Mercado de Artesanías La Ciudadela",
+              "distance_text": "~8–10 km",
+              "duration_text": "~25–40 min (ride)",
+              "transit_line": "Uber/Taxi (approx.)",
+              "instructions": "Ride into Centro for a slower artisan browsing session; come back before it gets too dark.",
+              "booking_url": "",
+              "fare_estimate_usd": 6.0
+            }
+          ],
+          "subtotal_usd": 20.0
+        },
+        {
+          "period": "evening",
+          "activities": [
+            {
+              "name": "Casa Franca",
+              "category": "Tapas & live jazz bar",
+              "rating": 4.5,
+              "review_count": 1908,
+              "price_level": "$$",
+              "address": "Mérida 109, Roma Nte., Cuauhtémoc, 06700 Ciudad de México, CDMX, Mexico",
+              "description": "Warm, laid-back watering hole; great if you want a grown-up drink with live jazz energy.",
+              "website_url": "https://www.facebook.com/Lacasamerida109",
+              "google_maps_url": "https://maps.google.com/?cid=3026525010620911255&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
+              "photo_urls": [
+                "https://places.googleapis.com/v1/places/ChIJISFbuDr_0YURlw7lQXZgACo/photos/Ab43m-vp6Cj7FQx_syFSpzr_VomeyAZ_GK4G-LkRurxh3A6HSaC0a23PKJcVtKjs1-hcbycdTvhDAWLF4aJVdkW2pZJsHBeVDpiICvDUu6hzRoxI7X6kqiw6x1na1Hnu4KOT9XAlfk9YdPwr0YW81u8_T242ciBxV5XT4Qzi_siSqKQIFi6V39mqZ4CrUa1FVa2V6cApezZ6EbZo8gdY7urOPveNdXopTG_E66TNWxuVEh3_T1mVxyQg0naXSN5kgo7xEXlnnUWPyALPS2Fr0MHrowACiwTQL4izI0-cLwdDAvXqe57bVFDjnt753G8lKiP6hjckUnGN928jxLznngDILOuJGIXjW2tyA5VDQS17gCk-zgSRcvxIhM2wkf0jE7REevA_S_2vvBfgyr61o4Tyxjg2o2F079xgq0iCnSXE4MsnDNd_5ERSYrnQ3dl62Z1-/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+              ],
+              "opening_hours": [],
+              "latitude": 19.4190574,
+              "longitude": -99.1575491,
+              "estimated_cost_usd": 28.0,
+              "estimated_duration_minutes": 110
+            }
+          ],
+          "restaurant": null,
+          "transit": [
+            {
+              "mode": "transit",
+              "from_place": "Mercado de Artesanías La Ciudadela",
+              "to_place": "Casa Franca (Roma Norte)",
+              "distance_text": "~10–12 km",
+              "duration_text": "~30–45 min (ride)",
+              "transit_line": "Uber/Taxi (approx.)",
+              "instructions": "Head back to Roma for a jazz-forward dinner/drink; keep it simple on a weeknight.",
+              "booking_url": "",
+              "fare_estimate_usd": 7.0
+            }
+          ],
+          "subtotal_usd": 28.0
+        }
+      ],
+      "cultural_tip": "",
+      "daily_cost_usd": 60.0,
+      "walking_km": 5.0,
+      "route_map_url": "https://www.google.com/maps/embed/v1/directions?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&origin=19.4104231%2C-99.1633804&destination=19.4190574%2C-99.1575491&mode=walking&waypoints=19.4308122%2C-99.14936929999999"
+    },
+    {
+      "day_number": 3,
+      "date": "2027-01-12",
+      "city": "Mexico City",
+      "weather": {
+        "date": "2027-01-12",
+        "condition": "Cool morning, mild afternoon (dry season)",
+        "emoji": "🌤️",
+        "temp_low_c": 7.0,
+        "temp_high_c": 21.0,
+        "rain_probability_pct": 5,
+        "packing_tip": "Sunscreen + layers—sun in the afternoon feels warm, but evenings cool quickly."
+      },
+      "time_blocks": [
+        {
+          "period": "morning",
+          "activities": [
+            {
+              "name": "Florería / Mercado Jamaica",
+              "category": "Market (flowers + food)",
+              "rating": 4.5,
+              "review_count": 58496,
+              "price_level": "",
+              "address": "Guillermo Prieto 45, Jamaica, Venustiano Carranza, 15800 Ciudad de México, CDMX, Mexico",
+              "description": "Go early: flowers in every direction + quick grab-and-go food. Great for a chaotic-but-fun local start.",
+              "website_url": "https://mercadojamaica.com/",
+              "google_maps_url": "https://maps.google.com/?cid=777042942593653135&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
+              "photo_urls": [
+                "https://places.googleapis.com/v1/places/ChIJj4OJKZX-0YURj9mEeHCcyAo/photos/Ab43m-slu1KiF0BWRftifkDXQaECakC6i3vpmmsc1hoWCf3MWVhMl-u1zgPDBp-anyKyMF4Wp8-cBwU36ftl1gz1z9CXNlnGU6PLCMNXYVWuCmW8w0A9JYRHbQIpUbaas60ZIksWg8vbD4mm6K_VLjcRic2RCxa2_dh1Q5PdtRDYYHRlRaYINsCO3QiVvSpeYixh8BNRuty0mL_CszHLhC_tVRthHuqrKJvM5kIIr-uk3hjTX9kamOAOSeDmQ8iuvxPYr_bCsGonrJCYAS65LxC7gGv_fzpWvAd7LJEEsXIKwqv7ix7z1m_LH9izLz2KrklTmKLInzE4KNNJNN1-pIf81mbq3oDMe719q-vtIRGJuDMpk4LwXiIDzj4GhEPA-Vt0GLqyfoJLso7ooEkC-l3ykuJcjJ0Za1nvubngt5yJf3sRLzF3/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+              ],
+              "opening_hours": [],
+              "latitude": 19.408065,
+              "longitude": -99.1230732,
+              "estimated_cost_usd": 15.0,
+              "estimated_duration_minutes": 120
+            }
+          ],
+          "restaurant": null,
+          "transit": [
+            {
+              "mode": "transit",
+              "from_place": "La Valise mx City (Roma Norte)",
+              "to_place": "Florería Mercado Jamaica",
+              "distance_text": "~12–14 km",
+              "duration_text": "~35–55 min (ride)",
+              "transit_line": "Uber/Taxi (approx.)",
+              "instructions": "Arrive hungry; eat one market snack early, then browse without committing to souvenirs.",
+              "booking_url": "",
+              "fare_estimate_usd": 8.0
+            }
+          ],
+          "subtotal_usd": 15.0
+        },
+        {
+          "period": "afternoon",
+          "activities": [
+            {
+              "name": "Laguna (PRODUCTORA)",
+              "category": "Independent art space / creative complex",
+              "rating": null,
+              "review_count": 0,
+              "price_level": "",
+              "address": "Doctor Lucio 181, Doctores, Ciudad de México, CDMX, Mexico",
+              "description": "Former factory turned creative complex—good for wandering studios, small exhibitions, and courtyard coffee.",
+              "website_url": "https://productora-df.com.mx/en/project/laguna/",
+              "google_maps_url": "",
+              "photo_urls": [
+                "https://places.googleapis.com/v1/places/ChIJMRL-tSX_0YURcIB4CkeP9ag/photos/Ab43m-u8GquY6-9E6x3mft9O5n1EqQSidaIxY8RxAFNxtJngQVtvemRtR-X8Dwd-X8XqWtWPCySLtlBTB_0bVQczkq2MSZfywdVPEAx2msRD7dYEENDFjjo65xcbqraNzVazG6U77fzeFZPQ_n7vh_7ds4mBqu5v9dvJwu3IV3RUu3zWoLJDOhUFkj1xDOXX2CQJMv_sQWbOeUPrZ45GRq_gL1gcdoyA8QzxKakyigna164S8z2FR2rK3VAhjS3m6IcAKKYfkrotPdmHy-hPjVQUKjQhCG-soke5NtNIJTS4jf0biA/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+              ],
+              "opening_hours": [
+                "Tue–Sat 11:00–20:00",
+                "Sun 11:00–17:00"
+              ],
+              "latitude": 19.4209,
+              "longitude": -99.1502,
+              "estimated_cost_usd": 0.0,
+              "estimated_duration_minutes": 120
+            }
+          ],
+          "restaurant": null,
+          "transit": [
+            {
+              "mode": "transit",
+              "from_place": "Florería Mercado Jamaica",
+              "to_place": "Laguna (Doctores)",
+              "distance_text": "~6–8 km",
+              "duration_text": "~20–30 min (ride)",
+              "transit_line": "Uber/Taxi (approx.)",
+              "instructions": "Head to Doctores for a creative afternoon—keep it casual and flexible.",
+              "booking_url": "",
+              "fare_estimate_usd": 5.0
+            }
+          ],
+          "subtotal_usd": 0.0
+        },
+        {
+          "period": "evening",
+          "activities": [
+            {
+              "name": "Bajo Circuito Multiforo Urbano",
+              "category": "Cultural center / event venue",
+              "rating": 4.3,
+              "review_count": 3140,
+              "price_level": "",
+              "address": "Bajo Puente de, Cto. Interior S/N, Colonia Condesa, Cuauhtémoc, 06140 Ciudad de México, CDMX, Mexico",
+              "description": "If there’s a show/workshop on your dates, this is a legit place for DIY energy and local crowds.",
+              "website_url": "https://bajocircuito.com/",
+              "google_maps_url": "https://maps.google.com/?cid=16526148539939984684&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
+              "photo_urls": [
+                "https://places.googleapis.com/v1/places/ChIJbYCgKVv_0YURLJV2rImsWOU/photos/Ab43m-vKlfNfF_A9811dutY_yrj7kjrslkmdyWtf_duCTheh-3xvfhKW_Bh5ieQ-9-tz7sqElOHHOZJuK_Uk1U8NvIzBK_qeDS3JEZbet7OegLPDlFW2Pur3U9AKsXGIydxwc5O7NlYM_4xnXp02jyA8tmO18FNT-qIHthqAbY2v2P89EXlftHHpBzCIKuK2fOURrG_NXfPSo2gKFC94sX6K0_WLsTzMy2p-S1mfNGXe4o9kFcg8mTHDFmFJevFMi6nL-YKq97wrG-ucm1u8gjHpfCShlNL7NH-L4u7kqoCiM0atDA/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+              ],
+              "opening_hours": [
+                "Varies by event"
+              ],
+              "latitude": 19.4161098,
+              "longitude": -99.1793293,
+              "estimated_cost_usd": 12.0,
+              "estimated_duration_minutes": 120
+            }
+          ],
+          "restaurant": null,
+          "transit": [
+            {
+              "mode": "transit",
+              "from_place": "Laguna (Doctores)",
+              "to_place": "Bajo Circuito Multiforo Urbano (Condesa)",
+              "distance_text": "~7–10 km",
+              "duration_text": "~25–40 min (ride)",
+              "transit_line": "Uber/Taxi (approx.)",
+              "instructions": "Check what’s on—if there’s a live set, plan to stay; if not, use it as a stop for the vibe and move on.",
+              "booking_url": "",
+              "fare_estimate_usd": 6.0
+            }
+          ],
+          "subtotal_usd": 12.0
+        }
+      ],
+      "cultural_tip": "",
+      "daily_cost_usd": 37.0,
+      "walking_km": 4.5,
+      "route_map_url": "https://www.google.com/maps/embed/v1/directions?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&origin=19.408065%2C-99.1230732&destination=19.4161098%2C-99.1793293&mode=walking&waypoints=19.4209%2C-99.1502"
+    },
+    {
+      "day_number": 4,
+      "date": "2027-01-13",
+      "city": "Mexico City",
+      "weather": {
+        "date": "2027-01-13",
+        "condition": "Cool morning, mild afternoon (dry season)",
+        "emoji": "☀️",
+        "temp_low_c": 6.0,
+        "temp_high_c": 21.0,
+        "rain_probability_pct": 5,
+        "packing_tip": "Even though days feel pleasant, evenings can be chilly—pack a sweater you’ll actually wear."
+      },
+      "time_blocks": [
+        {
+          "period": "morning",
+          "activities": [
+            {
+              "name": "Mercado De San Cosme",
+              "category": "Market + local bites",
+              "rating": 4.2,
+              "review_count": 9811,
+              "price_level": "",
+              "address": "C. Gabino Barreda 18, San Rafael, Cuauhtémoc, 06470 Ciudad de México, CDMX, Mexico",
+              "description": "Local market with produce/meat stalls and casual prepared options—great for a slower, neighborhood breakfast.",
+              "website_url": "http://mercadosancosme.wordpress.com/",
+              "google_maps_url": "https://maps.google.com/?cid=16809177050937041242&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
+              "photo_urls": [
+                "https://places.googleapis.com/v1/places/ChIJU6moy8j40YURWiHAD3gxRuk/photos/Ab43m-v6kmF7uHjg2iW-VUOcjF54p5SpHsupHux6VP9QOTtCQ4VfS211P4ffkc_3NpBNg5qeL3xPxsZlA6SsgXZGv-UeljtMzQZXNilnvFQDjDnNS3b-7ZGXataSr12aKwM3jFaI4VVOGmjnFFSiWDy9x1NzPa0QwwC5TA3_80cW-DCrcrpMAzMaK_2TQs6wgQoSkSpGRFWwUDVYwKe4oCdyTj0C-Icd9bo11k9Zn_Y7tmnW2v5fkSs776lWpLfPCLgdJ4KA7EvicE9lIDwLGAWqr7V9-fGKL3Iio10qPQhoMS6ID1fZOrEY1np8eQGexzySo1NEYX_G1FHWf2PKqbF8riOZGXlOFVt_4bI3Tnb9yRQ0O_onfXISR--yiF4zE8YBVnc3rHzTZoMiCHKWJciK7Nv8ZNebodgYNuWhw7p5rFM/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+              ],
+              "opening_hours": [],
+              "latitude": 19.4418924,
+              "longitude": -99.1623377,
+              "estimated_cost_usd": 14.0,
+              "estimated_duration_minutes": 90
+            }
+          ],
+          "restaurant": null,
+          "transit": [
+            {
+              "mode": "transit",
+              "from_place": "La Valise mx City (Roma Norte)",
+              "to_place": "Mercado De San Cosme",
+              "distance_text": "~6–8 km",
+              "duration_text": "~20–30 min (ride)",
+              "transit_line": "Uber/Taxi (approx.)",
+              "instructions": "Eat lightly at first; save appetite for the afternoon wandering and dinner.",
+              "booking_url": "",
+              "fare_estimate_usd": 5.5
+            }
+          ],
+          "subtotal_usd": 14.0
+        },
+        {
+          "period": "afternoon",
+          "activities": [
+            {
+              "name": "Casa Comtesse (coffee/slow lounge stop)",
+              "category": "Boutique stay lounge / café break",
+              "rating": 4.7,
+              "review_count": 273,
+              "price_level": "",
+              "address": "Av. Benjamín Franklin 197, Hipódromo, Cuauhtémoc, 06100 Ciudad de México, CDMX, Mexico",
+              "description": "A convenient nearby stop to reset—order a warm drink and people-watch from the lounge vibe.",
+              "website_url": "http://www.casacomtesse.com/",
+              "google_maps_url": "https://maps.google.com/?cid=1049988402866184394&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
+              "photo_urls": [
+                "https://places.googleapis.com/v1/places/ChIJ2YNnemn_0YURymAeq-NOkg4/photos/Ab43m-tvueNss50WbCOgNrEBfZuCoBjUJFeSTXwYnNAuaF0fJ-944To99A1TnHrADsiUIRf1BhtRKS6KdAoYShxEtUyttal7K82mvQAF7s5LWLNIxNcpUmr94C0xdqGya2NGHiJbwTHkgoDicPMdQr7hiXvJLF4sGF13BG-at3uHs5pszEGYFgwFKoRLkNmpgxSNeupqaMCVo8a2-xgiEK0MFxtzGCfG4xSEYl5xOvCBdd6ahoeeGAkao4fT3JN90ri0jIkvaeU_5Bbh8n8ssyK66UhDmFqqih1M_QaHL96TYQUa4w/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+              ],
+              "opening_hours": [
+                "Open 24 hours (per listing)"
+              ],
+              "latitude": 19.4047051,
+              "longitude": -99.1737789,
+              "estimated_cost_usd": 10.0,
+              "estimated_duration_minutes": 60
+            }
+          ],
+          "restaurant": null,
+          "transit": [
+            {
+              "mode": "walk",
+              "from_place": "Mercado De San Cosme",
+              "to_place": "Casa Comtesse area",
+              "distance_text": "~4–6 km",
+              "duration_text": "~60–90 min walk (or short ride)",
+              "transit_line": "",
+              "instructions": "If it’s too chilly for a long walk, take a quick taxi/ride; otherwise use it to explore San Rafael/Hipódromo edges.",
+              "booking_url": "",
+              "fare_estimate_usd": 0.0
+            }
+          ],
+          "subtotal_usd": 10.0
+        },
+        {
+          "period": "evening",
+          "activities": [
+            {
+              "name": "Jazzatlán Capital (second round if you loved it)",
+              "category": "Live music / cocktails",
+              "rating": 4.6,
+              "review_count": 2075,
+              "price_level": "$$",
+              "address": "Guanajuato 239, Roma Nte., Cuauhtémoc, 06700 Ciudad de México, CDMX, Mexico",
+              "description": "If you want consistency: grab a sharing plate and let the music lead.",
+              "website_url": "https://linktr.ee/jazzatlancapital",
+              "google_maps_url": "https://maps.google.com/?cid=9072297591703007155&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
+              "photo_urls": [
+                "https://places.googleapis.com/v1/places/ChIJwzBiHjn_0YURs-8WspdG530/photos/Ab43m-vdsFcTufC6pCxvnqYMrCCEyPLy1W3N79z8DYPTNC7c_JswHBWZg0b748bq6ww1HFp9HDGifj8z1yKRDJ0sGW2oFfxXSZrxq1LoYxOaVGaV7Wj9wynfhbTf0rdAVjk1-DSeEdzo6zracq7iriWZzYSxkXhY5raWjn9-reOqb7LM-mDh-CWKko5e4LDTie8br_USd1GzBsKs-zixGOF3q1UPrMEPmNpfCHK6KbrIDjHElZCBNpt0DTrKrovhvZxqQbnkhvr3EwDGDaTv2ERXmvdBZatlGRcs8FcrfHbImIv9eg/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+              ],
+              "opening_hours": [],
+              "latitude": 19.4159187,
+              "longitude": -99.1648283,
+              "estimated_cost_usd": 32.0,
+              "estimated_duration_minutes": 120
+            }
+          ],
+          "restaurant": null,
+          "transit": [
+            {
+              "mode": "transit",
+              "from_place": "Casa Comtesse area",
+              "to_place": "Jazzatlán Capital",
+              "distance_text": "~3–6 km",
+              "duration_text": "~15–25 min (ride)",
+              "transit_line": "Uber/Taxi (approx.)",
+              "instructions": "Keep dinner casual—this place works well as your full evening plan.",
+              "booking_url": "",
+              "fare_estimate_usd": 5.0
+            }
+          ],
+          "subtotal_usd": 32.0
+        }
+      ],
+      "cultural_tip": "",
+      "daily_cost_usd": 56.5,
+      "walking_km": 5.0,
+      "route_map_url": "https://www.google.com/maps/embed/v1/directions?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&origin=19.4418924%2C-99.1623377&destination=19.4159187%2C-99.1648283&mode=walking&waypoints=19.4047051%2C-99.1737789"
+    },
+    {
+      "day_number": 5,
+      "date": "2027-01-14",
+      "city": "Mexico City",
+      "weather": {
+        "date": "2027-01-14",
+        "condition": "Cool morning, mild afternoon (dry season)",
+        "emoji": "🌤️",
+        "temp_low_c": 6.0,
+        "temp_high_c": 21.0,
+        "rain_probability_pct": 5,
+        "packing_tip": "Bring a medium jacket + comfy shoes—January mornings can feel colder than you expect at altitude."
+      },
+      "time_blocks": [
+        {
+          "period": "morning",
+          "activities": [
+            {
+              "name": "Coyoacán Market (if you want a different vibe)",
+              "category": "Market",
+              "rating": 4.5,
+              "review_count": 55205,
+              "price_level": "",
+              "address": "Ignacio Allende s/n, Del Carmen, Coyoacán, 04100 Ciudad de México, CDMX, Mexico",
+              "description": "Neighborhood marketplace with food + crafts. Great for a “less Roma/Condesa” morning.",
+              "website_url": "",
+              "google_maps_url": "https://maps.google.com/?cid=8638990294780037140&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
+              "photo_urls": [
+                "https://places.googleapis.com/v1/places/ChIJeYLOZMT_0YURFEhp2ubb43c/photos/Ab43m-tVa9INuoD8Di_Ayn5saes8oHnI_1hputDuEO5Gj2kS84OsHYe7Mip_w4cua7uh-4dnwQwW8Rmt0b5grAS912qyJbtrvjUeme77-yNLZkjPOwn7UtsT6M7EAzlj8IxK6ydywhxjj_ow3p4bx27xaDeaXlx4XElzEsXng6rMlAp3-mP9eUhvvrM8WYUj0P3GsZDWXz7PSksmNMEUnaHi_JzRFZv7oPQkLZWJvfuvUpd3hgYLAxEVK_rFVG300zE7CeLDHbITGEEP1bEwyhqB-zu1_RS0PI_p75Be33xgO8H0IFLDMx5U88iT_OzFLzTropAOpAmu0HeXBFQ_Xca_DOZsoi67ckciMtLudLh5ZTmJterthcYGBsyvabRjeMBKUxPqbA64IncExAK9lGiwtnu-lzZfPaPFiNoBpMarWuYLQ_Y/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+              ],
+              "opening_hours": [],
+              "latitude": 19.3528679,
+              "longitude": -99.1620664,
+              "estimated_cost_usd": 16.0,
+              "estimated_duration_minutes": 105
+            }
+          ],
+          "restaurant": null,
+          "transit": [
+            {
+              "mode": "transit",
+              "from_place": "La Valise mx City (Roma Norte)",
+              "to_place": "Coyoacán Market",
+              "distance_text": "~15 km",
+              "duration_text": "~45–70 min (ride)",
+              "transit_line": "Uber/Taxi (approx.)",
+              "instructions": "Use this as your change-of-scene day: wander first, then eat whatever smells best.",
+              "booking_url": "",
+              "fare_estimate_usd": 10.0
+            }
+          ],
+          "subtotal_usd": 16.0
+        },
+        {
+          "period": "afternoon",
+          "activities": [
+            {
+              "name": "Mercado Sonora",
+              "category": "Market",
+              "rating": 4.3,
+              "review_count": 120062,
+              "price_level": "",
+              "address": "Fray Servando Teresa de Mier 419, Merced Balbuena, Venustiano Carranza, 15810 Ciudad de México, CDMX, Mexico",
+              "description": "Fun, old-school market energy: food, small gifts, and lots of herbs/curios (daytime only).",
+              "website_url": "https://mercadosonora.com.mx/",
+              "google_maps_url": "https://maps.google.com/?cid=16121866506867316183&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
+              "photo_urls": [
+                "https://places.googleapis.com/v1/places/ChIJZ2lB4Mf-0YUR1xUYsitgvN8/photos/Ab43m-utNbdUzZTIH-lw0bJp6FoDLLM1oOGh3u8sQF0HXSrQcSPPR0oSw8lZOX2l0j2jwKgcJvuS6-1Ip1bKqFOul-iG5NwXJX8up3tzQR9sLjdOc82uhYeQAgkeQmqMkwga3vNRjzP87vrZJuRZ-VAf3wDQZcgTO6UXFtfRRMAQ3jDuls0yCo0KdUfYsGo3gb2q719CrRJxHaei1UKMhcu0XApPleJTicxdvjpl1h0dFEgc5UfAk9JGcaHLTODbeWadwQxMvloFCOzRjucdInyXUW8RcLIK6KqBTatXdThDAgQgZODNg2B53nSMlKDrYM5fjF4ZrEZ1p3iV6CZXKALDGyJ7dgoGpIutAQvYbuK8MniFrgZPS2NO8FjfDyj4Br08GUuccTPW9HPu0XS6eMxSA93vu8pRrgEXr2lXgDwfDDsy5ds/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+              ],
+              "opening_hours": [],
+              "latitude": 19.4221205,
+              "longitude": -99.1247031,
+              "estimated_cost_usd": 10.0,
+              "estimated_duration_minutes": 75
+            }
+          ],
+          "restaurant": null,
+          "transit": [
+            {
+              "mode": "transit",
+              "from_place": "Coyoacán Market",
+              "to_place": "Mercado Sonora",
+              "distance_text": "~10–12 km",
+              "duration_text": "~35–55 min (ride)",
+              "transit_line": "Uber/Taxi (approx.)",
+              "instructions": "Aim for daylight browsing; pick one snack and one small souvenir max.",
+              "booking_url": "",
+              "fare_estimate_usd": 8.0
+            }
+          ],
+          "subtotal_usd": 10.0
+        },
+        {
+          "period": "evening",
+          "activities": [
+            {
+              "name": "Departamento (terrace bar + live music vibe)",
+              "category": "Bar / restaurant",
+              "rating": 4.0,
+              "review_count": 2996,
+              "price_level": "$$",
+              "address": "Av. Álvaro Obregón 154-primer piso, Roma Nte., Cuauhtémoc, 06700 Ciudad de México, CDMX, Mexico",
+              "description": "Laid-back terrace spot—good for a late dinner + drinks without club pressure.",
+              "website_url": "http://departamento.tv/",
+              "google_maps_url": "https://maps.google.com/?cid=7517091371642899874&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
+              "photo_urls": [
+                "https://places.googleapis.com/v1/places/ChIJozNiIEz_0YURos3tdsYSUmg/photos/Ab43m-uqhCvYkf_RJWP8E9tOo40a4bXXL-nmiuI1r7Ukp-tn_fE58a4927bjDMOQJjLrpZl2paaE_vsrvOnXv74jCApgHiP-h4brA1Fydy86c_iihF7FSaGv9kDSEIrplRWdQPxYm5k9N8Icx2a5l_MmJfN2Rn1hWorskBhOAYCL79pDyVFw1RocWDMOJ0s4bxs-qOPXBaQ-_y3lw8wwgg6aZeM200giV5Q4eH7byfRX0MqpVDiB4ymKgHhI1alfBRLhTQIvKDzH-Bqphxagh05uiI7MwHusBC4zH9I3-_rRyOo10Q/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+              ],
+              "opening_hours": [],
+              "latitude": 19.4176009,
+              "longitude": -99.1618273,
+              "estimated_cost_usd": 35.0,
+              "estimated_duration_minutes": 120
+            }
+          ],
+          "restaurant": null,
+          "transit": [
+            {
+              "mode": "transit",
+              "from_place": "Mercado Sonora",
+              "to_place": "Departamento (Roma Norte)",
+              "distance_text": "~10 km",
+              "duration_text": "~30–45 min (ride)",
+              "transit_line": "Uber/Taxi (approx.)",
+              "instructions": "Settle back in Roma for your last “easy but fun” night.",
+              "booking_url": "",
+              "fare_estimate_usd": 7.0
+            }
+          ],
+          "subtotal_usd": 35.0
+        }
+      ],
+      "cultural_tip": "",
+      "daily_cost_usd": 58.0,
+      "walking_km": 3.5,
+      "route_map_url": "https://www.google.com/maps/embed/v1/directions?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&origin=19.3528679%2C-99.1620664&destination=19.4176009%2C-99.1618273&mode=walking&waypoints=19.4221205%2C-99.1247031"
+    },
+    {
+      "day_number": 6,
+      "date": "2027-01-15",
+      "city": "Mexico City",
+      "weather": {
+        "date": "2027-01-15",
+        "condition": "Cool morning, mild afternoon (dry season)",
+        "emoji": "⛅",
+        "temp_low_c": 6.0,
+        "temp_high_c": 20.0,
+        "rain_probability_pct": 5,
+        "packing_tip": "Last-day checklist: comfy layers + a backup warm layer for taxi-to-airport chills."
+      },
+      "time_blocks": [
+        {
+          "period": "morning",
+          "activities": [
+            {
+              "name": "La Merced Market (organized chaos)",
+              "category": "Market / prepared food",
+              "rating": 4.4,
+              "review_count": 43903,
+              "price_level": "",
+              "address": "Circunvalación, La Merced, Zona Centro, Venustiano Carranza, 15100 Ciudad de México, CDMX, Mexico",
+              "description": "Big traditional market—grab one warm thing for breakfast/brunch and browse for produce/cheese/spices.",
+              "website_url": "",
+              "google_maps_url": "https://maps.google.com/?cid=11376355233979147071&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
+              "photo_urls": [
+                "https://places.googleapis.com/v1/places/ChIJb8brj_n_0YURP6P7j8_u4J0/photos/Ab43m-vMIMHYQ9OfbjrDBe3VK82WIr0hEN60DtkYD43_FKfvptI86Iz4HkB4nJCNc9kmqwrpl0v_swq45IH9pWdtWkjVE7f4HfCIxBHsHkQ8gFVSrepuHvoRiT153S4WGmPBFVZLXpaxfgO0FB22Tyk-CSNRn8VRZBlnfJq0O18JOMt0qL6jKVwhMUw_XnbF-z5Kxkxf0wFuzrRzd9fEjGfGpkA10OJQBRQGpVR4DrpMplDyRocO3fdjwgJZTxTagHm7kHYGz2JzElGWPgR727GbvnCUsl9WV0ffIOrY49ZzoqyZ82n16M7AUf7TOmZzBjtTEqXYhCj6QwiqiS1gHrHZudIDIzWUQNT1wVy7RqLT8DqAKJQeVHMl0zr_GUCI_p2kL3Yw2qcKIhbOt71HL3somdMNRPLEW8AD38DKR5z25Nw/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+              ],
+              "opening_hours": [],
+              "latitude": 19.4261124,
+              "longitude": -99.1251527,
+              "estimated_cost_usd": 16.0,
+              "estimated_duration_minutes": 100
+            }
+          ],
+          "restaurant": null,
+          "transit": [
+            {
+              "mode": "transit",
+              "from_place": "La Valise mx City (Roma Norte)",
+              "to_place": "La Merced Market",
+              "distance_text": "~8–12 km",
+              "duration_text": "~30–55 min (ride)",
+              "transit_line": "Uber/Taxi (approx.)",
+              "instructions": "Go earlier for fewer crowds; keep valuables close in the busiest aisles.",
+              "booking_url": "",
+              "fare_estimate_usd": 8.0
+            }
+          ],
+          "subtotal_usd": 16.0
+        },
+        {
+          "period": "afternoon",
+          "activities": [
+            {
+              "name": "Pack + café time near your hotel (Roma/Condesa)",
+              "category": "Buffer / last errands",
+              "rating": null,
+              "review_count": 0,
+              "price_level": "",
+              "address": "Roma Norte / Condesa, Cuauhtémoc, Ciudad de México, CDMX, Mexico",
+              "description": "Use this as your flexible slot: buy snacks for the airport, do laundry/convenience store runs, and squeeze one last coffee before heading out.",
+              "website_url": "",
+              "google_maps_url": "",
+              "photo_urls": [
+                "https://places.googleapis.com/v1/places/ChIJ__9zdWr_0YUR4SVaBAVl1HU/photos/Ab43m-sTRDYqPnyMwMi9LY58LhuRBOUtN8yk_tAaFOHcYbt8wdyViKan1lS0w_CF1MRo_iN78Bpy91hpJFS7vRESefsAsplORo1iTkjHjzv1pFhgqsHYHUQGGxjFIwy7C7BNwWYTQ1SSN32-7AUtW-VYZTrQFi_vUbn8ug31bcvItcAwT9QvqiQGA81iRXLHQSQRjxyl77TNDis-G8Riw3o8z3o0jLk5TWRYlrMCa2OaKkXrx6RHbw6xBedFfVhrzkUEuXEL8Hz9gK8oM9-dbDJTUPxWbKs2JJ5-AN8l7lF_-fCnLA/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+              ],
+              "opening_hours": [],
+              "latitude": 19.4145,
+              "longitude": -99.1713,
+              "estimated_cost_usd": 10.0,
+              "estimated_duration_minutes": 90
+            }
+          ],
+          "restaurant": null,
+          "transit": [
+            {
+              "mode": "walk",
+              "from_place": "La Merced Market",
+              "to_place": "Return toward Roma/Condesa",
+              "distance_text": "Too far to walk fully",
+              "duration_text": "~10–20 min ride partway",
+              "transit_line": "Uber/Taxi (approx.)",
+              "instructions": "Short ride back to your area for a calm, not-stressed finish.",
+              "booking_url": "",
+              "fare_estimate_usd": 0.0
+            }
+          ],
+          "subtotal_usd": 10.0
+        },
+        {
+          "period": "evening",
+          "activities": [
+            {
+              "name": "Departure night plan: keep it simple",
+              "category": "Wrap-up / travel day",
+              "rating": null,
+              "review_count": 0,
+              "price_level": "",
+              "address": "Roma Norte / Condesa, Cuauhtémoc, Ciudad de México, CDMX, Mexico",
+              "description": "If you’re flying later: order something quick for dinner nearby, then call it. If you’re departing earlier: skip this block.",
+              "website_url": "",
+              "google_maps_url": "",
+              "photo_urls": [],
+              "opening_hours": [],
+              "latitude": 19.4145,
+              "longitude": -99.1713,
+              "estimated_cost_usd": 12.0,
+              "estimated_duration_minutes": 60
+            }
+          ],
+          "restaurant": null,
+          "transit": [],
+          "subtotal_usd": 12.0
+        }
+      ],
+      "cultural_tip": "",
+      "daily_cost_usd": 38.0,
+      "walking_km": 2.0,
+      "route_map_url": "https://www.google.com/maps/embed/v1/directions?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&origin=19.4261124%2C-99.1251527&destination=19.4145%2C-99.1713&mode=walking&waypoints=19.4145%2C-99.1713"
+    }
+  ],
+  "budget_flights": 0.0,
+  "budget_accommodation": 150.0,
+  "budget_transport": 0.0,
+  "budget_meals": 0.0,
+  "budget_activities": 0.0,
+  "budget_misc": 0.0,
+  "budget_total": 150.0,
+  "budget_per_person": 0.0,
+  "budget_summary": "Mentioned target is a boutique hotel in Roma Norte/Condesa under ~$150/night; no other explicit trip budget amounts were provided.",
+  "safety": {
+    "advisory_level": "yellow",
+    "advisory_level_num": 2,
+    "advisory_summary": "Mexico City travel: follow your home country’s travel advisory. Use extra caution around busy areas, avoid traveling alone at night, and take care with belongings and transportation. Some market areas (e.g., Merced/central markets, Tepito) are described in sources as higher-risk and should be visited in daylight with situational awareness.",
+    "visa_requirements": "Verify visa requirements for your nationality with your government/embassy (not specified in the provided text).",
+    "health_requirements": [
+      "No specific vaccination requirements stated in the provided text.",
+      "General guidance: ensure routine vaccinations are up to date; consider country-specific recommendations from your health authority (not provided in the text)."
+    ],
+    "emergency_numbers": {},
+    "languages": [
+      "Spanish"
+    ],
+    "currency_name": "Mexican peso",
+    "currency_symbol": "$",
+    "currency_code": "MXN",
+    "timezones": [
+      "America/Mexico_City (UTC-6 raw; observes DST)",
+      "UTC-08:00",
+      "UTC-07:00",
+      "UTC-06:00"
+    ],
+    "seasonal_risks": [
+      "January is cool mornings and mild/warm afternoons; pack layers.",
+      "Dry season timing is referenced (Oct–Apr) with generally low rain; however temperature swings can be significant."
+    ],
+    "natural_hazards": [
+      "Mexico City is in a seismically active region (earthquakes possible)."
+    ],
+    "safety_tips": [
+      "Check your government’s travel advisory for Mexico before traveling.",
+      "Use daylight for higher-activity/market areas described as less safe; don’t wander after dark in those zones.",
+      "Keep valuables secure and be cautious with pickpocketing in crowded places.",
+      "Use registered taxis/rideshare and avoid isolated routes late at night.",
+      "Have emergency contacts and know how to reach local services quickly."
+    ],
+    "embassy_info": ""
+  },
+  "culture": {
+    "phrases": [],
+    "etiquette_tips": [
+      "Dress in comfortable clothing and use layers (cool mornings, warmer afternoons).",
+      "Book Rosca de Reyes slices/Three Kings festivities/seasonal events around Jan 6; expect stores/markets to be busy near early January.",
+      "When visiting markets or nightlife spots, avoid flashy/expensive jewelry; blend in with locals.",
+      "Use daylight for higher-intensity markets/areas (e.g., La Merced/Tepito-style experiences) and avoid staying out late without local context."
+    ],
+    "tipping_guide": "Mexico City: typical service-tip guidance (if not already included) is ~10% of the bill for restaurant/table service; for taxis and small services round up or tip a few pesos. For bartenders/cafés, a few pesos per drink is common—adjust upward for excellent service or if you’re in a higher-end venue.",
+    "dining_customs": [
+      "Go to mercados for an on-the-ground meal (locals often eat quickly and with purpose).",
+      "Order at the stall/counter and take items to your table; ask what’s fresh if you’re unsure.",
+      "Start with something simple at Mercado Medellín/Jamaica rather than over-planning where to eat first.",
+      "Street food and micheladas are a big part of local market culture; bring small cash for quick purchases."
+    ],
+    "religious_customs": [
+      "Día de los Reyes / Three Kings Day (Jan 6): Rosca de Reyes is served; a tiny doll is hidden in the bread—whoever finds it in their slice traditionally has follow-up duties (parties/hosting) later in the season."
+    ],
+    "dress_code_notes": [
+      "Layer for January: cool mornings/ evenings and mild/warm afternoons.",
+      "Comfortable shoes are important for uneven sidewalks and market walking.",
+      "Avoid overly flashy outfits/jewelry in crowded markets if you want to blend in."
+    ],
+    "festivals": [],
+    "food_specialties": [
+      "Mercado Jamaica: flowers + food + garnachas.",
+      "Mercado Medellín: hearty local eats for day-one market lunch.",
+      "La Merced: intense big-market street snacks (go with a plan).",
+      "Rosca de Reyes (Three Kings bread) around Jan 6."
+    ],
+    "local_customs": [],
+    "music_and_arts": [
+      "Roma/Condesa nightlife has a strong electronic + indie/art-crowd vibe; look for venues like Bar Oriente, Fünk Club, Foro Indie Rocks!, Circo Volador.",
+      "Doctores: Laguna is an independent, former-factory creative space with exhibitions and public cultural programming."
+    ],
+    "etiquette_cards": []
+  },
+  "packing": [
+    {
+      "item": "Medium-weight jacket or coat",
+      "reason": "January mornings/evenings in Mexico City can feel chilly compared with daytime; a real layer keeps you comfortable for walks after dark.",
+      "category": "clothing",
+      "essential": true,
+      "weather_context": "January typically brings cool mornings and mild/warm afternoons at Mexico City’s altitude.",
+      "activity_context": "Evening strolls around Roma/Condesa and nights out."
+    },
+    {
+      "item": "Light sweater/fleece",
+      "reason": "Easy to add/remove for the big temperature swings between morning and afternoon.",
+      "category": "clothing",
+      "essential": true,
+      "weather_context": "Cool AM, warmer midday during January.",
+      "activity_context": "Museum afternoons and café-hopping."
+    },
+    {
+      "item": "Long-sleeve tops (2–3)",
+      "reason": "Comfortable baseline for cool mornings and dinners; works well for layering.",
+      "category": "clothing",
+      "essential": true,
+      "weather_context": "January is dry and cool, especially early/late.",
+      "activity_context": "Daily neighborhood wandering and market visits."
+    },
+    {
+      "item": "T-shirts/short-sleeve shirts",
+      "reason": "Afternoons can be comfortably warm; you’ll want breathable options.",
+      "category": "clothing",
+      "essential": true,
+      "weather_context": "Daytime highs are generally mild in January.",
+      "activity_context": "Lunch and daytime activities."
+    },
+    {
+      "item": "Long pants/jeans (2)",
+      "reason": "Most days are walkable and chilly enough to avoid bare legs in the mornings/evenings.",
+      "category": "clothing",
+      "essential": true,
+      "weather_context": "Cooler than beach towns; evenings feel cooler.",
+      "activity_context": "Markets, parks, and evening dining."
+    },
+    {
+      "item": "Comfy walking shoes (water-resistant if possible)",
+      "reason": "You’ll do a lot of walking on uneven sidewalks and through busy mercados; traction helps.",
+      "category": "clothing",
+      "essential": true,
+      "weather_context": "Dry season overall; occasional light drizzle possible.",
+      "activity_context": "Roma Norte/Condesa neighborhood days and market days."
+    },
+    {
+      "item": "Dressy-casual outfit (for one nicer dinner)",
+      "reason": "For boutique restaurants or live music venues where you’ll want to look put-together without going formal.",
+      "category": "clothing",
+      "essential": false,
+      "weather_context": "January evenings are cool, so pair with a jacket.",
+      "activity_context": "Date-night dinner + cocktails."
+    },
+    {
+      "item": "Compact umbrella or packable rain jacket",
+      "reason": "Even in dry season, brief showers can happen; you’ll be happier with protection.",
+      "category": "clothing",
+      "essential": false,
+      "weather_context": "January can have occasional light rain.",
+      "activity_context": "Market mornings and commuting between neighborhoods."
+    },
+    {
+      "item": "Small day backpack or crossbody",
+      "reason": "Hands-free carry for markets, snacks, water, and a layer for temperature changes.",
+      "category": "accessories",
+      "essential": true,
+      "weather_context": "Year-round walking weather; you’ll rely on it daily.",
+      "activity_context": "Markets, gallery hopping, nightlife."
+    },
+    {
+      "item": "Sunglasses",
+      "reason": "Bright sun on warmer afternoons and good visibility for walking/parks.",
+      "category": "accessories",
+      "essential": false,
+      "weather_context": "January tends to be bright and dry overall.",
+      "activity_context": "Parque time and daytime strolling."
+    },
+    {
+      "item": "Reusable water bottle",
+      "reason": "Stays hydrated at altitude and helps you through long market/museum stretches.",
+      "category": "health",
+      "essential": true,
+      "weather_context": "High elevation means you may feel dryness more quickly.",
+      "activity_context": "All-day neighborhood and market days."
+    },
+    {
+      "item": "Basic meds + motion/altitude comfort supplies",
+      "reason": "Backup for headaches, stomach upset, or sore-throat/seasonal discomfort; easier than hunting in CDMX.",
+      "category": "health",
+      "essential": true,
+      "weather_context": "Chilly mornings + change in routine can trigger minor issues.",
+      "activity_context": "Long walking days and late nights."
+    },
+    {
+      "item": "Hand sanitizer + small wet wipes",
+      "reason": "Markets and food spots are much easier when you can quickly clean hands.",
+      "category": "health",
+      "essential": true,
+      "weather_context": "Busy public spaces.",
+      "activity_context": "Mercado days and street-food moments."
+    },
+    {
+      "item": "Sunscreen (SPF)",
+      "reason": "UV can be strong at altitude even in cooler months.",
+      "category": "health",
+      "essential": false,
+      "weather_context": "January sun is often strong in CDMX.",
+      "activity_context": "Parks and daytime outdoor wandering."
+    },
+    {
+      "item": "Travel adapter (Type A/B)",
+      "reason": "You’ll need consistent charging for phone/camera/laptop.",
+      "category": "tech",
+      "essential": true,
+      "weather_context": "N/A",
+      "activity_context": "All days; you’ll use transit and mapping constantly."
+    },
+    {
+      "item": "Phone charger + power bank",
+      "reason": "Night plans and map use drain batteries fast; a power bank is peace of mind.",
+      "category": "tech",
+      "essential": true,
+      "weather_context": "N/A",
+      "activity_context": "Late-night nightlife and navigation."
+    },
+    {
+      "item": "Offline maps / downloaded city guides",
+      "reason": "CDMX transit and areas vary; having content offline helps when service is spotty underground or in markets.",
+      "category": "tech",
+      "essential": false,
+      "weather_context": "N/A",
+      "activity_context": "Metro rides and roaming neighborhoods."
+    },
+    {
+      "item": "Passport + photocopies/digital scans",
+      "reason": "Essential for entry, hotel check-in, and any unexpected situation.",
+      "category": "documents",
+      "essential": true,
+      "weather_context": "N/A",
+      "activity_context": "Entire trip."
+    },
+    {
+      "item": "Credit/debit card + some cash (MXN)",
+      "reason": "Markets/cantinas often work best with cash for small purchases and tips.",
+      "category": "money",
+      "essential": true,
+      "weather_context": "N/A",
+      "activity_context": "Market lunches, snacks, nightlife."
+    },
+    {
+      "item": "Driver’s license / ID (if applicable)",
+      "reason": "Helpful secondary ID for certain registrations or rentals.",
+      "category": "documents",
+      "essential": false,
+      "weather_context": "N/A",
+      "activity_context": "Transit and contingency use."
+    },
+    {
+      "item": "Small toiletry kit (travel-size)",
+      "reason": "So you can refresh between long days; include any daily essentials.",
+      "category": "toiletries",
+      "essential": true,
+      "weather_context": "N/A",
+      "activity_context": "Gym/rooftop and post-night-out freshening."
+    },
+    {
+      "item": "Basic pharmacy items (blister care, lip balm)",
+      "reason": "You’ll walk a lot; lips can dry out in dry/altitude air.",
+      "category": "health",
+      "essential": false,
+      "weather_context": "Dry conditions common in winter.",
+      "activity_context": "Walking-heavy days and evening routines."
+    },
+    {
+      "item": "Night-out outfit (compact)",
+      "reason": "For clubs/listening rooms (Roma/Condesa/Doctores) you’ll want something comfortable for standing and dancing.",
+      "category": "clothing",
+      "essential": false,
+      "weather_context": "Evenings are cooler; layer accordingly.",
+      "activity_context": "Underground music/art nights."
+    }
+  ],
+  "currency_exchange_locations": [],
+  "local_tips": {
+    "must_have_apps": [],
+    "sim_card_info": "",
+    "wifi_info": "",
+    "transport_cards": [],
+    "power_adapter": "",
+    "useful_websites": []
+  },
+  "emergency_info": {
+    "hospitals": [],
+    "pharmacies": [],
+    "insurance_notes": "",
+    "medical_phrases": [],
+    "vaccination_tips": []
+  },
+  "exchange_rate": 0.0,
+  "local_currency_code": "MXN",
+  "theme_accent_color": "#e41e3f",
+  "hero_gradient_from": "#e41e3f",
+  "hero_gradient_to": "#b01028",
+  "hero_emoji": "✈️",
+  "season": "winter",
+  "generated_at": "May 07, 2026 at 21:42",
+  "langsmith_run_id": ""
+}
