@@ -356,7 +356,7 @@ class TestWorkerNodes:
         mock_executor = AsyncMock()
         mock_executor.ainvoke.return_value = {
             "messages": [
-                HumanMessage(content="original"),   # enriched message fed in
+                HumanMessage(content="original"),  # enriched message fed in
                 AIMessage(content="hotel result"),  # agent output
             ],
         }
@@ -683,8 +683,9 @@ class TestRouteAfterHumanReview:
 
 
 class TestSafetyReviewInterrupt:
+    @patch("src.agent.stage4_graph.is_hitl_enabled", return_value=True)
     @patch("src.agent.stage4_graph.interrupt")
-    async def test_dangerous_approved(self, mock_interrupt):
+    async def test_dangerous_approved(self, mock_interrupt, _hitl):
         mock_interrupt.return_value = {"approved": True}
         state = {
             "itinerary_components": {
@@ -701,8 +702,9 @@ class TestSafetyReviewInterrupt:
         assert result["safety_acknowledged"] is True
         mock_interrupt.assert_called_once()
 
+    @patch("src.agent.stage4_graph.is_hitl_enabled", return_value=True)
     @patch("src.agent.stage4_graph.interrupt")
-    async def test_dangerous_rejected(self, mock_interrupt):
+    async def test_dangerous_rejected(self, mock_interrupt, _hitl):
         mock_interrupt.return_value = {"approved": False}
         state = {
             "itinerary_components": {
@@ -716,8 +718,9 @@ class TestSafetyReviewInterrupt:
         assert result["hitl_action"] == "rejected"
         assert "cancelled" in result["messages"][0].content.lower()
 
+    @patch("src.agent.stage4_graph.is_hitl_enabled", return_value=True)
     @patch("src.agent.stage4_graph.interrupt")
-    async def test_reconsider_travel_triggers_interrupt(self, mock_interrupt):
+    async def test_reconsider_travel_triggers_interrupt(self, mock_interrupt, _hitl):
         mock_interrupt.return_value = {"approved": True}
         state = {
             "itinerary_components": {
@@ -754,8 +757,9 @@ class TestSafetyReviewInterrupt:
 
 
 class TestBudgetReviewInterrupt:
+    @patch("src.agent.stage4_graph.is_hitl_enabled", return_value=True)
     @patch("src.agent.stage4_graph.interrupt")
-    async def test_overspend_approved(self, mock_interrupt):
+    async def test_overspend_approved(self, mock_interrupt, _hitl):
         mock_interrupt.return_value = {"approved": True}
         state = {
             "itinerary_components": {
@@ -769,8 +773,9 @@ class TestBudgetReviewInterrupt:
         assert result["budget_adjustment_accepted"] is True
         mock_interrupt.assert_called_once()
 
+    @patch("src.agent.stage4_graph.is_hitl_enabled", return_value=True)
     @patch("src.agent.stage4_graph.interrupt")
-    async def test_overspend_approved_with_feedback(self, mock_interrupt):
+    async def test_overspend_approved_with_feedback(self, mock_interrupt, _hitl):
         mock_interrupt.return_value = {
             "approved": True,
             "feedback": "Use budget hotels",
@@ -786,8 +791,9 @@ class TestBudgetReviewInterrupt:
         assert result["hitl_action"] == "approved"
         assert result["human_feedback"] == "Use budget hotels"
 
+    @patch("src.agent.stage4_graph.is_hitl_enabled", return_value=True)
     @patch("src.agent.stage4_graph.interrupt")
-    async def test_overspend_rejected(self, mock_interrupt):
+    async def test_overspend_rejected(self, mock_interrupt, _hitl):
         mock_interrupt.return_value = {"approved": False, "feedback": "Too expensive"}
         state = {
             "itinerary_components": {
@@ -806,8 +812,9 @@ class TestBudgetReviewInterrupt:
 
 
 class TestHumanReviewInterrupt:
+    @patch("src.agent.stage4_graph.is_hitl_enabled", return_value=True)
     @patch("src.agent.stage4_graph.interrupt")
-    async def test_approved_no_feedback(self, mock_interrupt):
+    async def test_approved_no_feedback(self, mock_interrupt, _hitl):
         mock_interrupt.return_value = {"approved": True}
         state = {
             "itinerary_components": {
@@ -819,8 +826,9 @@ class TestHumanReviewInterrupt:
         assert result["hitl_action"] == "approved"
         assert result["current_agent"] == "human_review"
 
+    @patch("src.agent.stage4_graph.is_hitl_enabled", return_value=True)
     @patch("src.agent.stage4_graph.interrupt")
-    async def test_approved_with_feedback(self, mock_interrupt):
+    async def test_approved_with_feedback(self, mock_interrupt, _hitl):
         mock_interrupt.return_value = {
             "approved": True,
             "feedback": "Add more food stops",
@@ -835,16 +843,18 @@ class TestHumanReviewInterrupt:
         assert result["human_feedback"] == "Add more food stops"
         assert "Noted your feedback" in result["messages"][0].content
 
+    @patch("src.agent.stage4_graph.is_hitl_enabled", return_value=True)
     @patch("src.agent.stage4_graph.interrupt")
-    async def test_rejected(self, mock_interrupt):
+    async def test_rejected(self, mock_interrupt, _hitl):
         mock_interrupt.return_value = {"approved": False}
         state = {"itinerary_components": {}}
         result = await human_review_node(state)
         assert result["hitl_action"] == "rejected"
         assert "cancelled" in result["messages"][0].content.lower()
 
+    @patch("src.agent.stage4_graph.is_hitl_enabled", return_value=True)
     @patch("src.agent.stage4_graph.interrupt")
-    async def test_builds_component_summary_in_interrupt(self, mock_interrupt):
+    async def test_builds_component_summary_in_interrupt(self, mock_interrupt, _hitl):
         mock_interrupt.return_value = {"approved": True}
         state = {
             "itinerary_components": {
