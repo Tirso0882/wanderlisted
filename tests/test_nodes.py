@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langgraph.graph import END
+from langgraph.types import Send
 
 from src.agent.stage4_graph import (
     # Helpers
@@ -18,7 +19,12 @@ from src.agent.stage4_graph import (
     triage_node,
     shallow_reply_node,
     supervisor_node,
-    parallel_dispatch_node,
+    flights_node,
+    hotels_node,
+    destination_node,
+    restaurants_node,
+    activities_node,
+    transportation_node,
     budget_node,
     itinerary_node,
     synthesize_node,
@@ -29,7 +35,6 @@ from src.agent.stage4_graph import (
     human_review_node,
     route_after_triage,
     route_after_supervisor,
-    route_after_parallel,
     route_after_safety_review,
     route_after_budget,
     route_after_budget_review,
@@ -288,61 +293,81 @@ class TestSupervisorNode:
         assert result["dietary_restrictions"] == ["halal"]
 
 
-# ── Parallel dispatch node tests ─────────────────────────────────────────────
+# ── Send() fan-out worker node tests ─────────────────────────────────────────
 
 
-class TestParallelDispatchNode:
-    async def test_no_parallel_agents_passes_through(self):
-        state = {
-            "messages": [HumanMessage(content="test")],
-            "itinerary_components": {
-                "routing": ["BudgetAgent"],
-                "completed_agents": [],
-            },
-        }
-        result = await parallel_dispatch_node(state, executors={})
+class TestWorkerNodes:
+    """Each parallel worker writes only its own key to itinerary_components.
 
-        assert result["current_agent"] == "parallel_dispatch"
-        assert result["itinerary_components"]["completed_agents"] == []
+    The _merge_components reducer in TravelAgentState accumulates these
+    partial dicts without overwriting other workers' results.
+    """
 
-    async def test_runs_requested_parallel_agents(self):
+    async def _run(self, node_fn, *, return_content="Found results"):
+        """Shared helper: build a mock state, run node_fn, return result."""
         mock_executor = AsyncMock()
         mock_executor.ainvoke.return_value = {
             "messages": [
                 HumanMessage(content="test"),
-                AIMessage(content="Found flights"),
+                AIMessage(content=return_content),
             ],
         }
-        executors = {"FlightsAgent": mock_executor}
         state = {
             "messages": [HumanMessage(content="test")],
-            "itinerary_components": {
-                "routing": ["FlightsAgent"],
-                "completed_agents": [],
-            },
+            "itinerary_components": {"routing": []},
         }
-        result = await parallel_dispatch_node(state, executors=executors)
+        return await node_fn(state, executor=mock_executor)
 
-        assert "FlightsAgent" in result["itinerary_components"]["completed_agents"]
+    async def test_flights_node_writes_only_flights_key(self):
+        result = await self._run(flights_node, return_content="MH370 found")
+        assert result["current_agent"] == "flights"
         assert "flights" in result["itinerary_components"]
+        # Must NOT write other agents' keys (reducer handles merging)
+        assert set(result["itinerary_components"].keys()) == {"flights"}
+        assert len(result["messages"]) > 0
 
-    async def test_handles_agent_exception(self):
+    async def test_hotels_node_writes_only_hotels_key(self):
+        result = await self._run(hotels_node)
+        assert result["current_agent"] == "hotels"
+        assert set(result["itinerary_components"].keys()) == {"hotels"}
+
+    async def test_destination_node_writes_only_destination_key(self):
+        result = await self._run(destination_node)
+        assert result["current_agent"] == "destination"
+        assert set(result["itinerary_components"].keys()) == {"destination"}
+
+    async def test_restaurants_node_writes_only_restaurants_key(self):
+        result = await self._run(restaurants_node)
+        assert result["current_agent"] == "restaurants"
+        assert set(result["itinerary_components"].keys()) == {"restaurants"}
+
+    async def test_activities_node_writes_only_activities_key(self):
+        result = await self._run(activities_node)
+        assert result["current_agent"] == "activities"
+        assert set(result["itinerary_components"].keys()) == {"activities"}
+
+    async def test_transportation_node_writes_only_transportation_key(self):
+        result = await self._run(transportation_node)
+        assert result["current_agent"] == "transportation"
+        assert set(result["itinerary_components"].keys()) == {"transportation"}
+
+    async def test_worker_strips_enriched_messages(self):
+        """New messages are only the agent's own output, not the enriched context."""
         mock_executor = AsyncMock()
-        mock_executor.ainvoke.side_effect = RuntimeError("API timeout")
-        executors = {"FlightsAgent": mock_executor}
-        state = {
-            "messages": [HumanMessage(content="test")],
-            "itinerary_components": {
-                "routing": ["FlightsAgent"],
-                "completed_agents": [],
-            },
+        mock_executor.ainvoke.return_value = {
+            "messages": [
+                HumanMessage(content="original"),   # enriched message fed in
+                AIMessage(content="hotel result"),  # agent output
+            ],
         }
-        result = await parallel_dispatch_node(state, executors=executors)
-
-        # Agent should NOT be in completed list
-        assert "FlightsAgent" not in result["itinerary_components"]["completed_agents"]
-        # But we should get an error message
-        assert any("error" in m.content.lower() for m in result["messages"])
+        state = {
+            "messages": [HumanMessage(content="original")],
+            "itinerary_components": {},
+        }
+        result = await hotels_node(state, executor=mock_executor)
+        # Only the agent output, not the enriched input message
+        assert len(result["messages"]) == 1
+        assert result["messages"][0].content == "hotel result"
 
 
 # ── Budget node tests ────────────────────────────────────────────────────────
@@ -555,9 +580,29 @@ class TestRouteAfterSupervisor:
         state = {"itinerary_components": {"routing": [], "flights": {}}}
         assert route_after_supervisor(state) == "synthesize"
 
-    def test_parallel_agents_dispatch(self):
-        state = {"itinerary_components": {"routing": ["FlightsAgent", "HotelsAgent"]}}
-        assert route_after_supervisor(state) == "parallel_dispatch"
+    def test_parallel_agents_return_send_objects(self):
+        """With parallel agents, route_after_supervisor returns a list of Send objects."""
+        state = {
+            "messages": [HumanMessage(content="plan my trip")],
+            "itinerary_components": {"routing": ["FlightsAgent", "HotelsAgent"]},
+        }
+        result = route_after_supervisor(state)
+        assert isinstance(result, list)
+        assert len(result) == 2
+        assert all(isinstance(s, Send) for s in result)
+        # Send targets should be the node names, not agent class names
+        targets = {s.node for s in result}
+        assert targets == {"flights", "hotels"}
+
+    def test_single_parallel_agent_returns_one_send(self):
+        state = {
+            "messages": [HumanMessage(content="hotels only")],
+            "itinerary_components": {"routing": ["DestinationAgent"]},
+        }
+        result = route_after_supervisor(state)
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert result[0].node == "destination"
 
     def test_budget_only_routes_to_budget(self):
         state = {"itinerary_components": {"routing": ["BudgetAgent"]}}
@@ -566,11 +611,6 @@ class TestRouteAfterSupervisor:
     def test_itinerary_only_routes_to_itinerary(self):
         state = {"itinerary_components": {"routing": ["ItineraryAgent"]}}
         assert route_after_supervisor(state) == "itinerary"
-
-
-class TestRouteAfterParallel:
-    def test_always_goes_to_safety_review(self):
-        assert route_after_parallel({}) == "safety_review"
 
 
 class TestRouteAfterSafetyReview:
@@ -836,7 +876,7 @@ class TestBudgetNodeStructured:
             content="Budget: $3,500 total. Flights $800, Hotels $1200."
         )
 
-        async def _fake_invoke(input_dict):
+        async def _fake_invoke(input_dict, **kwargs):
             return {"messages": input_dict["messages"] + [budget_msg]}
 
         mock_executor.ainvoke = _fake_invoke

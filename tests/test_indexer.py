@@ -12,7 +12,7 @@ from src.rag.indexer import (
     _is_stale,
     _load_and_chunk,
     build_index,
-    NAMESPACE,
+    namespace_for,
 )
 
 
@@ -124,6 +124,26 @@ class TestComputeManifest:
         m2 = _compute_manifest(guides_dir)
         assert m1["japan_guide.md"] != m2["japan_guide.md"]
         assert m1["france_guide.md"] == m2["france_guide.md"]
+
+
+# ── namespace_for ────────────────────────────────────────────────────────
+
+
+class TestNamespaceFor:
+    def test_default_tenant(self):
+        assert namespace_for() == "wikivoyage/destination_guides"
+
+    def test_explicit_tenant(self):
+        assert namespace_for("acme_travel") == "acme_travel/destination_guides"
+
+    def test_normalises_spaces_and_case(self):
+        assert namespace_for("Acme Travel") == "acme_travel/destination_guides"
+
+    def test_none_gives_default(self):
+        assert namespace_for(None) == "wikivoyage/destination_guides"
+
+    def test_wikivoyage_is_default(self):
+        assert namespace_for("wikivoyage") == "wikivoyage/destination_guides"
 
 
 # ── _is_stale ────────────────────────────────────────────────────────────
@@ -248,7 +268,7 @@ class TestBuildIndex:
         ):
             result = build_index(guides_dir)
 
-        mock_index.delete.assert_called_once_with(delete_all=True, namespace=NAMESPACE)
+        mock_index.delete.assert_called_once_with(delete_all=True, namespace=namespace_for())
         mock_index.upsert.assert_called_once()
         assert result == (mock_index, mock_emb_gen)
 

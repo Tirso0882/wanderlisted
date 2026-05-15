@@ -541,6 +541,55 @@ class TestOptimizeDayRoute:
         )
         assert "error" in result.lower()
 
+    @respx.mock
+    async def test_travel_mode_defaults_to_drive(self, monkeypatch):
+        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
+        route_mock = respx.post(
+            "https://routes.googleapis.com/directions/v2:computeRoutes"
+        ).mock(return_value=Response(200, json=_MOCK_ROUTES_RESPONSE))
+        await optimize_day_route.ainvoke(
+            {
+                "stops": "A, B, C",
+                "start_location": "Hotel",
+            }
+        )
+        body = json.loads(route_mock.calls[0].request.content)
+        assert body["travelMode"] == "DRIVE"
+
+    @respx.mock
+    async def test_travel_mode_transit(self, monkeypatch):
+        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
+        route_mock = respx.post(
+            "https://routes.googleapis.com/directions/v2:computeRoutes"
+        ).mock(return_value=Response(200, json=_MOCK_ROUTES_RESPONSE))
+        result = await optimize_day_route.ainvoke(
+            {
+                "stops": "Senso-ji Temple, Tokyo Tower, Meiji Shrine",
+                "start_location": "Hotel Tokyo",
+                "travel_mode": "TRANSIT",
+            }
+        )
+        body = json.loads(route_mock.calls[0].request.content)
+        assert body["travelMode"] == "TRANSIT"
+        assert "mode=TRANSIT" in result
+
+    @respx.mock
+    async def test_travel_mode_walk(self, monkeypatch):
+        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
+        route_mock = respx.post(
+            "https://routes.googleapis.com/directions/v2:computeRoutes"
+        ).mock(return_value=Response(200, json=_MOCK_ROUTES_RESPONSE))
+        result = await optimize_day_route.ainvoke(
+            {
+                "stops": "A, B, C",
+                "start_location": "Hotel",
+                "travel_mode": "WALK",
+            }
+        )
+        body = json.loads(route_mock.calls[0].request.content)
+        assert body["travelMode"] == "WALK"
+        assert "mode=WALK" in result
+
 
 # ── places_photo_url ─────────────────────────────────────────────────────
 
