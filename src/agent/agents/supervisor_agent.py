@@ -1,7 +1,7 @@
 """Supervisor agent that routes queries to specialized sub-agents via LLM."""
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from src.agent.agents.base import SpecializedAgent
 from src.agent.prompts import SUPERVISOR_SYSTEM_PROMPT
@@ -65,6 +65,17 @@ class RoutingDecision(BaseModel):
         description="Dietary restrictions mentioned, e.g. ['vegetarian', 'halal', 'gluten-free'].",
     )
 
+    @field_validator("agents", mode="after")
+    @classmethod
+    def _filter_valid_agents(cls, v: list[str]) -> list[str]:
+        """Strip hallucinated agent names; keep only known agents."""
+        return [a for a in v if a in VALID_AGENT_NAMES]
+
+    @field_validator("destinations", mode="after")
+    @classmethod
+    def _normalise_destinations(cls, v: list[str]) -> list[str]:
+        return [d.strip().lower() for d in v if d.strip()]
+
 
 class SupervisorAgent(SpecializedAgent):
     """Supervisor agent that routes user queries to appropriate specialized agents."""
@@ -102,8 +113,8 @@ class SupervisorAgent(SpecializedAgent):
             messages.append(SystemMessage(content=existing_data_summary))
         messages.append(HumanMessage(content=user_query))
 
-        structured_llm = self.llm.with_structured_output(RoutingDecision)
+        structured_llm = self.llm.with_structured_output(
+            RoutingDecision, method="function_calling"
+        )
         result = await structured_llm.ainvoke(messages)
-        # Validate: strip any hallucinated agent names the LLM may invent
-        result.agents = [a for a in result.agents if a in VALID_AGENT_NAMES]
         return result

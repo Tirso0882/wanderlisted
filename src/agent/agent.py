@@ -5,8 +5,8 @@ from src.agent.llm import get_llm
 from src.tools.activities import search_activities
 from src.tools.budget import calculate_budget
 from src.tools.currency import convert_currency
-from src.tools.flights import search_flights
-from src.tools.hotels import search_hotels
+from src.tools.flights_duffel import search_flights
+from src.tools.hotels_hotelbeds import search_hotels_hotelbeds
 from src.tools.iata import lookup_iata_code
 from src.tools.destination_rag import search_destination_guides
 from src.tools.safety import get_safety_info
@@ -21,7 +21,7 @@ def create_travel_agent():
     tools = [
         lookup_iata_code,
         search_flights,
-        search_hotels,
+        search_hotels_hotelbeds,
         get_weather,
         convert_currency,
         search_activities,

@@ -1,23 +1,26 @@
-"""Hotels and activities specialist agent."""
+"""Hotels specialist agent — powered by Hotelbeds Booking API."""
 
 from src.agent.agents.base import SpecializedAgent
 from src.agent.prompts import HOTELS_SYSTEM_PROMPT
-from src.tools.hotels import search_hotels
-from src.tools.activities import search_activities
+from src.tools.hotels_hotelbeds import search_hotels_hotelbeds, check_hotel_rate_hotelbeds
 from src.tools.google_maps import search_places_text
 
 
 class HotelsAgent(SpecializedAgent):
-    """Specialized agent for accommodation and local activities."""
+    """Specialized agent for accommodation search, pricing, and neighborhood context."""
 
     name = "HotelsAgent"
     description = (
-        "Expert in hotels, neighborhoods, activities, dining, and local experiences"
+        "Expert in hotels, neighborhoods, pricing, and accommodation options"
     )
 
     @property
     def tools(self):
-        return [search_hotels, search_activities, search_places_text]
+        return [
+            search_hotels_hotelbeds,
+            check_hotel_rate_hotelbeds,
+            search_places_text,
+        ]
 
     @property
     def system_prompt(self) -> str:

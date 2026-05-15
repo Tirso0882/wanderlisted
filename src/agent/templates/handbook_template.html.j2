@@ -312,13 +312,42 @@ a:hover { text-decoration: underline; }
   padding: 20px;
   margin-bottom: 16px;
   background: var(--bg);
+  position: relative;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
-.flight-label { font-weight: 700; font-size: 0.9rem; color: var(--accent); margin-bottom: 12px; }
+.flight-card:hover { border-color: var(--accent); box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+.flight-card-recommended { border-color: var(--accent); margin-top: 14px; }
+.flight-recommended-badge {
+  position: absolute; top: -10px; left: 16px;
+  background: var(--accent); color: white;
+  padding: 4px 12px; border-radius: 12px; font-size: 0.72rem; font-weight: 700;
+  letter-spacing: 0.3px; z-index: 1;
+}
+.flight-card-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 16px; flex-wrap: wrap; gap: 10px;
+}
+.airline-info { display: flex; align-items: center; gap: 12px; }
+.airline-logo {
+  width: auto; height: 40px; max-width: 120px;
+  object-fit: contain;
+}
+.airline-name { font-weight: 700; font-size: 0.95rem; }
+.flight-number-label { font-size: 0.78rem; color: var(--text-muted); font-family: monospace; }
+.flight-price-box { text-align: right; }
+.flight-price-amount { font-size: 1.3rem; font-weight: 700; color: var(--accent); }
+.flight-price-label { font-size: 0.72rem; color: var(--text-muted); }
+
+.flight-label { font-weight: 700; font-size: 0.78rem; color: var(--text-muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
 .flight-route {
   display: flex;
   align-items: center;
   gap: 16px;
   flex-wrap: wrap;
+  padding: 12px;
+  background: var(--surface);
+  border-radius: 8px;
+  margin-bottom: 12px;
 }
 .flight-point { text-align: center; }
 .flight-point .code { font-size: 1.4rem; font-weight: 700; }
@@ -334,18 +363,78 @@ a:hover { text-decoration: underline; }
 .flight-line .bar {
   width: 100%;
   height: 2px;
-  background: var(--accent);
+  background: linear-gradient(to right, var(--accent), var(--accent2, var(--accent)));
   position: relative;
 }
+.flight-line .bar::before, .flight-line .bar::after {
+  content: ''; position: absolute; top: -3px; width: 8px; height: 8px;
+  border-radius: 50%; border: 2px solid var(--accent); background: var(--bg);
+}
+.flight-line .bar::before { left: -4px; }
 .flight-line .bar::after {
-  content: '✈';
-  position: absolute;
   right: -4px;
-  top: -8px;
-  font-size: 0.9rem;
+  content: '✈';
+  border: none; background: none;
+  top: -8px; font-size: 0.9rem;
 }
 .flight-line .stops-label { font-size: 0.78rem; color: var(--text-muted); margin-top: 4px; }
+.flight-badge {
+  display: inline-block; padding: 2px 8px; border-radius: 10px;
+  font-size: 0.68rem; font-weight: 600; margin-top: 4px;
+}
+.flight-badge-nonstop { background: rgba(34,197,94,0.12); color: #22c55e; }
+.flight-badge-stops { background: rgba(234,179,8,0.12); color: #eab308; }
 .flight-price { font-size: 1.3rem; font-weight: 700; color: var(--accent); margin-top: 12px; }
+
+.flight-details-section {
+  max-height: 0; overflow: hidden; transition: max-height 0.3s ease;
+}
+.flight-details-section.open { max-height: 300px; padding-top: 12px; }
+.flight-details-toggle {
+  padding: 8px 0; color: var(--text-muted); font-size: 0.82rem; cursor: pointer;
+  user-select: none; border-top: 1px solid var(--border); margin-top: 12px;
+}
+.flight-details-toggle:hover { color: var(--accent); }
+.flight-details-toggle .toggle-icon { display: inline-block; transition: transform 0.2s; }
+.flight-details-toggle.open .toggle-icon { transform: rotate(90deg); }
+.flight-detail-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  font-size: 0.82rem;
+}
+.flight-detail-item { display: flex; align-items: center; gap: 6px; }
+.flight-detail-item .label { color: var(--text-muted); min-width: 70px; }
+.flight-detail-item .value { font-weight: 500; }
+
+.flight-card-footer {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border);
+  flex-wrap: wrap; gap: 10px;
+}
+.flight-total { font-size: 0.88rem; color: var(--text-muted); }
+.flight-total strong { color: var(--heading); font-size: 1rem; }
+.flight-book-links { display: flex; gap: 8px; flex-wrap: wrap; }
+.flight-book-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--accent); color: white;
+  padding: 10px 20px; border-radius: 8px;
+  text-decoration: none; font-weight: 600; font-size: 0.85rem;
+  transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  border: none; cursor: pointer;
+}
+.flight-book-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.2); opacity: 0.92; }
+.flight-book-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.flights-sort-controls {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;
+}
+.flights-sort-label { font-size: 0.78rem; color: var(--text-muted); }
+.flights-sort-btn {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text-muted); padding: 4px 12px; font-size: 0.75rem; cursor: pointer;
+  transition: all 0.2s;
+}
+.flights-sort-btn:hover { border-color: var(--accent); color: var(--accent); }
+.flights-sort-btn.active { background: rgba(var(--accent-rgb, 88,166,255), 0.12); border-color: var(--accent); color: var(--accent); font-weight: 600; }
 
 /* ─── Hotel Card ───────────────────────────────────────────────────── */
 .hotel-card {
@@ -530,6 +619,10 @@ footer a { margin: 0 8px; }
   .activity-card { flex-direction: column; }
   .activity-photo { width: 100%; height: 160px; }
   .flight-route { flex-direction: column; text-align: center; }
+  .flight-card-header { flex-direction: column; align-items: flex-start; }
+  .flight-detail-grid { grid-template-columns: 1fr; }
+  .flight-card-footer { flex-direction: column; align-items: stretch; }
+  .flight-book-links { justify-content: center; }
 }
 
 /* ─── Print ────────────────────────────────────────────────────────── */
@@ -767,56 +860,145 @@ footer a { margin: 0 8px; }
   <!-- ─── TAB 2: FLIGHTS ────────────────────────────────────── -->
   <div class="tab-panel" id="panel-flights" role="tabpanel" aria-label="Flights & Transport" aria-labelledby="tab-flights">
     {% if handbook.flights %}
-    {% for flight in handbook.flights %}
-    {% if flight.outbound %}
-    <div class="flight-card">
-      <div class="flight-label">{% if loop.index == 1 %}OUTBOUND{% else %}FLIGHT {{ loop.index }}{% endif %}</div>
-      {% set seg = flight.outbound[0] %}
-      {% set last = flight.outbound[-1] %}
-      <div class="flight-route">
-        <div class="flight-point">
-          <div class="code">{{ seg.departure_airport }}</div>
-          <div class="time">{{ seg.departure_time }}</div>
-        </div>
-        <div class="flight-line">
-          <div class="duration">{{ seg.flight_number }}{% if seg.duration_minutes %} · {{ (seg.duration_minutes // 60) }}h {{ seg.duration_minutes % 60 }}m{% endif %}</div>
-          <div class="bar"></div>
-          <div class="stops-label">{% if seg.stops == 0 %}Non-stop{% else %}{{ seg.stops }} stop(s){% endif %} · {{ seg.cabin_class | title }}</div>
-        </div>
-        <div class="flight-point">
-          <div class="code">{{ last.arrival_airport }}</div>
-          <div class="time">{{ last.arrival_time }}</div>
-        </div>
-      </div>
-      {% if flight.total_price_usd %}
-      <div class="flight-price">${{ "{:,.0f}".format(flight.total_price_usd) }} {{ flight.currency }}</div>
-      {% endif %}
-    </div>
-    {% endif %}
 
-    {% if flight.inbound %}
-    <div class="flight-card">
-      <div class="flight-label">RETURN</div>
-      {% set seg = flight.inbound[0] %}
-      {% set last = flight.inbound[-1] %}
+    <div class="flights-sort-controls">
+      <span class="flights-sort-label">Sort by:</span>
+      <button class="flights-sort-btn active" data-sort="price" onclick="sortFlightCards('price')">Price</button>
+      <button class="flights-sort-btn" data-sort="duration" onclick="sortFlightCards('duration')">Duration</button>
+      <button class="flights-sort-btn" data-sort="stops" onclick="sortFlightCards('stops')">Stops</button>
+    </div>
+
+    <div id="handbook-flights-grid">
+    {% for flight in handbook.flights %}
+    {% set seg = flight.outbound[0] if flight.outbound else none %}
+    {% set last_out = flight.outbound[-1] if flight.outbound else none %}
+    {% set carrier_code = seg.carrier if seg else "XX" %}
+    {% set airline_name = seg.carrier if seg else "Unknown" %}
+    {% set total_duration = seg.duration_minutes if seg else 0 %}
+    {% set total_stops = seg.stops if seg else 0 %}
+
+    <div class="flight-card{% if loop.first %} flight-card-recommended{% endif %}"
+         data-price="{{ flight.total_price_usd }}"
+         data-duration="{{ total_duration }}"
+         data-stops="{{ total_stops }}">
+
+      {% if loop.first %}<div class="flight-recommended-badge">★ Best Value</div>{% endif %}
+
+      {# ── Header: airline + price ── #}
+      <div class="flight-card-header">
+        <div class="airline-info">
+          <img src="https://assets.duffel.com/img/airlines/for-light-background/full-color-lockup/{{ carrier_code }}.svg"
+               alt="{{ airline_name }}" class="airline-logo"
+               onerror="this.onerror=null;this.src='https://assets.duffel.com/img/airlines/for-light-background/full-color-logo/{{ carrier_code }}.svg'">
+          <div>
+            <div class="airline-name">{{ airline_name }}</div>
+            <div class="flight-number-label">{{ seg.flight_number if seg else "" }}</div>
+          </div>
+        </div>
+        <div class="flight-price-box">
+          {% if flight.total_price_usd %}
+          <div class="flight-price-amount">${{ "{:,.0f}".format(flight.total_price_usd) }}</div>
+          <div class="flight-price-label">total · {{ flight.currency }}</div>
+          {% endif %}
+        </div>
+      </div>
+
+      {# ── Outbound leg ── #}
+      {% if flight.outbound %}
+      <div class="flight-label">✈ Outbound{% if seg.departure_time %} · {{ seg.departure_time.split("T")[0] if "T" in seg.departure_time else "" }}{% endif %}</div>
       <div class="flight-route">
         <div class="flight-point">
           <div class="code">{{ seg.departure_airport }}</div>
-          <div class="time">{{ seg.departure_time }}</div>
+          <div class="time">{{ seg.departure_time.split("T")[1][:5] if "T" in seg.departure_time else seg.departure_time }}</div>
         </div>
         <div class="flight-line">
-          <div class="duration">{{ seg.flight_number }}{% if seg.duration_minutes %} · {{ (seg.duration_minutes // 60) }}h {{ seg.duration_minutes % 60 }}m{% endif %}</div>
+          <div class="duration">{% if seg.duration_minutes %}{{ (seg.duration_minutes // 60) }}h {{ seg.duration_minutes % 60 }}m{% else %}—{% endif %}</div>
           <div class="bar"></div>
-          <div class="stops-label">{% if seg.stops == 0 %}Non-stop{% else %}{{ seg.stops }} stop(s){% endif %}</div>
+          <div class="stops-label">
+            {% if seg.stops == 0 %}<span class="flight-badge flight-badge-nonstop">Non-stop</span>
+            {% else %}<span class="flight-badge flight-badge-stops">{{ seg.stops }} stop{{ "s" if seg.stops > 1 else "" }}</span>{% endif %}
+          </div>
         </div>
         <div class="flight-point">
-          <div class="code">{{ last.arrival_airport }}</div>
-          <div class="time">{{ last.arrival_time }}</div>
+          <div class="code">{{ last_out.arrival_airport }}</div>
+          <div class="time">{{ last_out.arrival_time.split("T")[1][:5] if "T" in last_out.arrival_time else last_out.arrival_time }}</div>
+        </div>
+      </div>
+      {% endif %}
+
+      {# ── Return leg ── #}
+      {% if flight.inbound %}
+      {% set ret_seg = flight.inbound[0] %}
+      {% set ret_last = flight.inbound[-1] %}
+      <div class="flight-label" style="margin-top:8px">↩ Return{% if ret_seg.departure_time %} · {{ ret_seg.departure_time.split("T")[0] if "T" in ret_seg.departure_time else "" }}{% endif %}</div>
+      <div class="flight-route">
+        <div class="flight-point">
+          <div class="code">{{ ret_seg.departure_airport }}</div>
+          <div class="time">{{ ret_seg.departure_time.split("T")[1][:5] if "T" in ret_seg.departure_time else ret_seg.departure_time }}</div>
+        </div>
+        <div class="flight-line">
+          <div class="duration">{% if ret_seg.duration_minutes %}{{ (ret_seg.duration_minutes // 60) }}h {{ ret_seg.duration_minutes % 60 }}m{% else %}—{% endif %}</div>
+          <div class="bar"></div>
+          <div class="stops-label">
+            {% if ret_seg.stops == 0 %}<span class="flight-badge flight-badge-nonstop">Non-stop</span>
+            {% else %}<span class="flight-badge flight-badge-stops">{{ ret_seg.stops }} stop{{ "s" if ret_seg.stops > 1 else "" }}</span>{% endif %}
+          </div>
+        </div>
+        <div class="flight-point">
+          <div class="code">{{ ret_last.arrival_airport }}</div>
+          <div class="time">{{ ret_last.arrival_time.split("T")[1][:5] if "T" in ret_last.arrival_time else ret_last.arrival_time }}</div>
+        </div>
+      </div>
+      {% endif %}
+
+      {# ── Expandable details ── #}
+      <div class="flight-details-toggle" onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('open');">
+        <span class="toggle-icon">▸</span> Flight details
+      </div>
+      <div class="flight-details-section">
+        <div class="flight-detail-grid">
+          <div class="flight-detail-item">
+            <span>💺</span>
+            <span class="label">Cabin</span>
+            <span class="value">{{ seg.cabin_class | title if seg else "Economy" }}</span>
+          </div>
+          <div class="flight-detail-item">
+            <span>🎫</span>
+            <span class="label">Flight #</span>
+            <span class="value">{{ seg.flight_number if seg else "—" }}</span>
+          </div>
+          {% if seg and seg.duration_minutes %}
+          <div class="flight-detail-item">
+            <span>⏱</span>
+            <span class="label">Duration</span>
+            <span class="value">{{ (seg.duration_minutes // 60) }}h {{ seg.duration_minutes % 60 }}m</span>
+          </div>
+          {% endif %}
+          {% if flight.inbound and flight.inbound[0].duration_minutes %}
+          <div class="flight-detail-item">
+            <span>⏱</span>
+            <span class="label">Return</span>
+            <span class="value">{{ (flight.inbound[0].duration_minutes // 60) }}h {{ flight.inbound[0].duration_minutes % 60 }}m</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      {# ── Footer: total + booking links ── #}
+      <div class="flight-card-footer">
+        <div class="flight-total">
+          {% if flight.total_price_usd %}
+          Total: <strong>${{ "{:,.0f}".format(flight.total_price_usd) }} {{ flight.currency }}</strong>
+          {% endif %}
+        </div>
+        <div class="flight-book-links">
+          <button class="btn-primary flight-book-btn" disabled title="Booking coming soon">✈ Book with Wanderlisted</button>
         </div>
       </div>
     </div>
-    {% endif %}
     {% endfor %}
+    </div>
+
     {% else %}
     <p style="color:var(--text-muted)">No flight data available.</p>
     {% endif %}
@@ -1182,6 +1364,23 @@ document.querySelector('.tab-list')?.addEventListener('keydown', function(e) {
   tabs[next].focus();
   tabs[next].click();
 });
+
+// ─── Flight card sorting ─────────────────────────────────────
+function sortFlightCards(criteria) {
+  const grid = document.getElementById('handbook-flights-grid');
+  if (!grid) return;
+  const cards = Array.from(grid.querySelectorAll('.flight-card'));
+  cards.sort((a, b) => {
+    const aVal = parseFloat(a.dataset[criteria]) || 0;
+    const bVal = parseFloat(b.dataset[criteria]) || 0;
+    return aVal - bVal;
+  });
+  cards.forEach(card => grid.appendChild(card));
+  document.querySelectorAll('.flights-sort-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.sort === criteria);
+  });
+}
+// ─── Flight detail expand/collapse ───────────────────────────
 
 // ─── Light / Dark Theme Toggle ───────────────────────────────
 (function() {

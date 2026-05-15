@@ -1,19 +1,20 @@
 """Stage 4: Multi-Agent Supervisor Graph using LangGraph.
 
-Parallel multi-agent architecture: the supervisor decides which specialist
-agents are needed, then independent agents (Flights, Hotels, Destination,
-Restaurants, Activities, Transportation) run in parallel.  Dependent agents
-(Budget, Itinerary) run sequentially afterward since they need the earlier
-results.
+Parallel multi-agent architecture using Send() fan-out: the supervisor
+decides which specialist agents are needed and dispatches each one as an
+independent graph node via Send().  This gives per-agent checkpointing,
+individual retry on failure, dedicated traces in LangGraph Studio, and
+native per-agent streaming.  Dependent agents (Budget, Itinerary) run
+sequentially afterward since they need the earlier results.
 
-Flow (parallel phase → sequential phase → HITL review → render):
-    START → triage → supervisor → parallel_dispatch ──┬── flights ────┐
-                                                      ├── hotels ─────┤
-                                                      ├── destination ┤
-                                                      ├── restaurants ─┤ → safety_review (HITL)
-                                                      ├── activities ──┤   → budget → budget_review (HITL)
-                                                      └── transportation┘     → itinerary → human_review (HITL)
-                                                                                  → render_handbook → END
+Flow (Send() fan-out → fan-in → sequential phase → HITL review → render):
+    START → triage → supervisor ──Send──┬── flights ────┐
+                                        ├── hotels ─────┤
+                                        ├── destination ┤
+                                        ├── restaurants ─┤ → safety_review (HITL)
+                                        ├── activities ──┤   → budget → budget_review (HITL)
+                                        └── transportation┘     → itinerary → human_review (HITL)
+                                                                     → render_handbook → END
 
 HITL gates:
     - safety_review: interrupts when advisory is "do not travel" / "red"
@@ -42,9 +43,10 @@ import functools
 from langchain.agents import create_agent
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langgraph.graph import StateGraph, START, END
-from langgraph.types import interrupt
+from langgraph.types import interrupt, Send
 from langsmith import traceable
 
+from custom_logging import AppLogger
 from src.agent.llm import get_llm
 from src.agent.state import TravelAgentState
 from src.agent.prompts import (
@@ -114,6 +116,21 @@ AGENT_TO_NODE = {
 # Reverse map for context building
 DATA_KEYS = list(AGENT_TO_NODE.values())
 
+# ── HITL gate toggles (env vars override config) ──────────────────────────
+_hitl_cfg = app_config.get("hitl") or {}
+
+
+def is_hitl_enabled(gate: str) -> bool:
+    """Check if a specific HITL gate is enabled.
+
+    Priority: env var HITL_{GATE}_ENABLED > config/config.yaml > default (True).
+    """
+    env_key = f"HITL_{gate.upper()}"
+    env_val = os.environ.get(env_key)
+    if env_val is not None:
+        return env_val.lower() in ("1", "true", "yes")
+    return _hitl_cfg.get(gate, True)
+
 
 # ── Helper functions (module-level, testable) ─────────────────────────────
 
@@ -162,7 +179,7 @@ def build_context_messages(state: TravelAgentState) -> list:
         if key in components:
             agent_msgs = components[key].get("messages", [])
             summary = " ".join(
-                m.content for m in agent_msgs if isinstance(m, AIMessage) and m.content
+                _extract_text_content(m.content) for m in agent_msgs if isinstance(m, AIMessage) and m.content
             )
             if summary:
                 parts.append(f"[{label}]\n{summary}")
@@ -208,45 +225,107 @@ async def run_agent(
 # ── HITL gate nodes (module-level, testable) ──────────────────────────────
 
 
+def _normalize_hitl_decision(decision) -> dict:
+    """Normalize the resume value from interrupt() into a dict.
+
+    LangGraph Studio may send the resume value as a string, bool, or dict
+    depending on how the user types it (YAML vs RAW mode).  This helper
+    ensures the HITL gate nodes always see a consistent dict.
+    """
+    if isinstance(decision, dict):
+        return decision
+    if isinstance(decision, bool):
+        return {"approved": decision}
+    if isinstance(decision, str):
+        lowered = decision.strip().lower()
+        # Handle bare true/false
+        if lowered in ("true", "yes", "approve", "approved", "ok", "proceed"):
+            return {"approved": True}
+        if lowered in ("false", "no", "reject", "rejected", "cancel"):
+            return {"approved": False}
+        # Handle JSON-like string: '{"approved": true}'
+        import json
+        try:
+            parsed = json.loads(decision)
+            if isinstance(parsed, dict):
+                return parsed
+            if isinstance(parsed, bool):
+                return {"approved": parsed}
+        except (json.JSONDecodeError, TypeError):
+            pass
+        # Handle YAML-style "approved: true" as a plain string
+        if "approved" in lowered:
+            if "true" in lowered or "yes" in lowered:
+                return {"approved": True, "feedback": ""}
+            return {"approved": False}
+        # Unknown string — treat as feedback with approval
+        return {"approved": True, "feedback": decision.strip()}
+    # Fallback
+    return {"approved": bool(decision)}
+
+
 async def safety_review_node(state: TravelAgentState) -> dict:
     """HITL gate: interrupt when safety advisory is 'do not travel' or 'red'.
 
     Checks destination agent results for dangerous advisory levels.
     If dangerous, pauses execution so the user can acknowledge the risk
     or cancel the trip.
+
+    Disabled when hitl.safety_review = false (webapp mode).
     """
+    if not is_hitl_enabled("safety_review"):
+        return {"current_agent": "safety_review"}
+
     components = state.get("itinerary_components", {})
     destination_data = components.get("destination", {})
 
-    # Extract safety text from destination agent output
+    # Extract safety/advisory text from destination agent output (messages + tool results)
     safety_text = ""
     for m in destination_data.get("messages", []):
         if isinstance(m, (AIMessage, ToolMessage)) and m.content:
-            content = m.content if isinstance(m.content, str) else str(m.content)
-            safety_text += content.lower()
+            content = _extract_text_content(m.content)
+            safety_text += content.lower() + "\n"
 
-    # Check for dangerous advisory levels
+    # Check for dangerous advisory levels — both structured patterns and
+    # natural language phrases that destination/web tools may return
     danger_keywords = [
         "do not travel",
         "level 4",
         "advisory level: red",
         "reconsider travel",
         "level 3",
+        "avoid all travel",
+        "avoid non-essential travel",
+        "extreme risk",
+        "war zone",
+        "armed conflict",
+        "active conflict",
     ]
     is_dangerous = any(kw in safety_text for kw in danger_keywords)
 
     if is_dangerous and not state.get("safety_acknowledged"):
-        # Interrupt — user must acknowledge
-        decision = interrupt(
+        # Extract the most relevant safety snippet for the user
+        safety_snippet = ""
+        for kw in danger_keywords:
+            idx = safety_text.find(kw)
+            if idx >= 0:
+                start = max(0, idx - 100)
+                end = min(len(safety_text), idx + 200)
+                safety_snippet = safety_text[start:end].strip()
+                break
+
+        raw_decision = interrupt(
             {
                 "type": "safety_warning",
                 "message": (
                     "⚠️ SAFETY ADVISORY: The destination has a high-risk travel advisory. "
                     "Review the safety information and decide whether to proceed."
                 ),
-                "action_required": "Respond with {'approved': true} to proceed or {'approved': false} to cancel.",
+                "details": safety_snippet,
+                "action_required": "Respond with true to proceed or false to cancel.",
             }
         )
+        decision = _normalize_hitl_decision(raw_decision)
 
         if not decision.get("approved", False):
             return {
@@ -276,7 +355,12 @@ async def budget_review_node(state: TravelAgentState) -> dict:
     """HITL gate: interrupt when estimated budget exceeds target by >$500.
 
     Checks budget_structured for overspend and offers adjustment options.
+
+    Disabled when hitl.budget_review = false (webapp mode).
     """
+    if not is_hitl_enabled("budget_review"):
+        return {"current_agent": "budget_review"}
+
     components = state.get("itinerary_components", {})
     budget_data = components.get("budget_structured", {})
 
@@ -284,21 +368,33 @@ async def budget_review_node(state: TravelAgentState) -> dict:
         return {"current_agent": "budget_review"}
 
     total_estimated = budget_data.get("total", 0)
-    # Try to find the user's target budget from the conversation
-    budget_text = ""
-    for m in state.get("messages", []):
-        if isinstance(m, HumanMessage) and m.content:
-            budget_text += m.content.lower()
 
-    # Extract target from budget agent's analysis
+    # Get target from structured extraction (BudgetBreakdown.target_budget)
     target_budget = budget_data.get("target_budget", 0)
+
+    # Fallback: try to parse target from user messages if extraction missed it
+    if not target_budget:
+        for m in state.get("messages", []):
+            if isinstance(m, HumanMessage) and m.content:
+                text = _extract_text_content(m.content)
+                # Match patterns like "$2000", "budget 2000", "budget of $3,000"
+                match = re.search(
+                    r"budget[:\s]*(?:of\s*)?\$?([\d,]+)", text, re.IGNORECASE
+                )
+                if match:
+                    try:
+                        target_budget = float(match.group(1).replace(",", ""))
+                    except ValueError:
+                        pass
+                    break
+
     if not target_budget:
         # No explicit target — skip review
         return {"current_agent": "budget_review"}
 
     overspend = total_estimated - target_budget
     if overspend > 500 and not state.get("budget_adjustment_accepted"):
-        decision = interrupt(
+        raw_decision = interrupt(
             {
                 "type": "budget_warning",
                 "message": (
@@ -315,11 +411,12 @@ async def budget_review_node(state: TravelAgentState) -> dict:
                     "Cut optional activities",
                 ],
                 "action_required": (
-                    "Respond with {'approved': true} to proceed as-is, "
-                    "or {'approved': true, 'feedback': 'your adjustments'} to adjust."
+                    "Respond with true to proceed as-is, "
+                    "or provide feedback text to adjust."
                 ),
             }
         )
+        decision = _normalize_hitl_decision(raw_decision)
 
         if not decision.get("approved", False):
             return {
@@ -352,7 +449,12 @@ async def human_review_node(state: TravelAgentState) -> dict:
 
     Pauses to show a summary of the itinerary components and allows
     the user to approve, request edits, or reject.
+
+    Disabled when hitl.human_review = false (webapp mode).
     """
+    if not is_hitl_enabled("human_review"):
+        return {"current_agent": "human_review", "hitl_action": "approved"}
+
     components = state.get("itinerary_components", {})
     itinerary_data = components.get("itinerary", {})
 
@@ -378,22 +480,23 @@ async def human_review_node(state: TravelAgentState) -> dict:
     itinerary_preview = ""
     for m in itinerary_data.get("messages", []):
         if isinstance(m, AIMessage) and m.content:
-            itinerary_preview += m.content[:2000]
+            itinerary_preview += _extract_text_content(m.content)[:2000]
             break
 
-    decision = interrupt(
+    raw_decision = interrupt(
         {
             "type": "itinerary_review",
             "message": "📋 Your travel plan is ready for review before generating the final handbook.",
             "components_available": summary_parts,
             "itinerary_preview": itinerary_preview[:2000],
             "action_required": (
-                "Respond with {'approved': true} to generate the handbook, "
-                "{'approved': true, 'feedback': 'changes...'} to proceed with notes, "
-                "or {'approved': false} to cancel."
+                "Respond with true to generate the handbook, "
+                "provide feedback text to proceed with notes, "
+                "or false to cancel."
             ),
         }
     )
+    decision = _normalize_hitl_decision(raw_decision)
 
     if not decision.get("approved", False):
         return {
@@ -429,6 +532,69 @@ async def human_review_node(state: TravelAgentState) -> dict:
     }
 
 
+# ── Background logging (fire-and-forget) ─────────────────────────────────
+
+
+async def _bg_log_to_langsmith(
+    paths: dict[str, str],
+    destinations: list[str],
+    sections: list[str],
+) -> None:
+    """Fire-and-forget: log handbook generation metadata to LangSmith.
+
+    Called via ``asyncio.create_task`` so the graph node returns to the user
+    immediately without waiting for the LangSmith HTTP round-trip to complete.
+    Failures are silently ignored — logging is best-effort.
+    """
+    try:
+        from langsmith import Client
+
+        def _sync_log() -> None:
+            client = Client()
+            client.create_run(
+                project_name=os.environ.get("LANGCHAIN_PROJECT", "wanderlisted"),
+                name="handbook_output",
+                run_type="chain",
+                inputs={"destinations": destinations, "sections": sections},
+                outputs={"paths": paths},
+                tags=["handbook", "output"],
+                end_time=__import__("datetime").datetime.now(__import__("datetime").timezone.utc),
+            )
+
+        await asyncio.to_thread(_sync_log)
+    except asyncio.CancelledError:
+        pass  # Task cancelled (e.g. event loop closing at end of a test)
+    except Exception:
+        pass  # Best-effort — never let background logging surface to the user
+
+
+# ── Content extraction (Responses API returns list, Chat Completions returns string) ──
+
+
+def _extract_text_content(content) -> str:
+    """Extract text from LangChain message.content.
+
+    When use_responses_api=True, content is a list of content blocks:
+        [{"type": "text", "text": "...", ...}, ...]
+
+    When use_responses_api=False (Chat Completions), content is a string:
+        "..."
+    """
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        # Responses API format
+        texts = []
+        for block in content:
+            if isinstance(block, dict) and block.get("type") == "text":
+                text = block.get("text", "")
+                if text:
+                    texts.append(text)
+        return " ".join(texts)
+    # Fallback for unknown formats
+    return str(content or "")
+
+
 # ── Node functions (module-level, testable via dependency injection) ───────
 
 
@@ -443,7 +609,7 @@ async def triage_node(state: TravelAgentState, *, llm) -> dict:
             HumanMessage(content=last_message.content),
         ]
     )
-    classification = response.content.strip().lower()
+    classification = _extract_text_content(response.content).strip().lower()
     # Default to deep if the LLM returns anything unexpected
     route = "shallow" if classification == "shallow" else "deep"
     return {"current_agent": f"triage:{route}"}
@@ -507,7 +673,7 @@ async def supervisor_node(state: TravelAgentState, *, supervisor_agent) -> dict:
 
     last_message = state["messages"][-1]
     decision = await supervisor_agent.aget_routing_decision(
-        last_message.content,
+        _extract_text_content(last_message.content),
         existing_summary,
     )
 
@@ -541,53 +707,88 @@ async def supervisor_node(state: TravelAgentState, *, supervisor_agent) -> dict:
     }
 
 
-@traceable(
-    run_type="chain", name="parallel_dispatch_node", tags=["wanderlisted", "parallel"]
-)
-async def parallel_dispatch_node(state: TravelAgentState, *, executors: dict) -> dict:
-    """Run all requested parallel agents concurrently, then return merged results."""
-    components = state.get("itinerary_components", {})
-    routing = components.get("routing", [])
+# ── Individual parallel worker nodes (Send() fan-out) ────────────────────
+#
+# Each function is an independent LangGraph node.  The supervisor fans out
+# to them via [Send("node_name", state), ...] from route_after_supervisor.
+# LangGraph automatically fans-in (waits for all) before safety_review runs.
+# Only writing the agent's own key to itinerary_components (not the full
+# dict) is intentional: the _merge_components reducer in TravelAgentState
+# accumulates each worker's partial write without overwriting the others.
 
-    # Filter to only the parallel-eligible agents that were requested
-    to_run = [a for a in routing if a in PARALLEL_AGENTS]
+_log = AppLogger("agent.stage4_graph")
 
-    if not to_run:
-        # Nothing to run in parallel — pass through
+
+async def _run_parallel_agent(
+    state: TravelAgentState, *, executor, agent_name: str,
+) -> dict:
+    """Execute a parallel agent with error handling.
+
+    If the agent fails (e.g. external API down), log the error and return a
+    graceful degradation message instead of crashing the whole graph.
+    """
+    enriched = build_context_messages(state)
+    try:
+        result = await executor.ainvoke({"messages": enriched})
+        new_msgs = result["messages"][len(enriched):]
         return {
-            "current_agent": "parallel_dispatch",
-            "itinerary_components": {
-                **components,
-                "completed_agents": components.get("completed_agents", []),
-            },
+            "messages": new_msgs,
+            "current_agent": agent_name,
+            "itinerary_components": {agent_name: result},
+        }
+    except Exception as exc:
+        _log.warning(
+            "%s agent failed (graph will continue): %s: %s",
+            agent_name, type(exc).__name__, exc,
+        )
+        error_msg = AIMessage(
+            content=(
+                f"[{agent_name.title()} Agent] I was unable to gather "
+                f"{agent_name} data due to a temporary service issue. "
+                f"The rest of your itinerary will still be generated."
+            ),
+        )
+        return {
+            "messages": [error_msg],
+            "current_agent": agent_name,
+            "itinerary_components": {agent_name: {"error": str(exc)}},
         }
 
-    # Run all parallel agents concurrently
-    tasks = [run_agent(agent_name, state, executors=executors) for agent_name in to_run]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
 
-    # Merge results into components
-    all_new_msgs = []
-    merged_components = dict(components)
-    completed = list(merged_components.get("completed_agents", []))
+@traceable(run_type="chain", name="flights_node", tags=["wanderlisted", "flights"])
+async def flights_node(state: TravelAgentState, *, executor) -> dict:
+    """Fan-out worker: run FlightsAgent as an independent graph node."""
+    return await _run_parallel_agent(state, executor=executor, agent_name="flights")
 
-    for agent_name, result in zip(to_run, results):
-        if isinstance(result, Exception):
-            all_new_msgs.append(
-                AIMessage(content=f"[{agent_name}] encountered an error: {result}")
-            )
-            continue
-        all_new_msgs.extend(result["messages"])
-        merged_components[result["data_key"]] = result["result"]
-        completed.append(agent_name)
 
-    merged_components["completed_agents"] = completed
+@traceable(run_type="chain", name="hotels_node", tags=["wanderlisted", "hotels"])
+async def hotels_node(state: TravelAgentState, *, executor) -> dict:
+    """Fan-out worker: run HotelsAgent as an independent graph node."""
+    return await _run_parallel_agent(state, executor=executor, agent_name="hotels")
 
-    return {
-        "messages": all_new_msgs,
-        "current_agent": "parallel_dispatch",
-        "itinerary_components": merged_components,
-    }
+
+@traceable(run_type="chain", name="destination_node", tags=["wanderlisted", "destination"])
+async def destination_node(state: TravelAgentState, *, executor) -> dict:
+    """Fan-out worker: run DestinationAgent as an independent graph node."""
+    return await _run_parallel_agent(state, executor=executor, agent_name="destination")
+
+
+@traceable(run_type="chain", name="restaurants_node", tags=["wanderlisted", "restaurants"])
+async def restaurants_node(state: TravelAgentState, *, executor) -> dict:
+    """Fan-out worker: run RestaurantsAgent as an independent graph node."""
+    return await _run_parallel_agent(state, executor=executor, agent_name="restaurants")
+
+
+@traceable(run_type="chain", name="activities_node", tags=["wanderlisted", "activities"])
+async def activities_node(state: TravelAgentState, *, executor) -> dict:
+    """Fan-out worker: run ActivitiesAgent as an independent graph node."""
+    return await _run_parallel_agent(state, executor=executor, agent_name="activities")
+
+
+@traceable(run_type="chain", name="transportation_node", tags=["wanderlisted", "transportation"])
+async def transportation_node(state: TravelAgentState, *, executor) -> dict:
+    """Fan-out worker: run TransportationAgent as an independent graph node."""
+    return await _run_parallel_agent(state, executor=executor, agent_name="transportation")
 
 
 @traceable(run_type="chain", name="budget_node", tags=["wanderlisted", "budget"])
@@ -601,8 +802,17 @@ async def budget_node(state: TravelAgentState, *, llm, executor) -> dict:
     # Extract structured budget from the agent's free-text output
     budget_data = None
     budget_text = " ".join(
-        m.content for m in new_msgs if isinstance(m, AIMessage) and m.content
+        _extract_text_content(m.content) for m in new_msgs if isinstance(m, AIMessage) and m.content
     )
+    # Also extract target budget from user messages for the extraction context
+    user_budget_context = ""
+    for m in state.get("messages", []):
+        if isinstance(m, HumanMessage) and m.content:
+            text = _extract_text_content(m.content)
+            if re.search(r"budget|spend|\$[\d,]+", text, re.IGNORECASE):
+                user_budget_context = f"\n\nUser's original request: {text}"
+                break
+
     if budget_text:
         try:
             structured_llm = llm.with_structured_output(BudgetBreakdown)
@@ -611,9 +821,12 @@ async def budget_node(state: TravelAgentState, *, llm, executor) -> dict:
                     SystemMessage(
                         content="Extract the budget breakdown from the following text. "
                         "Return all monetary amounts in the currency mentioned. "
-                        "If a field is not mentioned, leave it as 0."
+                        "If a field is not mentioned, leave it as 0. "
+                        "IMPORTANT: Set target_budget to the user's stated maximum/target "
+                        "budget from their request. If they said 'budget $2000', set "
+                        "target_budget to 2000. If no budget was mentioned, leave it as 0."
                     ),
-                    HumanMessage(content=budget_text),
+                    HumanMessage(content=budget_text + user_budget_context),
                 ]
             )
         except Exception:
@@ -677,7 +890,7 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
         parts = []
         for m in msgs:
             if isinstance(m, (AIMessage, ToolMessage)) and m.content:
-                content = m.content if isinstance(m.content, str) else str(m.content)
+                content = _extract_text_content(m.content)
                 parts.append(content)
         return " ".join(parts)
 
@@ -709,9 +922,6 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
     )
 
     # Debug: log text sizes for each section
-    from custom_logging import AppLogger as _AL
-
-    _render_log = _AL(logger_name="agent.render_handbook", level="DEBUG")
     for _sec_name, _sec_text in [
         ("flights", flights_text),
         ("hotels", hotels_text),
@@ -722,7 +932,7 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
         ("budget", budget_text),
         ("itinerary", itinerary_text),
     ]:
-        _render_log.debug(f"Section '{_sec_name}': {len(_sec_text)} chars")
+        _log.debug(f"render_handbook: Section '{_sec_name}': {len(_sec_text)} chars")
 
     if not all_text.strip():
         return {
@@ -765,16 +975,17 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
 
     # ── Per-section extraction (batched to avoid rate limits) ────────
 
-    async def _extract(model_cls, text: str, instruction: str, max_retries: int = 2):
+    async def _extract(model_cls, text: str, instruction: str, max_retries: int = 2, max_chars: int = 100_000):
         if not text.strip():
-            _render_log.debug(
+            _log.debug(
                 f"_extract({model_cls.__name__}): empty text, returning default"
             )
             return model_cls()
         s_llm = llm.with_structured_output(model_cls, method="function_calling")
+        truncated = text[:max_chars]
         msgs = [
             SystemMessage(content=instruction),
-            HumanMessage(content=text[:15000]),
+            HumanMessage(content=truncated),
         ]
         for attempt in range(max_retries + 1):
             try:
@@ -784,7 +995,7 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
                     for field_name in ("flights", "hotels", "days", "packing"):
                         val = getattr(result, field_name, None)
                         if isinstance(val, list) and len(val) == 0:
-                            _render_log.debug(
+                            _log.debug(
                                 f"_extract({model_cls.__name__}): empty {field_name}, retrying"
                             )
                             result = await s_llm.ainvoke(
@@ -793,21 +1004,21 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
                                         content=instruction
                                         + "\nIMPORTANT: Extract ALL items. Do NOT return an empty list."
                                     ),
-                                    HumanMessage(content=text[:15000]),
+                                    HumanMessage(content=truncated),
                                 ]
                             )
                             break
-                _render_log.debug(f"_extract({model_cls.__name__}): success")
+                _log.debug(f"_extract({model_cls.__name__}): success")
                 return result
             except Exception as exc:
                 if "429" in str(exc) and attempt < max_retries:
                     wait = 2 ** (attempt + 1)
-                    _render_log.debug(
+                    _log.debug(
                         f"_extract({model_cls.__name__}): rate limited, waiting {wait}s (attempt {attempt + 1})"
                     )
                     await asyncio.sleep(wait)
                 else:
-                    _render_log.error(f"_extract({model_cls.__name__}): FAILED {exc!r}")
+                    _log.error(f"_extract({model_cls.__name__}): FAILED {exc!r}")
                     return model_cls()
         return model_cls()
 
@@ -825,8 +1036,14 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
         ),
         _extract(
             ExtractedSafety,
-            destination_text,
-            "Extract safety info: advisory level (green/yellow/orange/red), summary, visa requirements, health requirements, emergency numbers, languages, currency name/symbol/code, timezones, seasonal risks, safety tips.",
+            f"{destination_text}\n\n{budget_text}",
+            "Extract safety and practical info from the destination research. Include: "
+            "advisory level (green/yellow/orange/red), advisory summary, visa requirements, "
+            "health requirements (vaccinations, health risks), emergency numbers (police, ambulance, fire, "
+            "tourist police — use known defaults for the country if not in text), "
+            "languages spoken, currency name/symbol/code, timezones, seasonal risks, safety tips. "
+            "If the text doesn't explicitly state emergency numbers, use the standard ones for the country "
+            "(e.g. 112 for EU countries).",
         ),
         _extract(
             ExtractedMeta,
@@ -836,19 +1053,23 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
     )
 
     # Batch 2: heavier extractions (days is the biggest)
+    days_combined_text = f"{itinerary_text}\n\n{restaurants_text}\n\n{activities_text}\n\n{transportation_text}"
+    _days_instruction = (
+        "Build a COMPLETE day-by-day itinerary covering EVERY day in the trip. "
+        "For each day, set day_number, date, city. "
+        "Assign activities and restaurants to morning/afternoon/evening time blocks. "
+        "Each place needs: name, category, rating, review_count, price_level, address, description, "
+        "google_maps_url, website_url, photo_urls (use any Google Places photo URLs mentioned), "
+        "latitude, longitude, estimated_cost_usd, estimated_duration_minutes. "
+        "Include transit steps between places. Set daily_cost_usd. "
+        "Include any cultural tips mentioned for relevant days. "
+        "IMPORTANT: You MUST extract ALL days. Do NOT stop early or truncate."
+    )
     days_ex, culture_ex, packing_ex = await asyncio.gather(
         _extract(
             ExtractedDays,
-            f"{itinerary_text}\n\n{restaurants_text}\n\n{activities_text}\n\n{transportation_text}",
-            (
-                "Build a day-by-day itinerary. For each day, set day_number, date, city. "
-                "Assign activities and restaurants to morning/afternoon/evening time blocks. "
-                "Each place needs: name, category, rating, review_count, price_level, address, description, "
-                "google_maps_url, website_url, photo_urls (use any Google Places photo URLs mentioned), "
-                "latitude, longitude, estimated_cost_usd, estimated_duration_minutes. "
-                "Include transit steps between places. Set daily_cost_usd. "
-                "Include any cultural tips mentioned for relevant days."
-            ),
+            days_combined_text,
+            _days_instruction,
         ),
         _extract(
             ExtractedCulture,
@@ -863,6 +1084,52 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
             "Generate a packing list based on the weather, activities, and destination. Each item needs: item name, reason, category (clothing/documents/tech/health/money/activities), essential (bool), weather context, activity context.",
         ),
     )
+
+    # ── Days completion check ─────────────────────────────────────────
+    # Detect expected trip length from the itinerary text
+    _day_nums_in_text = re.findall(r'[Dd]ay\s+(\d+)', itinerary_text)
+    expected_day_count = max((int(n) for n in _day_nums_in_text), default=0)
+    extracted_day_count = len(days_ex.days)
+    if expected_day_count > 0 and extracted_day_count < expected_day_count:
+        _log.warning(
+            "Days extraction incomplete: got %d/%d, retrying for missing days",
+            extracted_day_count, expected_day_count,
+        )
+        extracted_nums = {d.day_number for d in days_ex.days}
+        missing = [n for n in range(1, expected_day_count + 1) if n not in extracted_nums]
+        if missing:
+            days_retry = await _extract(
+                ExtractedDays,
+                days_combined_text,
+                (
+                    f"Extract ONLY the following days from the itinerary: days {missing}. "
+                    f"The trip has {expected_day_count} total days. "
+                    "For each day, set day_number, date, city. "
+                    "Assign activities and restaurants to morning/afternoon/evening time blocks. "
+                    "Each place needs: name, category, rating, review_count, price_level, "
+                    "address, description, google_maps_url, website_url, photo_urls, "
+                    "latitude, longitude, estimated_cost_usd, estimated_duration_minutes. "
+                    "Include transit steps between places. Set daily_cost_usd."
+                ),
+            )
+            days_ex.days.extend(days_retry.days)
+            days_ex.days.sort(key=lambda d: d.day_number)
+            _log.info(
+                "After retry: %d days extracted (expected %d)",
+                len(days_ex.days), expected_day_count,
+            )
+
+    # ── Filter placeholder results ────────────────────────────────────
+    # Remove flights with no actual segment data
+    flights_ex.flights = [
+        f for f in flights_ex.flights if f.outbound or f.inbound
+    ]
+    # Remove hotels with placeholder/hallucinated names
+    _PLACEHOLDER_PATTERNS = ("no specific", "not mentioned", "no hotel", "n/a", "none")
+    hotels_ex.hotels = [
+        h for h in hotels_ex.hotels
+        if h.name and not any(p in h.name.lower() for p in _PLACEHOLDER_PATTERNS)
+    ]
 
     # ── Assemble TripHandbook ─────────────────────────────────────────
     destinations = state.get("destinations", [])
@@ -1047,10 +1314,24 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
             except Exception:
                 pass
 
-    # ── Render outputs ────────────────────────────────────────────────
+    # ── Render outputs (offload sync I/O to thread) ─────────────────
     renderer = HandbookRenderer()
-    paths = renderer.write_outputs(handbook)
+    paths = await asyncio.to_thread(renderer.write_outputs, handbook)
     path_strings = {k: str(v) for k, v in paths.items()}
+
+    # Fire-and-forget: log metadata to LangSmith without blocking the response
+    sections_generated = [
+        k for k in ["flights", "hotels", "restaurants", "activities",
+                    "transportation", "destination", "budget", "itinerary"]
+        if k in components
+    ]
+    asyncio.create_task(
+        _bg_log_to_langsmith(
+            paths=path_strings,
+            destinations=state.get("destinations", []),
+            sections=sections_generated,
+        )
+    )
 
     return {
         "messages": [
@@ -1100,8 +1381,14 @@ def route_after_triage(state: TravelAgentState) -> str:
     return "supervisor"
 
 
-def route_after_supervisor(state: TravelAgentState) -> str:
-    """Route after supervisor: fan-out to parallel agents, or sequential, or synthesize."""
+def route_after_supervisor(state: TravelAgentState):
+    """Fan-out via Send() to each requested parallel agent, or route sequentially.
+
+    Returns a list of Send() objects — one per requested parallel agent — so
+    each agent runs as an independent graph node with its own checkpoint,
+    trace, and retry scope.  Falls back to a string destination for the
+    sequential-only and synthesize cases.
+    """
     components = state.get("itinerary_components", {})
     routing = components.get("routing", [])
 
@@ -1112,10 +1399,11 @@ def route_after_supervisor(state: TravelAgentState) -> str:
             return "synthesize"
         return END
 
-    # Check if any parallel agents are requested
-    has_parallel = any(a in PARALLEL_AGENTS for a in routing)
-    if has_parallel:
-        return "parallel_dispatch"
+    # Fan-out: one Send per requested parallel agent.  LangGraph runs them
+    # concurrently and fans-in automatically before safety_review fires.
+    parallel_requested = [a for a in routing if a in PARALLEL_AGENTS]
+    if parallel_requested:
+        return [Send(AGENT_TO_NODE[a], state) for a in parallel_requested]
 
     # Only sequential agents requested (BudgetAgent or ItineraryAgent)
     if "BudgetAgent" in routing:
@@ -1124,11 +1412,6 @@ def route_after_supervisor(state: TravelAgentState) -> str:
         return "itinerary"
 
     return END
-
-
-def route_after_parallel(state: TravelAgentState) -> str:
-    """Route after parallel phase: go to safety review first."""
-    return "safety_review"
 
 
 def route_after_safety_review(state: TravelAgentState) -> str:
@@ -1175,12 +1458,43 @@ def route_after_human_review(state: TravelAgentState) -> str:
 
 
 def create_multiagent_travel_graph(checkpointer=None):
-    """Create a LangGraph with supervisor, parallel specialist dispatch, and sequential finishers."""
+    """Create a LangGraph with supervisor, parallel specialist dispatch, and sequential finishers.
 
-    llm = get_llm()
+    Uses a three-tier model pyramid for TPM / cost optimization:
+        - ``llm`` (reasoning): gpt-5.4 (1M TPM) — complex multi-source
+          synthesis agents (Destination, Itinerary).
+        - ``llm_fast`` (fast): gpt-5.4-mini (1M TPM) — worker agents that call
+          one API and format structured results.
+        - ``llm_utility`` (utility): gpt-5.4-nano (1M TPM) — triage, supervisor
+          routing, shallow replies, rendering, synthesis.
+
+    All gpt-5.4 family models are reasoning models.  The LLM factory enables
+    the Responses API and sets per-tier reasoning_effort (medium/low/low) to
+    ensure tool calling works correctly (tool calling is NOT supported in
+    Chat Completions with reasoning: none on gpt-5.4 models).
+    """
+
+    llm = get_llm(tier="reasoning")
+    llm_fast = get_llm(tier="fast")
+    llm_utility = get_llm(tier="utility")
 
     # --- agents & executors ---------------------------------------------------
-    _supervisor_agent = SupervisorAgent(llm)
+    _supervisor_agent = SupervisorAgent(llm_utility)  # routing only — utility tier
+
+    # Per-agent tier assignment: classify by task complexity, not agent name.
+    # reasoning (gpt-5.4, 1 M TPM): deep multi-source synthesis with tool calling
+    # fast (gpt-5.4-mini, 1 M TPM): API wrappers that call ONE service and format results
+    # utility (gpt-5.4-nano, 1 M TPM): routing, extraction, rendering, shallow replies
+    _AGENT_TIERS = {
+        "FlightsAgent": llm_fast,          # Duffel API call + format
+        "HotelsAgent": llm_fast,           # Hotelbeds API call + format
+        "RestaurantsAgent": llm_fast,      # Google Maps API call + format
+        "ActivitiesAgent": llm_fast,       # Google Maps API call + format
+        "TransportationAgent": llm_fast,   # Google Maps API call + format
+        "BudgetAgent": llm_fast,           # arithmetic + format
+        "DestinationAgent": llm,           # 7 tools — deep synthesis via RAG + web search
+        "ItineraryAgent": llm,             # 2 tools — day-plan synthesis across destinations
+    }
 
     agent_classes = {
         "FlightsAgent": FlightsAgent,
@@ -1195,9 +1509,10 @@ def create_multiagent_travel_graph(checkpointer=None):
 
     _executors = {}
     for name, cls in agent_classes.items():
-        agent = cls(llm)
+        model = _AGENT_TIERS[name]
+        agent = cls(model)
         _executors[name] = create_agent(
-            model=llm,
+            model=model,
             tools=agent.tools,
             system_prompt=agent.system_prompt,
         )
@@ -1207,25 +1522,33 @@ def create_multiagent_travel_graph(checkpointer=None):
     builder = StateGraph(TravelAgentState)
 
     # Nodes — thin wrappers that inject dependencies into module-level functions
-    builder.add_node("triage", functools.partial(triage_node, llm=llm))
-    builder.add_node("shallow_reply", functools.partial(shallow_reply_node, llm=llm))
+    #
+    # Utility tier (gpt-5.4-nano): triage, shallow_reply, supervisor, render_handbook, synthesize
+    # Fast tier (gpt-5.4-mini): Send() worker agents (flights/hotels/restaurants/activities/transport)
+    # Reasoning tier (gpt-5.4): destination worker + itinerary sequential node
+    builder.add_node("triage", functools.partial(triage_node, llm=llm_utility))
+    builder.add_node("shallow_reply", functools.partial(shallow_reply_node, llm=llm_utility))
     builder.add_node(
         "supervisor", functools.partial(supervisor_node, supervisor_agent=_supervisor_agent)
     )
-    builder.add_node(
-        "parallel_dispatch", functools.partial(parallel_dispatch_node, executors=_executors)
-    )
+    # Send() fan-out worker nodes — each is an independent graph node
+    builder.add_node("flights", functools.partial(flights_node, executor=_executors["FlightsAgent"]))
+    builder.add_node("hotels", functools.partial(hotels_node, executor=_executors["HotelsAgent"]))
+    builder.add_node("destination", functools.partial(destination_node, executor=_executors["DestinationAgent"]))
+    builder.add_node("restaurants", functools.partial(restaurants_node, executor=_executors["RestaurantsAgent"]))
+    builder.add_node("activities", functools.partial(activities_node, executor=_executors["ActivitiesAgent"]))
+    builder.add_node("transportation", functools.partial(transportation_node, executor=_executors["TransportationAgent"]))
     builder.add_node("safety_review", safety_review_node)
     builder.add_node(
-        "budget", functools.partial(budget_node, llm=llm, executor=_executors["BudgetAgent"])
+        "budget", functools.partial(budget_node, llm=llm_utility, executor=_executors["BudgetAgent"])
     )
     builder.add_node("budget_review", budget_review_node)
     builder.add_node(
         "itinerary", functools.partial(itinerary_node, executor=_executors["ItineraryAgent"])
     )
     builder.add_node("human_review", human_review_node)
-    builder.add_node("render_handbook", functools.partial(render_handbook_node, llm=llm))
-    builder.add_node("synthesize", functools.partial(synthesize_node, llm=llm))
+    builder.add_node("render_handbook", functools.partial(render_handbook_node, llm=llm_utility))
+    builder.add_node("synthesize", functools.partial(synthesize_node, llm=llm_utility))
 
     # START -> triage
     builder.add_edge(START, "triage")
@@ -1243,27 +1566,21 @@ def create_multiagent_travel_graph(checkpointer=None):
     # shallow_reply always ends
     builder.add_edge("shallow_reply", END)
 
-    # supervisor -> parallel_dispatch | budget | itinerary | synthesize | END
+    # supervisor -> Send() fan-out to parallel agents | sequential | synthesize | END
+    # When route_after_supervisor returns [Send("flights", state), Send("hotels", state), ...],
+    # LangGraph dispatches each worker independently.  All workers fan-in to
+    # safety_review once every dispatched instance has completed.
     builder.add_conditional_edges(
         "supervisor",
         route_after_supervisor,
-        {
-            "parallel_dispatch": "parallel_dispatch",
-            "budget": "budget",
-            "itinerary": "itinerary",
-            "synthesize": "synthesize",
-            END: END,
-        },
+        ["flights", "hotels", "destination", "restaurants", "activities",
+         "transportation", "budget", "itinerary", "synthesize", END],
     )
 
-    # parallel_dispatch -> safety_review (always)
-    builder.add_conditional_edges(
-        "parallel_dispatch",
-        route_after_parallel,
-        {
-            "safety_review": "safety_review",
-        },
-    )
+    # Fan-in: every parallel worker → safety_review.
+    # LangGraph waits for ALL Send() instances to complete before firing safety_review.
+    for _worker in ["flights", "hotels", "destination", "restaurants", "activities", "transportation"]:
+        builder.add_edge(_worker, "safety_review")
 
     # safety_review -> budget | itinerary | END
     builder.add_conditional_edges(
