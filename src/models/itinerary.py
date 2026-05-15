@@ -7,14 +7,26 @@ the Jinja2 template renderer.
 
 from __future__ import annotations
 
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from pydantic import BaseModel, Field
+from src.models.enums import (
+    AdvisoryLevel,
+    CabinClass,
+    DayPeriod,
+    GroupType,
+    PackingCategory,
+    Season,
+    TransitMode,
+    TravelStyle,
+)
 
 
 # ── Flights ──────────────────────────────────────────────────────────────
 
 
 class FlightSegment(BaseModel):
+    model_config = ConfigDict(use_enum_values=True)
+
     carrier: str = ""
     flight_number: str = ""
     departure_airport: str = ""
@@ -22,10 +34,20 @@ class FlightSegment(BaseModel):
     departure_time: str = ""
     arrival_time: str = ""
     duration_minutes: int = 0
-    cabin_class: str = "economy"
+    cabin_class: CabinClass = CabinClass.ECONOMY
     stops: int = 0
     origin_country: str = ""
     destination_country: str = ""
+
+    @field_validator("departure_airport", "arrival_airport", mode="before")
+    @classmethod
+    def _normalise_iata(cls, v: str) -> str:
+        return v.strip().upper() if isinstance(v, str) else v
+
+    @field_validator("duration_minutes", "stops", mode="after")
+    @classmethod
+    def _non_negative_int(cls, v: int) -> int:
+        return max(0, v)
 
 
 class FlightOption(BaseModel):
@@ -37,13 +59,23 @@ class FlightOption(BaseModel):
     skyscanner_url: str = ""
     google_flights_url: str = ""
 
+    @field_validator("total_price_usd", mode="after")
+    @classmethod
+    def _non_negative_price(cls, v: float) -> float:
+        return max(0.0, v)
+
+    @field_validator("currency", mode="before")
+    @classmethod
+    def _normalise_currency(cls, v: str) -> str:
+        return v.strip().upper()[:3] if isinstance(v, str) else v
+
 
 # ── Hotels ───────────────────────────────────────────────────────────────
 
 
 class HotelOption(BaseModel):
     name: str = ""
-    star_rating: int = 0
+    star_rating: int = Field(default=0, ge=0, le=5)
     neighbourhood: str = ""
     price_per_night_usd: float = 0
     total_price_usd: float = 0
@@ -65,6 +97,18 @@ class HotelOption(BaseModel):
     distance_from_center_km: float = 0.0
     nearby_attractions: list[str] = Field(default_factory=list)
     map_embed_url: str = ""  # Maps Embed API place URL
+
+    @field_validator("star_rating", mode="before")
+    @classmethod
+    def _clamp_stars(cls, v: int) -> int:
+        if isinstance(v, (int, float)):
+            return max(0, min(5, int(v)))
+        return v
+
+    @field_validator("price_per_night_usd", "total_price_usd", "distance_from_center_km", mode="after")
+    @classmethod
+    def _non_negative_float(cls, v: float) -> float:
+        return max(0.0, v)
 
 
 # ── Places (activities, restaurants, attractions) ────────────────────────
@@ -89,12 +133,33 @@ class PlaceCard(BaseModel):
     estimated_cost_usd: float = 0.0
     estimated_duration_minutes: int = 60
 
+    @field_validator("rating", mode="before")
+    @classmethod
+    def _clamp_rating(cls, v: float | None) -> float | None:
+        if v is None:
+            return None
+        if isinstance(v, (int, float)):
+            return max(0.0, min(5.0, float(v)))
+        return v
+
+    @field_validator("estimated_cost_usd", mode="after")
+    @classmethod
+    def _non_negative_cost(cls, v: float) -> float:
+        return max(0.0, v)
+
+    @field_validator("estimated_duration_minutes", "review_count", mode="after")
+    @classmethod
+    def _non_negative_int(cls, v: int) -> int:
+        return max(0, v)
+
 
 # ── Transit ──────────────────────────────────────────────────────────────
 
 
 class TransitStep(BaseModel):
-    mode: str = ""  # "walk", "transit", "drive", "train", "bus", "ferry"
+    model_config = ConfigDict(use_enum_values=True)
+
+    mode: TransitMode = TransitMode.WALK
     from_place: str = ""
     to_place: str = ""
     distance_text: str = ""
@@ -103,6 +168,11 @@ class TransitStep(BaseModel):
     instructions: str = ""
     booking_url: str = ""
     fare_estimate_usd: float = 0.0
+
+    @field_validator("fare_estimate_usd", mode="after")
+    @classmethod
+    def _non_negative_fare(cls, v: float) -> float:
+        return max(0.0, v)
 
 
 # ── Weather ──────────────────────────────────────────────────────────────
@@ -114,8 +184,15 @@ class DayWeather(BaseModel):
     emoji: str = "☀️"
     temp_low_c: float = 0
     temp_high_c: float = 0
-    rain_probability_pct: int = 0
+    rain_probability_pct: int = Field(default=0, ge=0, le=100)
     packing_tip: str = ""
+
+    @field_validator("rain_probability_pct", mode="before")
+    @classmethod
+    def _clamp_rain(cls, v: int) -> int:
+        if isinstance(v, (int, float)):
+            return max(0, min(100, int(v)))
+        return v
 
 
 # ── Day plan ─────────────────────────────────────────────────────────────
@@ -124,11 +201,18 @@ class DayWeather(BaseModel):
 class TimeBlock(BaseModel):
     """A single block within a day (morning / afternoon / evening)."""
 
-    period: str = ""  # "morning", "afternoon", "evening"
+    model_config = ConfigDict(use_enum_values=True)
+
+    period: DayPeriod = DayPeriod.MORNING
     activities: list[PlaceCard] = Field(default_factory=list)
     restaurant: PlaceCard | None = None
     transit: list[TransitStep] = Field(default_factory=list)
     subtotal_usd: float = 0.0
+
+    @field_validator("subtotal_usd", mode="after")
+    @classmethod
+    def _non_negative_subtotal(cls, v: float) -> float:
+        return max(0.0, v)
 
 
 class DayPlan(BaseModel):
@@ -142,13 +226,23 @@ class DayPlan(BaseModel):
     walking_km: float = 0.0
     route_map_url: str = ""  # Maps Embed API directions URL for the day's route
 
+    @field_validator("daily_cost_usd", "walking_km", mode="after")
+    @classmethod
+    def _non_negative_float(cls, v: float) -> float:
+        return max(0.0, v)
+
 
 # ── Safety ───────────────────────────────────────────────────────────────
 
 
+_ADVISORY_NUM_MAP: dict[str, int] = {"green": 1, "yellow": 2, "orange": 3, "red": 4}
+
+
 class SafetyInfo(BaseModel):
-    advisory_level: str = "green"  # "green", "yellow", "orange", "red"
-    advisory_level_num: int = 1  # 1-4
+    model_config = ConfigDict(use_enum_values=True)
+
+    advisory_level: AdvisoryLevel = AdvisoryLevel.GREEN
+    advisory_level_num: int = Field(default=1, ge=1, le=4)
     advisory_summary: str = ""
     visa_requirements: str = ""
     health_requirements: list[str] = Field(default_factory=list)
@@ -162,6 +256,26 @@ class SafetyInfo(BaseModel):
     natural_hazards: list[str] = Field(default_factory=list)
     safety_tips: list[str] = Field(default_factory=list)
     embassy_info: str = ""
+
+    @field_validator("advisory_level_num", mode="before")
+    @classmethod
+    def _clamp_advisory_num(cls, v: int) -> int:
+        if isinstance(v, (int, float)):
+            return max(1, min(4, int(v)))
+        return v
+
+    @field_validator("currency_code", mode="before")
+    @classmethod
+    def _normalise_currency_code(cls, v: str) -> str:
+        return v.strip().upper()[:3] if isinstance(v, str) else v
+
+    @model_validator(mode="after")
+    def _sync_advisory_level_num(self) -> SafetyInfo:
+        """Keep advisory_level_num consistent with advisory_level."""
+        expected = _ADVISORY_NUM_MAP.get(self.advisory_level, 1)
+        if self.advisory_level_num != expected:
+            self.advisory_level_num = expected
+        return self
 
 
 # ── Culture ──────────────────────────────────────────────────────────────
@@ -234,9 +348,11 @@ class EmergencyInfo(BaseModel):
 
 
 class PackingItem(BaseModel):
+    model_config = ConfigDict(use_enum_values=True)
+
     item: str = ""
     reason: str = ""
-    category: str = ""  # "clothing", "documents", "tech", "health", "money"
+    category: PackingCategory = PackingCategory.CLOTHING
     essential: bool = True
     weather_context: str = ""  # e.g. "60% rain on Day 3"
     activity_context: str = ""  # e.g. "Temple visits on Day 2"
@@ -260,6 +376,26 @@ class TripHandbook(BaseModel):
     group_type: str = ""
     dietary_restrictions: list[str] = Field(default_factory=list)
     accessibility_needs: list[str] = Field(default_factory=list)
+
+    @field_validator("travel_style", mode="before")
+    @classmethod
+    def _normalise_travel_style(cls, v: str) -> str:
+        if not isinstance(v, str) or not v.strip():
+            return ""
+        try:
+            return TravelStyle(v).value
+        except ValueError:
+            return v.strip().lower()
+
+    @field_validator("group_type", mode="before")
+    @classmethod
+    def _normalise_group_type(cls, v: str) -> str:
+        if not isinstance(v, str) or not v.strip():
+            return ""
+        try:
+            return GroupType(v).value
+        except ValueError:
+            return v.strip().lower()
 
     # Route
     route_cities: list[str] = Field(default_factory=list)
@@ -303,3 +439,33 @@ class TripHandbook(BaseModel):
     season: str = ""  # spring / summer / autumn / winter
     generated_at: str = ""
     langsmith_run_id: str = ""
+
+    @field_validator("season", mode="before")
+    @classmethod
+    def _normalise_season(cls, v: str) -> str:
+        if not isinstance(v, str) or not v.strip():
+            return ""
+        try:
+            return Season(v).value
+        except ValueError:
+            return v.strip().lower()
+
+    @field_validator("total_budget_usd", "budget_flights", "budget_accommodation",
+                     "budget_transport", "budget_meals", "budget_activities",
+                     "budget_misc", "budget_total", "budget_per_person",
+                     "exchange_rate", mode="after")
+    @classmethod
+    def _non_negative_float(cls, v: float) -> float:
+        return max(0.0, v)
+
+    @model_validator(mode="after")
+    def _auto_budget_total(self) -> TripHandbook:
+        """If budget_total is 0 but components exist, compute the sum."""
+        components = (
+            self.budget_flights + self.budget_accommodation +
+            self.budget_transport + self.budget_meals +
+            self.budget_activities + self.budget_misc
+        )
+        if self.budget_total == 0 and components > 0:
+            self.budget_total = components
+        return self
