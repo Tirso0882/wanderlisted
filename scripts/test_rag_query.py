@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """Quick RAG retrieval test — runs a query and shows results."""
 
+import asyncio
 import sys
 from pathlib import Path
 
@@ -32,8 +33,8 @@ def main():
     for i, query in enumerate(TEST_QUERIES, 1):
         print(f'[Query {i}/{len(TEST_QUERIES)}] "{query}"')
         print("─" * 70)
-        # search_destination_guides is a @tool, so invoke it with .invoke()
-        result = search_destination_guides.invoke({"query": query})
+        # search_destination_guides is an async @tool, so invoke it with asyncio
+        result = asyncio.run(search_destination_guides.ainvoke({"query": query}))
 
         # Parse result to show source + section
         lines = result.split("\n\n---\n\n")

@@ -59,7 +59,7 @@ Each tool or capability below is evaluated as: **standalone agent** or **tool wi
 - `flight_options` (list of structured `FlightOption` Pydantic objects: airline, flight number, price, duration, stops, booking link)
 - `recommended_option` (single best match with reasoning)
 
-**Tools / APIs:** Amadeus Flight Offers Search API · Skyscanner API · Tavily web search (fallback)
+**Tools / APIs:** Duffel Offer Requests API · Tavily web search (fallback)
 
 **Interacts with:**
 - `IATALookupTool` — resolves city/airport names to IATA codes before calling the API
@@ -85,7 +85,7 @@ Each tool or capability below is evaluated as: **standalone agent** or **tool wi
 - `booking_confirmation` (confirmation number, e-ticket link, PNR)
 - `booking_status` (confirmed / failed / pending)
 
-**Tools / APIs:** Amadeus Flight Orders API · Airline booking APIs
+**Tools / APIs:** Duffel Order API · Airline booking APIs
 
 **Interacts with:**
 - `FlightSearchAgent` — consumes its output
@@ -114,7 +114,7 @@ Each tool or capability below is evaluated as: **standalone agent** or **tool wi
 - `hotel_options` (list of structured `HotelOption` Pydantic objects)
 - `recommended_option` (with reasoning)
 
-**Tools / APIs:** Amadeus Hotel Search API · Booking.com API · Tavily web search (fallback)
+**Tools / APIs:** Hotelbeds Booking API · Tavily web search (fallback)
 
 **Interacts with:**
 - `BudgetAgent` — passes hotel total cost
@@ -273,7 +273,7 @@ Each tool or capability below is evaluated as: **standalone agent** or **tool wi
 
 **Value it adds:** Flight APIs require IATA codes; users don't think in IATA codes. Without this, the FlightSearchAgent would fail on natural-language inputs.
 
-**Should it be a separate agent?** **No.** This is a pure lookup — deterministic, stateless, and sub-second. Implement it as a `@tool`-decorated function bound to `FlightSearchAgent`. It involves zero reasoning. Creating an agent for it would add latency and complexity with no benefit. Backed by the Amadeus Airport & City Search API or a static IATA code dictionary with Tavily fallback.
+**Should it be a separate agent?** **No.** This is a pure lookup — deterministic, stateless, and sub-second. Implement it as a `@tool`-decorated function bound to `FlightSearchAgent`. It involves zero reasoning. Creating an agent for it would add latency and complexity with no benefit. Backed by the Duffel Places API or a static IATA code dictionary with Tavily fallback.
 
 ---
 
@@ -583,8 +583,8 @@ The current tools already fetch far more data than the output consumes. This tab
 | **Google Maps — Directions** | Step-by-step directions with transit line names, vehicle types | Per-day collapsible "Getting Around" panel with transit icons & walking/driving time between stops |
 | **Google Maps — Distance Matrix** | Origin→destination duration/distance pairs | Visual proximity badges on day cards ("12 min walk from hotel"), inter-city transit time in route bar |
 | **Google Maps — Route Optimisation** | `optimizedIntermediateWaypointIndex`, per-leg distance/duration | Auto-sequenced day plan (stops reordered for minimal backtracking); total walking km per day |
-| **Amadeus Flights** | Carrier code, flight #, segment details, layover info, baggage policy hints | Multi-segment flight timeline (visual bar); layover duration callout; carrier logo via Logo API |
-| **Amadeus Hotels** | Room type (beds, bed type, category), check-in/check-out, full offer JSON | Room-type pill, bed icon, policy summary (cancellation, breakfast included) |
+| **Duffel Flights** | Carrier code, flight #, segment details, layover info, baggage policy hints | Multi-segment flight timeline (visual bar); layover duration callout; carrier logo via Logo API |
+| **Hotelbeds Hotels** | Room type (beds, bed type, category), check-in/check-out, full offer JSON | Room-type pill, bed icon, policy summary (cancellation, breakfast included) |
 | **OpenWeatherMap** | 3-hourly raw data (aggregated to daily) | Hourly mini-chart on day cards; "best time to visit outdoor activity" note |
 | **REST Countries (safety.py)** | Languages, currency name + symbol, timezones, population | Language badge in header; currency quick-ref sticky bar; timezone diff from origin |
 | **ExchangeRate API** | Rate + last-updated timestamp | Live conversion widget in budget tab; "your $1 = ¥XXX" quick reference |
@@ -1298,8 +1298,8 @@ Every field in the Jinja2 template maps to a specific agent and tool:
 | Day cards — proximity | ItineraryAgent | `get_distance_matrix` (Google Maps) | Distance values injected into `PlaceCard` or `TransitStep` |
 | Day cards — cultural tip | DestinationAgent | `search_destination_guides` (Pinecone RAG) | `DayPlan.cultural_tip` |
 | Day cards — daily cost | BudgetAgent | `calculate_budget` | `DayPlan.daily_cost_usd` |
-| Flights tab | FlightsAgent | `search_flights` (Amadeus) | `FlightOption` + `FlightSegment` |
-| Hotels tab | HotelsAgent | `search_hotels` (Amadeus) | `HotelOption` |
+| Flights tab | FlightsAgent | `search_flights` (Duffel) | `FlightOption` + `FlightSegment` |
+| Hotels tab | HotelsAgent | `search_hotels_hotelbeds` (Hotelbeds) | `HotelOption` |
 | Budget tab | BudgetAgent | `calculate_budget`, `convert_currency` | `BudgetBreakdown` + exchange rate |
 | Maps tab | ItineraryAgent + TransportationAgent | `get_distance_matrix`, `optimize_day_route` (Google Routes/Maps) | lat/lng from all `PlaceCard` + `HotelOption` |
 | Safety tab | DestinationAgent | `get_safety_info`, RAG | `SafetyInfo` |

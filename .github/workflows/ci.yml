@@ -9,9 +9,7 @@ on:
 env:
   PYTHON_VERSION: "3.12"
   REGISTRY: ghcr.io
-  AMADEUS_API_KEY: "test"
-  AMADEUS_API_SECRET: "test"
-  AMADEUS_BASE_URL: "https://test.api.amadeus.com"
+  DUFFEL_ACCESS_TOKEN: "duffel_test_fake"
   GOOGLE_MAPS_API_KEY: "test"
   OPENWEATHER_API_KEY: "test"
   PINECONE_API_KEY: "test"

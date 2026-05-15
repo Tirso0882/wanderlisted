@@ -39,7 +39,7 @@ Follow the patterns established in the existing test suite:
 
 ### Integration Tests
 - Mark live-API tests with `@pytest.mark.integration`.
-- Use skip markers from `conftest.py`: `skip_no_openweather`, `skip_no_amadeus`, etc.
+- Use skip markers from `conftest.py`: `skip_no_openweather`, `skip_no_duffel`, etc.
 - Integration tests go in the same file or in `test_integration.py` for cross-tool scenarios.
 
 ### Assertions
