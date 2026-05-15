@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.graph.state import CompiledStateGraph
 from langsmith import traceable
 from langsmith import Client
@@ -21,7 +21,7 @@ from custom_logging import AppLogger
 from src.agent.stage4_graph import create_multiagent_travel_graph
 import config as app_config
 
-load_dotenv()
+load_dotenv(override=True)
 
 _api_cfg = app_config.get("api") or {}
 _API_VERSION = _api_cfg.get("version", "2.0.0")
@@ -32,6 +32,26 @@ logger = AppLogger(
     logger_name="api",
     level=os.environ.get("LOG_LEVEL", "INFO"),
 )
+
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+def _extract_text_content(content) -> str:
+    """Extract text from LangChain message.content.
+    
+    Handles both:
+    - Chat Completions: content is str
+    - Responses API: content is list of {"type": "text", "text": "..."} blocks
+    """
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        texts = [
+            block.get("text", "")
+            for block in content
+            if isinstance(block, dict) and block.get("type") == "text"
+        ]
+        return " ".join(texts)
+    return str(content or "")
 
 
 # ── Graph dependency (replaces global mutable state) ────────────────────────
@@ -218,7 +238,7 @@ async def _run_agent(message: str, session_id: str, graph: CompiledStateGraph) -
         )
 
     return {
-        "message": result["messages"][-1].content if result.get("messages") else "",
+        "message": _extract_text_content(result["messages"][-1].content) if result.get("messages") else "",
         "run_id": run_id,
         "interrupted": interrupted,
         "interrupt_data": interrupt_data if isinstance(interrupt_data, dict) else None,
@@ -271,28 +291,88 @@ async def chat_stream(
 
     async def _event_generator():
         yield f"data: {json.dumps({'type': 'session', 'session_id': session_id})}\n\n"
+
+        # Use an asyncio.Queue to decouple graph streaming from SSE output,
+        # allowing us to inject keepalive pings while agents are working.
+        queue: asyncio.Queue = asyncio.Queue()
+        _SENTINEL = object()
+        _KEEPALIVE_INTERVAL = 15  # seconds
+
+        async def _stream_graph():
+            """Push graph events into the queue; signal completion with _SENTINEL."""
+            try:
+                async for node_output in graph.astream(
+                    {"messages": [HumanMessage(content=request.message)]},
+                    config={"configurable": {"thread_id": session_id}},
+                    stream_mode="updates",
+                ):
+                    for node_name, update in node_output.items():
+                        await queue.put(
+                            f"data: {json.dumps({'type': 'agent_start', 'agent': node_name})}\n\n"
+                        )
+                        messages = update.get("messages", [])
+                        for msg in messages:
+                            if isinstance(msg, AIMessage) and msg.content:
+                                await queue.put(
+                                    f"data: {json.dumps({'type': 'token', 'token': _extract_text_content(msg.content)})}\n\n"
+                                )
+                            if isinstance(msg, AIMessage) and msg.tool_calls:
+                                for tc in msg.tool_calls:
+                                    await queue.put(
+                                        f"data: {json.dumps({'type': 'tool_call', 'tool': tc['name']})}\n\n"
+                                    )
+                            if isinstance(msg, ToolMessage):
+                                await queue.put(
+                                    f"data: {json.dumps({'type': 'tool_result', 'tool': msg.name or ''})}\n\n"
+                                )
+            except asyncio.TimeoutError:
+                await queue.put(
+                    f"data: {json.dumps({'type': 'error', 'message': 'Agent pipeline timed out'})}\n\n"
+                )
+            except Exception as exc:
+                logger.error(f"Stream error for session {session_id}: {exc}")
+                await queue.put(
+                    f"data: {json.dumps({'type': 'error', 'message': 'An internal error occurred'})}\n\n"
+                )
+            finally:
+                await queue.put(_SENTINEL)
+
+        # Launch the graph stream as a background task
+        stream_task = asyncio.create_task(_stream_graph())
+
         try:
-            async for event in graph.astream_events(
-                {"messages": [HumanMessage(content=request.message)]},
-                config={"configurable": {"thread_id": session_id}},
-                version="v2",
-            ):
-                kind = event["event"]
-                if kind == "on_chat_model_stream":
-                    token = event["data"]["chunk"].content
-                    if token:
-                        yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
-                elif kind == "on_chain_start" and event.get("name"):
-                    yield f"data: {json.dumps({'type': 'agent_start', 'agent': event['name']})}\n\n"
-                elif kind == "on_tool_start":
-                    yield f"data: {json.dumps({'type': 'tool_call', 'tool': event['name']})}\n\n"
-                elif kind == "on_tool_end":
-                    yield f"data: {json.dumps({'type': 'tool_result', 'tool': event['name']})}\n\n"
-        except asyncio.TimeoutError:
-            yield f"data: {json.dumps({'type': 'error', 'detail': 'Agent pipeline timed out'})}\n\n"
-        except Exception as exc:
-            logger.error(f"Stream error for session {session_id}: {exc}")
-            yield f"data: {json.dumps({'type': 'error', 'detail': 'An internal error occurred'})}\n\n"
+            while True:
+                try:
+                    item = await asyncio.wait_for(queue.get(), timeout=_KEEPALIVE_INTERVAL)
+                except asyncio.TimeoutError:
+                    # No event within the interval — send SSE keepalive comment
+                    yield ": keepalive\n\n"
+                    continue
+
+                if item is _SENTINEL:
+                    break
+                yield item
+        finally:
+            if not stream_task.done():
+                stream_task.cancel()
+
+        # Check for HITL interrupts after the stream completes
+        config = {"configurable": {"thread_id": session_id}}
+        state = await graph.aget_state(config)
+        if state and state.next:
+            # Graph is paused at a HITL gate
+            interrupt_payload = None
+            if hasattr(state, "tasks"):
+                for task in state.tasks:
+                    if hasattr(task, "interrupts") and task.interrupts:
+                        interrupt_payload = (
+                            task.interrupts[0].value
+                            if hasattr(task.interrupts[0], "value")
+                            else str(task.interrupts[0])
+                        )
+                        break
+            yield f"data: {json.dumps({'type': 'interrupt', 'gate': state.next[0] if state.next else '', 'data': interrupt_payload})}\n\n"
+
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(
@@ -329,7 +409,7 @@ async def get_session_history(
         if isinstance(msg, HumanMessage):
             messages.append({"role": "user", "content": msg.content})
         elif isinstance(msg, AIMessage) and msg.content:
-            messages.append({"role": "assistant", "content": msg.content})
+            messages.append({"role": "assistant", "content": _extract_text_content(msg.content)})
     return {"session_id": session_id, "messages": messages}
 
 
@@ -391,7 +471,7 @@ async def resume_chat(
     except asyncio.TimeoutError:
         raise HTTPException(status_code=504, detail="Resume timed out.")
 
-    last_message = result["messages"][-1].content if result.get("messages") else ""
+    last_message = _extract_text_content(result["messages"][-1].content) if result.get("messages") else ""
 
     # Determine the status
     status = "completed"

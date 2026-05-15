@@ -18,8 +18,8 @@ Architecture:
         ▼
     This MCP Server
         │
-        ├── src/tools/flights.py       → Amadeus API
-        ├── src/tools/hotels.py        → Amadeus API
+        ├── src/tools/flights_duffel.py → Duffel API
+        ├── src/tools/hotels_hotelbeds.py → Hotelbeds API
         ├── src/tools/weather.py       → OpenWeatherMap API
         ├── src/tools/budget.py        → Local calculation
         ├── src/tools/destination_rag.py → Pinecone RAG
@@ -48,8 +48,8 @@ from mcp.types import (
 )
 
 # -- Import your existing Wanderlisted tools ---------------------------------
-from src.tools.flights import search_flights
-from src.tools.hotels import search_hotels
+from src.tools.flights_duffel import search_flights, search_nearby_airports
+from src.tools.hotels_hotelbeds import search_hotels_hotelbeds
 from src.tools.weather import get_weather
 from src.tools.budget import calculate_budget
 from src.tools.destination_rag import search_destination_guides
@@ -75,7 +75,8 @@ server = Server("wanderlisted-travel")
 # This is the single source of truth — add new tools here.
 _TOOL_REGISTRY: dict[str, tuple[Any, bool]] = {
     "search_flights": (search_flights, True),
-    "search_hotels": (search_hotels, True),
+    "search_nearby_airports": (search_nearby_airports, True),
+    "search_hotels_hotelbeds": (search_hotels_hotelbeds, True),
     "get_weather": (get_weather, True),
     "calculate_budget": (calculate_budget, False),
     "search_destination_guides": (search_destination_guides, False),
@@ -218,7 +219,7 @@ def _get_tool_reference() -> str:
 RECOMMENDED WORKFLOW for trip planning:
 1. lookup_iata_code("Tokyo") → get IATA code (e.g., "NRT")
 2. search_flights(origin, destination, date) → flight options with pricing
-3. search_hotels(city_code, check_in, check_out) → hotel options with pricing
+3. search_hotels_hotelbeds(city_code, check_in, check_out) → hotel options with pricing
 4. search_destination_guides(query, destinations=["tokyo"]) → cultural tips, local knowledge
 5. search_places_nearby(location, "restaurant") → nearby dining options
 6. search_places_text("best ramen in Shinjuku") → specific place search
@@ -230,7 +231,7 @@ RECOMMENDED WORKFLOW for trip planning:
 12. optimize_day_route(stops, start) → efficient stop ordering
 
 TIPS:
-- Always call lookup_iata_code BEFORE search_flights or search_hotels
+- Always call lookup_iata_code BEFORE search_flights or search_hotels_hotelbeds
 - Always call search_destination_guides BEFORE search_web (guides are higher quality)
 - search_web is best for CURRENT info: events, new restaurants, advisories
 - search_hidden_gems finds off-the-beaten-path spots locals recommend
