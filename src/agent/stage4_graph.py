@@ -179,7 +179,9 @@ def build_context_messages(state: TravelAgentState) -> list:
         if key in components:
             agent_msgs = components[key].get("messages", [])
             summary = " ".join(
-                _extract_text_content(m.content) for m in agent_msgs if isinstance(m, AIMessage) and m.content
+                _extract_text_content(m.content)
+                for m in agent_msgs
+                if isinstance(m, AIMessage) and m.content
             )
             if summary:
                 parts.append(f"[{label}]\n{summary}")
@@ -245,6 +247,7 @@ def _normalize_hitl_decision(decision) -> dict:
             return {"approved": False}
         # Handle JSON-like string: '{"approved": true}'
         import json
+
         try:
             parsed = json.loads(decision)
             if isinstance(parsed, dict):
@@ -558,7 +561,9 @@ async def _bg_log_to_langsmith(
                 inputs={"destinations": destinations, "sections": sections},
                 outputs={"paths": paths},
                 tags=["handbook", "output"],
-                end_time=__import__("datetime").datetime.now(__import__("datetime").timezone.utc),
+                end_time=__import__("datetime").datetime.now(
+                    __import__("datetime").timezone.utc
+                ),
             )
 
         await asyncio.to_thread(_sync_log)
@@ -720,7 +725,10 @@ _log = AppLogger("agent.stage4_graph")
 
 
 async def _run_parallel_agent(
-    state: TravelAgentState, *, executor, agent_name: str,
+    state: TravelAgentState,
+    *,
+    executor,
+    agent_name: str,
 ) -> dict:
     """Execute a parallel agent with error handling.
 
@@ -730,7 +738,7 @@ async def _run_parallel_agent(
     enriched = build_context_messages(state)
     try:
         result = await executor.ainvoke({"messages": enriched})
-        new_msgs = result["messages"][len(enriched):]
+        new_msgs = result["messages"][len(enriched) :]
         return {
             "messages": new_msgs,
             "current_agent": agent_name,
@@ -739,7 +747,9 @@ async def _run_parallel_agent(
     except Exception as exc:
         _log.warning(
             "%s agent failed (graph will continue): %s: %s",
-            agent_name, type(exc).__name__, exc,
+            agent_name,
+            type(exc).__name__,
+            exc,
         )
         error_msg = AIMessage(
             content=(
@@ -767,28 +777,40 @@ async def hotels_node(state: TravelAgentState, *, executor) -> dict:
     return await _run_parallel_agent(state, executor=executor, agent_name="hotels")
 
 
-@traceable(run_type="chain", name="destination_node", tags=["wanderlisted", "destination"])
+@traceable(
+    run_type="chain", name="destination_node", tags=["wanderlisted", "destination"]
+)
 async def destination_node(state: TravelAgentState, *, executor) -> dict:
     """Fan-out worker: run DestinationAgent as an independent graph node."""
     return await _run_parallel_agent(state, executor=executor, agent_name="destination")
 
 
-@traceable(run_type="chain", name="restaurants_node", tags=["wanderlisted", "restaurants"])
+@traceable(
+    run_type="chain", name="restaurants_node", tags=["wanderlisted", "restaurants"]
+)
 async def restaurants_node(state: TravelAgentState, *, executor) -> dict:
     """Fan-out worker: run RestaurantsAgent as an independent graph node."""
     return await _run_parallel_agent(state, executor=executor, agent_name="restaurants")
 
 
-@traceable(run_type="chain", name="activities_node", tags=["wanderlisted", "activities"])
+@traceable(
+    run_type="chain", name="activities_node", tags=["wanderlisted", "activities"]
+)
 async def activities_node(state: TravelAgentState, *, executor) -> dict:
     """Fan-out worker: run ActivitiesAgent as an independent graph node."""
     return await _run_parallel_agent(state, executor=executor, agent_name="activities")
 
 
-@traceable(run_type="chain", name="transportation_node", tags=["wanderlisted", "transportation"])
+@traceable(
+    run_type="chain",
+    name="transportation_node",
+    tags=["wanderlisted", "transportation"],
+)
 async def transportation_node(state: TravelAgentState, *, executor) -> dict:
     """Fan-out worker: run TransportationAgent as an independent graph node."""
-    return await _run_parallel_agent(state, executor=executor, agent_name="transportation")
+    return await _run_parallel_agent(
+        state, executor=executor, agent_name="transportation"
+    )
 
 
 @traceable(run_type="chain", name="budget_node", tags=["wanderlisted", "budget"])
@@ -802,7 +824,9 @@ async def budget_node(state: TravelAgentState, *, llm, executor) -> dict:
     # Extract structured budget from the agent's free-text output
     budget_data = None
     budget_text = " ".join(
-        _extract_text_content(m.content) for m in new_msgs if isinstance(m, AIMessage) and m.content
+        _extract_text_content(m.content)
+        for m in new_msgs
+        if isinstance(m, AIMessage) and m.content
     )
     # Also extract target budget from user messages for the extraction context
     user_budget_context = ""
@@ -975,11 +999,15 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
 
     # ── Per-section extraction (batched to avoid rate limits) ────────
 
-    async def _extract(model_cls, text: str, instruction: str, max_retries: int = 2, max_chars: int = 100_000):
+    async def _extract(
+        model_cls,
+        text: str,
+        instruction: str,
+        max_retries: int = 2,
+        max_chars: int = 100_000,
+    ):
         if not text.strip():
-            _log.debug(
-                f"_extract({model_cls.__name__}): empty text, returning default"
-            )
+            _log.debug(f"_extract({model_cls.__name__}): empty text, returning default")
             return model_cls()
         s_llm = llm.with_structured_output(model_cls, method="function_calling")
         truncated = text[:max_chars]
@@ -1087,16 +1115,19 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
 
     # ── Days completion check ─────────────────────────────────────────
     # Detect expected trip length from the itinerary text
-    _day_nums_in_text = re.findall(r'[Dd]ay\s+(\d+)', itinerary_text)
+    _day_nums_in_text = re.findall(r"[Dd]ay\s+(\d+)", itinerary_text)
     expected_day_count = max((int(n) for n in _day_nums_in_text), default=0)
     extracted_day_count = len(days_ex.days)
     if expected_day_count > 0 and extracted_day_count < expected_day_count:
         _log.warning(
             "Days extraction incomplete: got %d/%d, retrying for missing days",
-            extracted_day_count, expected_day_count,
+            extracted_day_count,
+            expected_day_count,
         )
         extracted_nums = {d.day_number for d in days_ex.days}
-        missing = [n for n in range(1, expected_day_count + 1) if n not in extracted_nums]
+        missing = [
+            n for n in range(1, expected_day_count + 1) if n not in extracted_nums
+        ]
         if missing:
             days_retry = await _extract(
                 ExtractedDays,
@@ -1116,18 +1147,18 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
             days_ex.days.sort(key=lambda d: d.day_number)
             _log.info(
                 "After retry: %d days extracted (expected %d)",
-                len(days_ex.days), expected_day_count,
+                len(days_ex.days),
+                expected_day_count,
             )
 
     # ── Filter placeholder results ────────────────────────────────────
     # Remove flights with no actual segment data
-    flights_ex.flights = [
-        f for f in flights_ex.flights if f.outbound or f.inbound
-    ]
+    flights_ex.flights = [f for f in flights_ex.flights if f.outbound or f.inbound]
     # Remove hotels with placeholder/hallucinated names
     _PLACEHOLDER_PATTERNS = ("no specific", "not mentioned", "no hotel", "n/a", "none")
     hotels_ex.hotels = [
-        h for h in hotels_ex.hotels
+        h
+        for h in hotels_ex.hotels
         if h.name and not any(p in h.name.lower() for p in _PLACEHOLDER_PATTERNS)
     ]
 
@@ -1321,8 +1352,17 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
 
     # Fire-and-forget: log metadata to LangSmith without blocking the response
     sections_generated = [
-        k for k in ["flights", "hotels", "restaurants", "activities",
-                    "transportation", "destination", "budget", "itinerary"]
+        k
+        for k in [
+            "flights",
+            "hotels",
+            "restaurants",
+            "activities",
+            "transportation",
+            "destination",
+            "budget",
+            "itinerary",
+        ]
         if k in components
     ]
     asyncio.create_task(
@@ -1486,14 +1526,14 @@ def create_multiagent_travel_graph(checkpointer=None):
     # fast (gpt-5.4-mini, 1 M TPM): API wrappers that call ONE service and format results
     # utility (gpt-5.4-nano, 1 M TPM): routing, extraction, rendering, shallow replies
     _AGENT_TIERS = {
-        "FlightsAgent": llm_fast,          # Duffel API call + format
-        "HotelsAgent": llm_fast,           # Hotelbeds API call + format
-        "RestaurantsAgent": llm_fast,      # Google Maps API call + format
-        "ActivitiesAgent": llm_fast,       # Google Maps API call + format
-        "TransportationAgent": llm_fast,   # Google Maps API call + format
-        "BudgetAgent": llm_fast,           # arithmetic + format
-        "DestinationAgent": llm,           # 7 tools — deep synthesis via RAG + web search
-        "ItineraryAgent": llm,             # 2 tools — day-plan synthesis across destinations
+        "FlightsAgent": llm_fast,  # Duffel API call + format
+        "HotelsAgent": llm_fast,  # Hotelbeds API call + format
+        "RestaurantsAgent": llm_fast,  # Google Maps API call + format
+        "ActivitiesAgent": llm_fast,  # Google Maps API call + format
+        "TransportationAgent": llm_fast,  # Google Maps API call + format
+        "BudgetAgent": llm_fast,  # arithmetic + format
+        "DestinationAgent": llm,  # 7 tools — deep synthesis via RAG + web search
+        "ItineraryAgent": llm,  # 2 tools — day-plan synthesis across destinations
     }
 
     agent_classes = {
@@ -1527,27 +1567,54 @@ def create_multiagent_travel_graph(checkpointer=None):
     # Fast tier (gpt-5.4-mini): Send() worker agents (flights/hotels/restaurants/activities/transport)
     # Reasoning tier (gpt-5.4): destination worker + itinerary sequential node
     builder.add_node("triage", functools.partial(triage_node, llm=llm_utility))
-    builder.add_node("shallow_reply", functools.partial(shallow_reply_node, llm=llm_utility))
     builder.add_node(
-        "supervisor", functools.partial(supervisor_node, supervisor_agent=_supervisor_agent)
+        "shallow_reply", functools.partial(shallow_reply_node, llm=llm_utility)
+    )
+    builder.add_node(
+        "supervisor",
+        functools.partial(supervisor_node, supervisor_agent=_supervisor_agent),
     )
     # Send() fan-out worker nodes — each is an independent graph node
-    builder.add_node("flights", functools.partial(flights_node, executor=_executors["FlightsAgent"]))
-    builder.add_node("hotels", functools.partial(hotels_node, executor=_executors["HotelsAgent"]))
-    builder.add_node("destination", functools.partial(destination_node, executor=_executors["DestinationAgent"]))
-    builder.add_node("restaurants", functools.partial(restaurants_node, executor=_executors["RestaurantsAgent"]))
-    builder.add_node("activities", functools.partial(activities_node, executor=_executors["ActivitiesAgent"]))
-    builder.add_node("transportation", functools.partial(transportation_node, executor=_executors["TransportationAgent"]))
+    builder.add_node(
+        "flights", functools.partial(flights_node, executor=_executors["FlightsAgent"])
+    )
+    builder.add_node(
+        "hotels", functools.partial(hotels_node, executor=_executors["HotelsAgent"])
+    )
+    builder.add_node(
+        "destination",
+        functools.partial(destination_node, executor=_executors["DestinationAgent"]),
+    )
+    builder.add_node(
+        "restaurants",
+        functools.partial(restaurants_node, executor=_executors["RestaurantsAgent"]),
+    )
+    builder.add_node(
+        "activities",
+        functools.partial(activities_node, executor=_executors["ActivitiesAgent"]),
+    )
+    builder.add_node(
+        "transportation",
+        functools.partial(
+            transportation_node, executor=_executors["TransportationAgent"]
+        ),
+    )
     builder.add_node("safety_review", safety_review_node)
     builder.add_node(
-        "budget", functools.partial(budget_node, llm=llm_utility, executor=_executors["BudgetAgent"])
+        "budget",
+        functools.partial(
+            budget_node, llm=llm_utility, executor=_executors["BudgetAgent"]
+        ),
     )
     builder.add_node("budget_review", budget_review_node)
     builder.add_node(
-        "itinerary", functools.partial(itinerary_node, executor=_executors["ItineraryAgent"])
+        "itinerary",
+        functools.partial(itinerary_node, executor=_executors["ItineraryAgent"]),
     )
     builder.add_node("human_review", human_review_node)
-    builder.add_node("render_handbook", functools.partial(render_handbook_node, llm=llm_utility))
+    builder.add_node(
+        "render_handbook", functools.partial(render_handbook_node, llm=llm_utility)
+    )
     builder.add_node("synthesize", functools.partial(synthesize_node, llm=llm_utility))
 
     # START -> triage
@@ -1573,13 +1640,30 @@ def create_multiagent_travel_graph(checkpointer=None):
     builder.add_conditional_edges(
         "supervisor",
         route_after_supervisor,
-        ["flights", "hotels", "destination", "restaurants", "activities",
-         "transportation", "budget", "itinerary", "synthesize", END],
+        [
+            "flights",
+            "hotels",
+            "destination",
+            "restaurants",
+            "activities",
+            "transportation",
+            "budget",
+            "itinerary",
+            "synthesize",
+            END,
+        ],
     )
 
     # Fan-in: every parallel worker → safety_review.
     # LangGraph waits for ALL Send() instances to complete before firing safety_review.
-    for _worker in ["flights", "hotels", "destination", "restaurants", "activities", "transportation"]:
+    for _worker in [
+        "flights",
+        "hotels",
+        "destination",
+        "restaurants",
+        "activities",
+        "transportation",
+    ]:
         builder.add_edge(_worker, "safety_review")
 
     # safety_review -> budget | itinerary | END

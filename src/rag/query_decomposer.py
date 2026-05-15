@@ -23,7 +23,9 @@ async def decompose_query(query: str) -> list[str]:
     # Short / already-focused queries don't need decomposition
     word_count = len(query.split())
     if word_count <= 4:
-        logger.debug(f"Query too short for decomposition ({word_count} words), skipping")
+        logger.debug(
+            f"Query too short for decomposition ({word_count} words), skipping"
+        )
         return [query]
 
     try:
@@ -36,7 +38,8 @@ async def decompose_query(query: str) -> list[str]:
         raw = response.content
         if isinstance(raw, list):
             content = " ".join(
-                b["text"] for b in raw
+                b["text"]
+                for b in raw
                 if isinstance(b, dict) and b.get("type") == "text" and b.get("text")
             ).strip()
         else:
@@ -50,7 +53,9 @@ async def decompose_query(query: str) -> list[str]:
 
         sub_queries = json.loads(json_match.group())
 
-        if not isinstance(sub_queries, list) or not all(isinstance(q, str) for q in sub_queries):
+        if not isinstance(sub_queries, list) or not all(
+            isinstance(q, str) for q in sub_queries
+        ):
             logger.warning(f"Invalid decomposition format: {sub_queries}")
             return [query]
 
@@ -63,7 +68,9 @@ async def decompose_query(query: str) -> list[str]:
         return sub_queries
 
     except Exception:
-        logger.warning("Query decomposition failed — using original query", exc_info=True)
+        logger.warning(
+            "Query decomposition failed — using original query", exc_info=True
+        )
         return [query]
 
 
@@ -81,5 +88,7 @@ def merge_results(result_sets: list[list[dict]]) -> list[dict]:
             if existing is None or r.get("score", 0) > existing.get("score", 0):
                 seen[key] = r
     merged = sorted(seen.values(), key=lambda x: x.get("score", 0), reverse=True)
-    logger.debug(f"Merged {sum(len(rs) for rs in result_sets)} → {len(merged)} unique results")
+    logger.debug(
+        f"Merged {sum(len(rs) for rs in result_sets)} → {len(merged)} unique results"
+    )
     return merged

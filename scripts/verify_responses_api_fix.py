@@ -1,4 +1,5 @@
 """Final verification: full graph with use_responses_api=True fix."""
+
 import asyncio
 
 from langchain_core.messages import HumanMessage

@@ -32,9 +32,9 @@ from typing import Any
 
 # ── Per-tier concurrency caps ─────────────────────────────────────────────
 _SEMAPHORE_LIMITS: dict[str, int] = {
-    "reasoning": 4,    # 300K TPM / 15K per call = 20 calls/min max
-    "fast": 15,        # 500K TPM / 6K per call = 83 calls/min max
-    "utility": 15,     # 200K TPM / 2K per call = 100 calls/min max
+    "reasoning": 4,  # 300K TPM / 15K per call = 20 calls/min max
+    "fast": 15,  # 500K TPM / 6K per call = 83 calls/min max
+    "utility": 15,  # 200K TPM / 2K per call = 100 calls/min max
 }
 
 # Module-level singletons — lazily created so no event loop is required at

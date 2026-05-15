@@ -1,4 +1,5 @@
 """Verify use_responses_api=True works with AzureChatOpenAI + tools."""
+
 import asyncio
 import os
 

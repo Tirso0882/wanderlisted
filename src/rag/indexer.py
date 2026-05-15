@@ -183,7 +183,9 @@ def build_index(
         return index, emb_gen
 
     # Slow path: re-chunk, re-embed and upsert
-    logger.info(f"✗ Source documents changed — re-indexing into Pinecone namespace '{ns}' …")
+    logger.info(
+        f"✗ Source documents changed — re-indexing into Pinecone namespace '{ns}' …"
+    )
     documents = _load_and_chunk(guides_dir)
     logger.info(f"  Loaded {len(documents)} chunks from {guides_dir}")
 
@@ -207,13 +209,19 @@ def build_index(
                 {
                     "id": f"chunk-{i + j}",
                     "values": vec,
-                    "metadata": {**meta, "text": text, "tenant": tenant or DEFAULT_TENANT},
+                    "metadata": {
+                        **meta,
+                        "text": text,
+                        "tenant": tenant or DEFAULT_TENANT,
+                    },
                 }
             )
         index.upsert(vectors=upsert_data, namespace=ns)
 
     _save_manifest(guides_dir)
-    logger.info(f"  Upserted {len(documents)} vectors into Pinecone '{INDEX_NAME}' namespace '{ns}'")
+    logger.info(
+        f"  Upserted {len(documents)} vectors into Pinecone '{INDEX_NAME}' namespace '{ns}'"
+    )
 
     return index, emb_gen
 

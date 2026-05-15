@@ -1,4 +1,5 @@
 """Debug: test gpt-5.4-pro tool binding to capture the exact 400 error."""
+
 import asyncio
 import traceback
 
@@ -77,9 +78,7 @@ async def main():
                                     pass
                                 found = True
                                 break
-                            inner_current = getattr(
-                                inner_current, "__cause__", None
-                            )
+                            inner_current = getattr(inner_current, "__cause__", None)
                 if found:
                     break
 
@@ -96,7 +95,9 @@ async def main():
     except Exception as exc:
         print(f"  FAIL: {type(exc).__name__}: {exc}")
 
-    print("\n=== Test 3: bind_tools on underlying model directly (bypass semaphore) ===")
+    print(
+        "\n=== Test 3: bind_tools on underlying model directly (bypass semaphore) ==="
+    )
     try:
         bound = underlying.bind_tools([get_weather])
         result = await bound.ainvoke(

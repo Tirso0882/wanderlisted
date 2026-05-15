@@ -76,6 +76,7 @@ OUTPUT_DIR = Path("outputs/agent_reports")
 
 # ── Extraction helper ─────────────────────────────────────────────────────
 
+
 def _extract_text(content: Any) -> str:
     """Extract text from Chat Completions (str) or Responses API (list) content."""
     if isinstance(content, str):
@@ -92,6 +93,7 @@ def _extract_text(content: Any) -> str:
 
 
 # ── Default test prompts per agent ────────────────────────────────────────
+
 
 def _default_prompt(agent_name: str, dest: str, origin: str, dates: str) -> str:
     """Return a sensible test prompt for each agent type."""
@@ -216,14 +218,17 @@ async def run_agent_harness(
                         result["tool_calls"].append(tool_entry)
                         entry.setdefault("tool_calls", []).append(tool_entry)
             elif isinstance(msg, ToolMessage):
-                entry["content"] = _extract_text(msg.content)[:2000]  # Truncate large API responses
+                entry["content"] = _extract_text(msg.content)[
+                    :2000
+                ]  # Truncate large API responses
                 entry["tool_name"] = getattr(msg, "name", "")
 
             result["messages"].append(entry)
 
         # Extract final AI output
         ai_msgs = [
-            m for m in run_result.get("messages", [])
+            m
+            for m in run_result.get("messages", [])
             if isinstance(m, AIMessage) and m.content
         ]
         if ai_msgs:
@@ -231,6 +236,7 @@ async def run_agent_harness(
 
     except Exception as exc:
         import traceback
+
         # Dig into chained exceptions for HTTP details
         error_parts = [f"{type(exc).__name__}: {exc}"]
         cause = getattr(exc, "__cause__", None) or getattr(exc, "__context__", None)
@@ -240,7 +246,9 @@ async def run_agent_harness(
             resp = getattr(cause, "response", None)
             if resp is not None:
                 error_parts.append(f"  HTTP {resp.status_code}: {resp.text[:500]}")
-            cause = getattr(cause, "__cause__", None) or getattr(cause, "__context__", None)
+            cause = getattr(cause, "__cause__", None) or getattr(
+                cause, "__context__", None
+            )
         result["error"] = "\n".join(error_parts)
         result["traceback"] = traceback.format_exc()
         try:
@@ -261,7 +269,10 @@ def _parse_flights_from_tool_response(messages: list[dict]) -> list[dict]:
     flights = []
     tool_msg = None
     for msg in messages:
-        if msg.get("role") == "ToolMessage" and msg.get("tool_name") == "search_flights":
+        if (
+            msg.get("role") == "ToolMessage"
+            and msg.get("tool_name") == "search_flights"
+        ):
             tool_msg = msg.get("content", "")
             break
     if not tool_msg:
@@ -289,7 +300,9 @@ def _parse_flights_from_tool_response(messages: list[dict]) -> list[dict]:
 
         # Extract carrier code
         carrier_match = re.search(r"Carrier:\s*(\w+)", entry)
-        flight["carrier_code"] = carrier_match.group(1) if carrier_match else flight["flight_number"][:2]
+        flight["carrier_code"] = (
+            carrier_match.group(1) if carrier_match else flight["flight_number"][:2]
+        )
 
         # Departure/arrival airports
         dep_match = re.search(r"Departure airport:\s*(\w+)", entry)
@@ -304,12 +317,20 @@ def _parse_flights_from_tool_response(messages: list[dict]) -> list[dict]:
             flight["arrival_time"] = time_match.group(2)
 
         # Duration and stops
-        dur_match = re.search(r"Duration:\s*(\S+(?:\s+\d+m)?)\s*\((\d+)\s*minutes\)\s*·\s*(.+)", entry)
+        dur_match = re.search(
+            r"Duration:\s*(\S+(?:\s+\d+m)?)\s*\((\d+)\s*minutes\)\s*·\s*(.+)", entry
+        )
         if dur_match:
             flight["duration_str"] = dur_match.group(1)
             flight["duration_mins"] = int(dur_match.group(2))
             stops_text = dur_match.group(3).strip()
-            flight["stops"] = 0 if "non-stop" in stops_text.lower() else int(re.search(r"(\d+)", stops_text).group(1)) if re.search(r"(\d+)", stops_text) else 1
+            flight["stops"] = (
+                0
+                if "non-stop" in stops_text.lower()
+                else int(re.search(r"(\d+)", stops_text).group(1))
+                if re.search(r"(\d+)", stops_text)
+                else 1
+            )
 
         # Cabin
         cabin_match = re.search(r"Cabin:\s*(.+?)(?:\n|$)", entry)
@@ -322,8 +343,12 @@ def _parse_flights_from_tool_response(messages: list[dict]) -> list[dict]:
         # Conditions (change/refund)
         change_match = re.search(r"Change:\s*(.+?)(?:\s*\||\n|$)", entry)
         refund_match = re.search(r"Refund:\s*(.+?)(?:\n|$)", entry)
-        flight["change_policy"] = change_match.group(1).strip() if change_match else "Unknown"
-        flight["refund_policy"] = refund_match.group(1).strip() if refund_match else "Unknown"
+        flight["change_policy"] = (
+            change_match.group(1).strip() if change_match else "Unknown"
+        )
+        flight["refund_policy"] = (
+            refund_match.group(1).strip() if refund_match else "Unknown"
+        )
 
         # Return flight
         ret_match = re.search(
@@ -337,7 +362,13 @@ def _parse_flights_from_tool_response(messages: list[dict]) -> list[dict]:
             flight["return_arrival"] = ret_match.group(4)
             flight["return_duration"] = ret_match.group(5)
             ret_stops_text = ret_match.group(6).strip()
-            flight["return_stops"] = 0 if "non-stop" in ret_stops_text.lower() else int(re.search(r"(\d+)", ret_stops_text).group(1)) if re.search(r"(\d+)", ret_stops_text) else 1
+            flight["return_stops"] = (
+                0
+                if "non-stop" in ret_stops_text.lower()
+                else int(re.search(r"(\d+)", ret_stops_text).group(1))
+                if re.search(r"(\d+)", ret_stops_text)
+                else 1
+            )
 
         flights.append(flight)
 
@@ -374,24 +405,44 @@ def _render_flights_cards(flights: list[dict], final_output: str) -> str:
         dep_date = dep_time.split("T")[0] if "T" in dep_time else ""
 
         # Stops badge
-        stops_badge = '<span class="flight-badge badge-nonstop">Non-stop</span>' if stops == 0 else f'<span class="flight-badge badge-stops">{stops} stop{"s" if stops > 1 else ""}</span>'
+        stops_badge = (
+            '<span class="flight-badge badge-nonstop">Non-stop</span>'
+            if stops == 0
+            else f'<span class="flight-badge badge-stops">{stops} stop{"s" if stops > 1 else ""}</span>'
+        )
 
         # Return flight info
         return_html = ""
         if f.get("return_departure"):
-            ret_dep = f["return_departure"].split("T")[1][:5] if "T" in f["return_departure"] else f["return_departure"]
-            ret_arr = f["return_arrival"].split("T")[1][:5] if "T" in f.get("return_arrival", "") else f.get("return_arrival", "")
-            ret_date = f["return_departure"].split("T")[0] if "T" in f["return_departure"] else ""
+            ret_dep = (
+                f["return_departure"].split("T")[1][:5]
+                if "T" in f["return_departure"]
+                else f["return_departure"]
+            )
+            ret_arr = (
+                f["return_arrival"].split("T")[1][:5]
+                if "T" in f.get("return_arrival", "")
+                else f.get("return_arrival", "")
+            )
+            ret_date = (
+                f["return_departure"].split("T")[0]
+                if "T" in f["return_departure"]
+                else ""
+            )
             ret_dur = f.get("return_duration", "N/A")
             ret_stops = f.get("return_stops", 0)
-            ret_stops_badge = '<span class="flight-badge badge-nonstop">Non-stop</span>' if ret_stops == 0 else f'<span class="flight-badge badge-stops">{ret_stops} stop{"s" if ret_stops > 1 else ""}</span>'
+            ret_stops_badge = (
+                '<span class="flight-badge badge-nonstop">Non-stop</span>'
+                if ret_stops == 0
+                else f'<span class="flight-badge badge-stops">{ret_stops} stop{"s" if ret_stops > 1 else ""}</span>'
+            )
             return_html = f"""
             <div class="flight-leg return-leg">
               <div class="leg-label">↩ Return · {html.escape(ret_date)}</div>
               <div class="leg-route">
                 <div class="route-endpoint">
                   <div class="route-time">{html.escape(ret_dep)}</div>
-                  <div class="route-airport">{html.escape(f.get('return_origin', dest))}</div>
+                  <div class="route-airport">{html.escape(f.get("return_origin", dest))}</div>
                 </div>
                 <div class="route-connector">
                   <div class="route-duration">{html.escape(ret_dur)}</div>
@@ -400,13 +451,15 @@ def _render_flights_cards(flights: list[dict], final_output: str) -> str:
                 </div>
                 <div class="route-endpoint">
                   <div class="route-time">{html.escape(ret_arr)}</div>
-                  <div class="route-airport">{html.escape(f.get('return_destination', origin))}</div>
+                  <div class="route-airport">{html.escape(f.get("return_destination", origin))}</div>
                 </div>
               </div>
             </div>"""
 
         # Recommended badge (first flight is cheapest/best)
-        rec_badge = '<div class="recommended-badge">★ Recommended</div>' if i == 0 else ""
+        rec_badge = (
+            '<div class="recommended-badge">★ Recommended</div>' if i == 0 else ""
+        )
         rec_class = " flight-card-recommended" if i == 0 else ""
 
         # Booking link (Google Flights search — deep link)
@@ -501,7 +554,7 @@ def _render_flights_cards(flights: list[dict], final_output: str) -> str:
         </div>
       </div>
       <div class="flights-grid" id="flights-grid">
-        {''.join(cards_html)}
+        {"".join(cards_html)}
       </div>
     </div>
     """
@@ -807,11 +860,13 @@ def _render_message_html(msg: dict) -> str:
     tool_calls = msg.get("tool_calls", [])
     if tool_calls:
         for tc in tool_calls:
-            args_json = html.escape(json.dumps(tc.get("args", {}), indent=2, default=str))
+            args_json = html.escape(
+                json.dumps(tc.get("args", {}), indent=2, default=str)
+            )
             parts.append(
                 f'<div class="tool-call-box">'
-                f'🔧 <code>{html.escape(tc.get("tool", ""))}</code>'
-                f'<pre>{args_json}</pre></div>'
+                f"🔧 <code>{html.escape(tc.get('tool', ''))}</code>"
+                f"<pre>{args_json}</pre></div>"
             )
 
     if content:
@@ -838,7 +893,9 @@ def _render_agent_section(data: dict) -> str:
     status = "badge-red" if error else "badge-green"
     status_text = "FAIL" if error else "PASS"
 
-    tools_html = "".join(f'<span class="tool-tag">{html.escape(t)}</span>' for t in tools)
+    tools_html = "".join(
+        f'<span class="tool-tag">{html.escape(t)}</span>' for t in tools
+    )
 
     # Message flow (collapsible)
     msgs_html = "".join(_render_message_html(m) for m in messages)
@@ -846,7 +903,7 @@ def _render_agent_section(data: dict) -> str:
     section = f"""
     <div class="agent-section" id="{anchor}">
       <div class="agent-header">
-        <h2>{html.escape(name.replace('_', ' ').title())} Agent</h2>
+        <h2>{html.escape(name.replace("_", " ").title())} Agent</h2>
         <div>
           <span class="badge badge-purple">{tier} tier</span>
           <span class="badge badge-yellow">{len(tool_calls)} tool calls</span>
@@ -856,7 +913,7 @@ def _render_agent_section(data: dict) -> str:
       </div>
 
       <div>
-        <strong>Available tools:</strong> {tools_html or '<em>none</em>'}
+        <strong>Available tools:</strong> {tools_html or "<em>none</em>"}
       </div>
 
       <div class="prompt-box">
@@ -865,7 +922,9 @@ def _render_agent_section(data: dict) -> str:
     """
 
     if error:
-        section += f'<div class="error-box"><strong>Error:</strong> {html.escape(error)}</div>'
+        section += (
+            f'<div class="error-box"><strong>Error:</strong> {html.escape(error)}</div>'
+        )
 
     # Message flow (collapsible)
     section += f"""
@@ -930,8 +989,7 @@ def generate_report(results: list[dict]) -> str:
     status_label = "ALL PASS" if all_pass else f"{agent_count - pass_count} FAILED"
 
     nav_links = "".join(
-        f'<a href="#{r["agent_name"].lower()}">{r["agent_name"]}</a>'
-        for r in results
+        f'<a href="#{r["agent_name"].lower()}">{r["agent_name"]}</a>' for r in results
     )
 
     agent_sections = "\n".join(_render_agent_section(r) for r in results)
@@ -959,17 +1017,33 @@ def parse_args() -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
-        "--agents", nargs="+", metavar="NAME",
+        "--agents",
+        nargs="+",
+        metavar="NAME",
         help=f"Agent(s) to test. Available: {', '.join(sorted(AGENT_REGISTRY))}",
     )
-    parser.add_argument("--list", action="store_true", help="List available agents and exit")
-    parser.add_argument("--prompt", type=str, help="Custom prompt (applied to all selected agents)")
-    parser.add_argument("--dest", type=str, default="Tokyo", help="Destination city (default: Tokyo)")
-    parser.add_argument("--origin", type=str, default="JFK", help="Origin airport/city (default: JFK)")
-    parser.add_argument("--dates", type=str, default="2026-07-10 to 2026-07-17", help="Travel dates")
-    parser.add_argument("--open", action="store_true", help="Auto-open HTML report in browser")
     parser.add_argument(
-        "--output", type=str, default=None,
+        "--list", action="store_true", help="List available agents and exit"
+    )
+    parser.add_argument(
+        "--prompt", type=str, help="Custom prompt (applied to all selected agents)"
+    )
+    parser.add_argument(
+        "--dest", type=str, default="Tokyo", help="Destination city (default: Tokyo)"
+    )
+    parser.add_argument(
+        "--origin", type=str, default="JFK", help="Origin airport/city (default: JFK)"
+    )
+    parser.add_argument(
+        "--dates", type=str, default="2026-07-10 to 2026-07-17", help="Travel dates"
+    )
+    parser.add_argument(
+        "--open", action="store_true", help="Auto-open HTML report in browser"
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default=None,
         help="Output HTML path (default: outputs/agent_reports/<agents>_<timestamp>.html)",
     )
     return parser.parse_args()
@@ -977,7 +1051,12 @@ def parse_args() -> argparse.Namespace:
 
 def _is_degraded(result: dict) -> bool:
     """Detect if an agent passed but got no real data (API errors in tool responses)."""
-    api_error_keywords = ["API error", "temporarily unavailable", "search failed", "error (5"]
+    api_error_keywords = [
+        "API error",
+        "temporarily unavailable",
+        "search failed",
+        "error (5",
+    ]
     for msg in result.get("messages", []):
         if msg.get("role") == "ToolMessage":
             content = msg.get("content", "")
@@ -994,7 +1073,9 @@ async def main() -> None:
         for name, (cls, tier) in sorted(AGENT_REGISTRY.items()):
             print(f"  {name:<20s}  tier={tier:<10s}  class={cls.name}")
         print(f"\nTotal: {len(AGENT_REGISTRY)} agents")
-        print("\nUsage: python scripts/agent_harness.py --agents flights hotels destination")
+        print(
+            "\nUsage: python scripts/agent_harness.py --agents flights hotels destination"
+        )
         return
 
     # Default: run all agents
@@ -1003,10 +1084,14 @@ async def main() -> None:
     # Validate
     for name in agent_names:
         if name not in AGENT_REGISTRY:
-            print(f"ERROR: Unknown agent '{name}'. Available: {', '.join(sorted(AGENT_REGISTRY))}")
+            print(
+                f"ERROR: Unknown agent '{name}'. Available: {', '.join(sorted(AGENT_REGISTRY))}"
+            )
             sys.exit(1)
 
-    print(f"🧪 Agent Harness — testing {len(agent_names)} agent(s): {', '.join(agent_names)}")
+    print(
+        f"🧪 Agent Harness — testing {len(agent_names)} agent(s): {', '.join(agent_names)}"
+    )
     print(f"   Destination: {args.dest} | Origin: {args.origin} | Dates: {args.dates}")
     print()
 
@@ -1049,21 +1134,25 @@ async def main() -> None:
     )
 
     pass_count = sum(1 for r in results if not r.get("error"))
-    degraded_count = sum(
-        1 for r in results
-        if not r.get("error") and _is_degraded(r)
-    )
+    degraded_count = sum(1 for r in results if not r.get("error") and _is_degraded(r))
     print(f"\n{'=' * 60}")
     print(f"  Results: {pass_count}/{len(results)} passed")
     if degraded_count:
-        print(f"  ⚠ Degraded: {degraded_count} agent(s) got API errors (external service issue)")
+        print(
+            f"  ⚠ Degraded: {degraded_count} agent(s) got API errors (external service issue)"
+        )
     print(f"  HTML:    {out_path}")
     print(f"  JSON:    {json_path}")
     print(f"{'=' * 60}")
 
     if args.open:
         import subprocess
-        subprocess.Popen(["open", str(out_path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        subprocess.Popen(
+            ["open", str(out_path)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
 
 
 if __name__ == "__main__":

@@ -24,19 +24,27 @@ async def main():
         print(f"{i}. {h.get('name', '?')}")
         print(f"   Code: {h.get('code')}")
         print(f"   Category: {h.get('categoryCode')} / {h.get('categoryName')}")
-        print(f"   Destination: {h.get('destinationCode')} / {h.get('destinationName')}")
+        print(
+            f"   Destination: {h.get('destinationCode')} / {h.get('destinationName')}"
+        )
         print(f"   Lat/Lng: {h.get('latitude')}, {h.get('longitude')}")
         print(f"   Room types: {len(rooms)}")
         if best_rate:
-            print(f"   Best rate: ${best_rate.get('net')} {best_rate.get('currency', 'USD')}")
-            print(f"   Board: {best_rate.get('boardName')} ({best_rate.get('boardCode')})")
+            print(
+                f"   Best rate: ${best_rate.get('net')} {best_rate.get('currency', 'USD')}"
+            )
+            print(
+                f"   Board: {best_rate.get('boardName')} ({best_rate.get('boardCode')})"
+            )
             print(f"   Rate type: {best_rate.get('rateType')}")
             cp = best_rate.get("cancellationPolicies", [])
             if cp:
                 print(f"   Cancel: ${cp[0].get('amount')} from {cp[0].get('from')}")
             taxes = best_rate.get("taxes", {}).get("taxes", [])
             if taxes:
-                print(f"   Tax: {taxes[0].get('amount')} {taxes[0].get('currency')} ({taxes[0].get('subType')})")
+                print(
+                    f"   Tax: {taxes[0].get('amount')} {taxes[0].get('currency')} ({taxes[0].get('subType')})"
+                )
         print()
 
     print("=" * 60)

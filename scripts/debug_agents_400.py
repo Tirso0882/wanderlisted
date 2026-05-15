@@ -1,4 +1,5 @@
 """Debug: test each agent executor individually to find which one triggers 400."""
+
 import asyncio
 
 from langchain.agents import create_agent
@@ -45,7 +46,11 @@ async def test_single_agent(name: str):
     )
     try:
         result = await executor.ainvoke(
-            {"messages": [HumanMessage(content="3-day trip to Paris, mid-range budget")]},
+            {
+                "messages": [
+                    HumanMessage(content="3-day trip to Paris, mid-range budget")
+                ]
+            },
         )
         msgs = result.get("messages", [])
         print(f"  OK — {name}: {len(msgs)} messages")

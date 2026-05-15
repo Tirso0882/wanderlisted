@@ -268,7 +268,9 @@ class TestBuildIndex:
         ):
             result = build_index(guides_dir)
 
-        mock_index.delete.assert_called_once_with(delete_all=True, namespace=namespace_for())
+        mock_index.delete.assert_called_once_with(
+            delete_all=True, namespace=namespace_for()
+        )
         mock_index.upsert.assert_called_once()
         assert result == (mock_index, mock_emb_gen)
 

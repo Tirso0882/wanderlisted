@@ -92,7 +92,10 @@ async def run_smoke_test(query: str):
 
     except Exception as e:
         elapsed = time.time() - start
-        if "interrupt" in str(type(e).__name__).lower() or "interrupt" in str(e).lower():
+        if (
+            "interrupt" in str(type(e).__name__).lower()
+            or "interrupt" in str(e).lower()
+        ):
             print(f"\n  {YELLOW}⏸  HITL interrupt after {elapsed:.1f}s{RESET}")
             print(f"  Agents reached: {' → '.join(agents_seen)}")
         else:
@@ -123,7 +126,11 @@ def main():
         args.remove("--simple")
         query = " ".join(args) if args else "Hello, what can you help with?"
     else:
-        query = " ".join(args) if args else "Plan a 3-day trip to Amalfi Coast for a couple, mid-range budget"
+        query = (
+            " ".join(args)
+            if args
+            else "Plan a 3-day trip to Amalfi Coast for a couple, mid-range budget"
+        )
 
     asyncio.run(run_smoke_test(query))
 

@@ -7,9 +7,24 @@ from src.rag.reranker import RankedResult, _fallback_ranking, rerank
 
 
 _CANDIDATES = [
-    {"text": "Visit temples in Kyoto", "score": 0.65, "metadata": {"section": "See"}, "source": "guide"},
-    {"text": "Try ramen in Tokyo", "score": 0.72, "metadata": {"section": "Eat"}, "source": "guide"},
-    {"text": "Take the JR Pass", "score": 0.60, "metadata": {"section": "Get around"}, "source": "web"},
+    {
+        "text": "Visit temples in Kyoto",
+        "score": 0.65,
+        "metadata": {"section": "See"},
+        "source": "guide",
+    },
+    {
+        "text": "Try ramen in Tokyo",
+        "score": 0.72,
+        "metadata": {"section": "Eat"},
+        "source": "guide",
+    },
+    {
+        "text": "Take the JR Pass",
+        "score": 0.60,
+        "metadata": {"section": "Get around"},
+        "source": "web",
+    },
 ]
 
 

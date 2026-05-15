@@ -43,6 +43,7 @@ def _setup_mocks(mock_build, matches, namespace_matches=None):
             if ns in namespace_matches:
                 return _make_pinecone_response(namespace_matches[ns])
             return _make_pinecone_response(matches)
+
         mock_index.query.side_effect = _query_side_effect
     else:
         mock_index.query.return_value = _make_pinecone_response(matches)
@@ -296,7 +297,9 @@ class TestMultiTenantRetrieval:
 
         # Should query wikivoyage/destination_guides
         call_kwargs = mock_index.query.call_args
-        assert "wikivoyage" in call_kwargs.kwargs.get("namespace", call_kwargs[1].get("namespace", ""))
+        assert "wikivoyage" in call_kwargs.kwargs.get(
+            "namespace", call_kwargs[1].get("namespace", "")
+        )
 
     @patch("src.tools.destination_rag.build_index")
     async def test_tenant_searches_client_namespace_first(self, mock_build):
@@ -321,10 +324,12 @@ class TestMultiTenantRetrieval:
             },
         )
 
-        result = await search_destination_guides.ainvoke({
-            "query": "Tokyo tours",
-            "tenant": "acme_travel",
-        })
+        result = await search_destination_guides.ainvoke(
+            {
+                "query": "Tokyo tours",
+                "tenant": "acme_travel",
+            }
+        )
 
         assert "premium Tokyo tour" in result
 
@@ -358,10 +363,12 @@ class TestMultiTenantRetrieval:
             },
         )
 
-        result = await search_destination_guides.ainvoke({
-            "query": "Tokyo tips",
-            "tenant": "acme_travel",
-        })
+        result = await search_destination_guides.ainvoke(
+            {
+                "query": "Tokyo tips",
+                "tenant": "acme_travel",
+            }
+        )
 
         assert "Client result" in result
         assert "Wiki fallback result" in result

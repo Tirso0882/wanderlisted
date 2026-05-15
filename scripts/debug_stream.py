@@ -1,4 +1,5 @@
 """Debug script: reproduce the 400 error during streaming."""
+
 import asyncio
 
 from langchain_core.messages import HumanMessage

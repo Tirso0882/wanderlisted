@@ -33,8 +33,18 @@ class BudgetBreakdown(BaseModel):
     currency: str = Field(default="USD", description="Currency code for all amounts")
     summary: str = Field(default="", description="Brief text summary of the budget")
 
-    @field_validator("flights", "accommodation", "transport", "meals", "activities",
-                     "misc", "total", "per_person", "target_budget", mode="after")
+    @field_validator(
+        "flights",
+        "accommodation",
+        "transport",
+        "meals",
+        "activities",
+        "misc",
+        "total",
+        "per_person",
+        "target_budget",
+        mode="after",
+    )
     @classmethod
     def _non_negative(cls, v: float) -> float:
         return max(0.0, v)
@@ -48,8 +58,12 @@ class BudgetBreakdown(BaseModel):
     def _auto_total(self) -> "BudgetBreakdown":
         """If total is 0 but components exist, compute the sum."""
         components = (
-            self.flights + self.accommodation + self.transport +
-            self.meals + self.activities + self.misc
+            self.flights
+            + self.accommodation
+            + self.transport
+            + self.meals
+            + self.activities
+            + self.misc
         )
         if self.total == 0 and components > 0:
             self.total = components

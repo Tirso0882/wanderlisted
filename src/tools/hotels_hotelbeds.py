@@ -15,7 +15,12 @@ import time
 
 import httpx
 from langchain_core.tools import tool
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from custom_logging import AppLogger
 
@@ -64,13 +69,13 @@ def _base_url() -> str:
 
 _IATA_TO_HOTELBEDS: dict[str, str] = {
     # Japan — Hotelbeds uses airport/region codes, not IATA city codes
-    "TYO": "NRT",   # Tokyo (IATA city=TYO, Hotelbeds=NRT)
-    "OSA": "ITM",   # Osaka (IATA city=OSA, Hotelbeds=ITM)
-    "KYO": "KIX",   # Kyoto
-    "SPK": "HKO",   # Sapporo → Hokkaido
-    "NGO": "ACH",   # Nagoya → Aichi
+    "TYO": "NRT",  # Tokyo (IATA city=TYO, Hotelbeds=NRT)
+    "OSA": "ITM",  # Osaka (IATA city=OSA, Hotelbeds=ITM)
+    "KYO": "KIX",  # Kyoto
+    "SPK": "HKO",  # Sapporo → Hokkaido
+    "NGO": "ACH",  # Nagoya → Aichi
     # South Korea
-    "SEL": "ICN",   # Seoul (IATA city=SEL, Hotelbeds=ICN)
+    "SEL": "ICN",  # Seoul (IATA city=SEL, Hotelbeds=ICN)
 }
 
 
@@ -121,7 +126,10 @@ def _format_taxes(taxes_obj: dict | None) -> str:
 
 
 def _build_occupancies(
-    rooms: int, adults: int, children: int, children_ages: list[int] | None,
+    rooms: int,
+    adults: int,
+    children: int,
+    children_ages: list[int] | None,
 ) -> list[dict]:
     """Build the occupancies payload, including child paxes when needed."""
     occ: dict = {"rooms": rooms, "adults": adults, "children": children}
@@ -186,7 +194,10 @@ async def _search_hotelbeds_api(
         raise ValueError("Provide city_code, lat/lng, or hotel_codes")
 
     # Filters
-    api_filter: dict = {"maxHotels": min(max_hotels, 2000), "maxRooms": min(max_rooms_per_hotel, 50)}
+    api_filter: dict = {
+        "maxHotels": min(max_hotels, 2000),
+        "maxRooms": min(max_rooms_per_hotel, 50),
+    }
     if min_category is not None:
         api_filter["minCategory"] = max(1, min(5, min_category))
     if max_category is not None:
@@ -238,7 +249,9 @@ async def _check_rate_api(
     if upselling:
         body["upselling"] = True
 
-    logger.debug("Hotelbeds checkRate: %d rate keys, upselling=%s", len(rate_keys), upselling)
+    logger.debug(
+        "Hotelbeds checkRate: %d rate keys, upselling=%s", len(rate_keys), upselling
+    )
 
     async with httpx.AsyncClient() as client:
         resp = await client.post(url, headers=headers, json=body, timeout=30.0)
@@ -290,7 +303,9 @@ def _format_hotel(hotel: dict, index: int) -> str:
         # Daily breakdown
         daily = rate.get("dailyRates", [])
         if daily:
-            daily_strs = [f"night {d['offset']+1}: {d.get('dailyNet', '?')}" for d in daily[:7]]
+            daily_strs = [
+                f"night {d['offset'] + 1}: {d.get('dailyNet', '?')}" for d in daily[:7]
+            ]
             lines.append(f"       Per night: {', '.join(daily_strs)}")
 
         # Cancellation policies
@@ -358,7 +373,11 @@ async def search_hotels_hotelbeds(
     if children_ages:
         ages = [int(a.strip()) for a in children_ages.split(",") if a.strip().isdigit()]
 
-    parsed_boards = [b.strip().upper() for b in board_codes.split(",") if b.strip()] if board_codes else None
+    parsed_boards = (
+        [b.strip().upper() for b in board_codes.split(",") if b.strip()]
+        if board_codes
+        else None
+    )
 
     try:
         hotels = await _search_hotelbeds_api(
@@ -467,7 +486,9 @@ async def check_hotel_rate_hotelbeds(
 
     name = hotel.get("name", "Hotel")
     lines.append(f"Hotel: {name}")
-    lines.append(f"Check-in: {hotel.get('checkIn', '?')} → Check-out: {hotel.get('checkOut', '?')}")
+    lines.append(
+        f"Check-in: {hotel.get('checkIn', '?')} → Check-out: {hotel.get('checkOut', '?')}"
+    )
     lines.append(f"Total: {hotel.get('totalNet', '?')} {hotel.get('currency', '')}")
 
     mod = hotel.get("modificationPolicies", {})
@@ -480,7 +501,9 @@ async def check_hotel_rate_hotelbeds(
     for room in hotel.get("rooms", []):
         lines.append(f"\n  Room: {room.get('name', room.get('code', '?'))}")
         for rate in room.get("rates", []):
-            lines.append(f"    Net: {rate.get('net', '?')} | Board: {rate.get('boardName', rate.get('boardCode', '?'))}")
+            lines.append(
+                f"    Net: {rate.get('net', '?')} | Board: {rate.get('boardName', rate.get('boardCode', '?'))}"
+            )
             lines.append(f"    Rate key: {rate.get('rateKey', '?')}")
 
             cxl = rate.get("cancellationPolicies", [])
@@ -490,11 +513,17 @@ async def check_hotel_rate_hotelbeds(
             breakdown = rate.get("rateBreakDown", {})
             discounts = breakdown.get("rateDiscounts", [])
             if discounts:
-                disc_strs = [f"{d.get('name', d.get('code', '?'))}: -{d.get('amount', '?')}" for d in discounts]
+                disc_strs = [
+                    f"{d.get('name', d.get('code', '?'))}: -{d.get('amount', '?')}"
+                    for d in discounts
+                ]
                 lines.append(f"    Discounts: {', '.join(disc_strs)}")
             supplements = breakdown.get("rateSupplements", [])
             if supplements:
-                supp_strs = [f"{s.get('name', s.get('code', '?'))}: +{s.get('amount', '?')}" for s in supplements]
+                supp_strs = [
+                    f"{s.get('name', s.get('code', '?'))}: +{s.get('amount', '?')}"
+                    for s in supplements
+                ]
                 lines.append(f"    Supplements: {', '.join(supp_strs)}")
 
             comments = rate.get("rateComments", "")

@@ -59,9 +59,15 @@ _MOCK_TAVILY_EMPTY = {"answer": "", "results": []}
 
 class TestResearchDestination:
     @respx.mock
-    @patch("src.tools.destination_research.decompose_query", new_callable=AsyncMock, return_value=["Tokyo cultural etiquette"])
+    @patch(
+        "src.tools.destination_research.decompose_query",
+        new_callable=AsyncMock,
+        return_value=["Tokyo cultural etiquette"],
+    )
     @patch("src.tools.destination_rag.build_index")
-    async def test_high_confidence_skips_web(self, mock_build, mock_decompose, monkeypatch):
+    async def test_high_confidence_skips_web(
+        self, mock_build, mock_decompose, monkeypatch
+    ):
         """When RAG returns high-confidence results, Tavily should NOT be called."""
         monkeypatch.setenv("TAVILY_API_KEY", "test-key")
         mock_index, mock_emb_gen = _mock_pinecone(
@@ -103,9 +109,15 @@ class TestResearchDestination:
         assert tavily_route.call_count == 0
 
     @respx.mock
-    @patch("src.tools.destination_research.decompose_query", new_callable=AsyncMock, return_value=["Marrakech culture tips"])
+    @patch(
+        "src.tools.destination_research.decompose_query",
+        new_callable=AsyncMock,
+        return_value=["Marrakech culture tips"],
+    )
     @patch("src.tools.destination_rag.build_index")
-    async def test_no_guide_falls_back_to_web(self, mock_build, mock_decompose, monkeypatch):
+    async def test_no_guide_falls_back_to_web(
+        self, mock_build, mock_decompose, monkeypatch
+    ):
         """When RAG returns nothing, Tavily should be called automatically."""
         monkeypatch.setenv("TAVILY_API_KEY", "test-key")
         mock_index, mock_emb_gen = _mock_pinecone([])  # No RAG results
@@ -127,9 +139,15 @@ class TestResearchDestination:
         assert "Sources:" in result
 
     @respx.mock
-    @patch("src.tools.destination_research.decompose_query", new_callable=AsyncMock, return_value=["test query"])
+    @patch(
+        "src.tools.destination_research.decompose_query",
+        new_callable=AsyncMock,
+        return_value=["test query"],
+    )
     @patch("src.tools.destination_rag.build_index")
-    async def test_medium_confidence_includes_web(self, mock_build, mock_decompose, monkeypatch):
+    async def test_medium_confidence_includes_web(
+        self, mock_build, mock_decompose, monkeypatch
+    ):
         """Medium RAG confidence should trigger Tavily to complement."""
         monkeypatch.setenv("TAVILY_API_KEY", "test-key")
         mock_index, mock_emb_gen = _mock_pinecone(
@@ -163,9 +181,15 @@ class TestResearchDestination:
         assert "Sources: guides (medium) + web" in result
 
     @respx.mock
-    @patch("src.tools.destination_research.decompose_query", new_callable=AsyncMock, return_value=["test query"])
+    @patch(
+        "src.tools.destination_research.decompose_query",
+        new_callable=AsyncMock,
+        return_value=["test query"],
+    )
     @patch("src.tools.destination_rag.build_index")
-    async def test_tavily_failure_still_returns_rag(self, mock_build, mock_decompose, monkeypatch):
+    async def test_tavily_failure_still_returns_rag(
+        self, mock_build, mock_decompose, monkeypatch
+    ):
         """If Tavily fails, RAG results should still be returned."""
         monkeypatch.setenv("TAVILY_API_KEY", "test-key")
         mock_index, mock_emb_gen = _mock_pinecone(
@@ -194,9 +218,15 @@ class TestResearchDestination:
         assert "Good info." in result
 
     @respx.mock
-    @patch("src.tools.destination_research.decompose_query", new_callable=AsyncMock, return_value=["completely unknown place"])
+    @patch(
+        "src.tools.destination_research.decompose_query",
+        new_callable=AsyncMock,
+        return_value=["completely unknown place"],
+    )
     @patch("src.tools.destination_rag.build_index")
-    async def test_both_empty_returns_clear_message(self, mock_build, mock_decompose, monkeypatch):
+    async def test_both_empty_returns_clear_message(
+        self, mock_build, mock_decompose, monkeypatch
+    ):
         """When both RAG and Tavily return nothing, give a clear message."""
         monkeypatch.setenv("TAVILY_API_KEY", "test-key")
         mock_index, mock_emb_gen = _mock_pinecone([])
@@ -215,9 +245,15 @@ class TestResearchDestination:
         assert "No information found" in result
 
     @respx.mock
-    @patch("src.tools.destination_research.decompose_query", new_callable=AsyncMock, return_value=["Tokyo tips"])
+    @patch(
+        "src.tools.destination_research.decompose_query",
+        new_callable=AsyncMock,
+        return_value=["Tokyo tips"],
+    )
     @patch("src.tools.destination_rag.build_index")
-    async def test_pinecone_failure_falls_back_to_web(self, mock_build, mock_decompose, monkeypatch):
+    async def test_pinecone_failure_falls_back_to_web(
+        self, mock_build, mock_decompose, monkeypatch
+    ):
         """When Pinecone raises (e.g. 401), should fall back to Tavily web search."""
         monkeypatch.setenv("TAVILY_API_KEY", "test-key")
         mock_build.side_effect = Exception("(401) Unauthorized: Invalid API Key")
@@ -238,9 +274,15 @@ class TestResearchDestination:
         assert "Tsukiji" in result  # From Tavily mock
 
     @respx.mock
-    @patch("src.tools.destination_research.decompose_query", new_callable=AsyncMock, return_value=["Tokyo tips"])
+    @patch(
+        "src.tools.destination_research.decompose_query",
+        new_callable=AsyncMock,
+        return_value=["Tokyo tips"],
+    )
     @patch("src.tools.destination_rag.build_index")
-    async def test_pinecone_failure_and_tavily_failure_returns_message(self, mock_build, mock_decompose, monkeypatch):
+    async def test_pinecone_failure_and_tavily_failure_returns_message(
+        self, mock_build, mock_decompose, monkeypatch
+    ):
         """When both Pinecone and Tavily fail, return a clear error message."""
         monkeypatch.setenv("TAVILY_API_KEY", "test-key")
         mock_build.side_effect = Exception("(401) Unauthorized: Invalid API Key")

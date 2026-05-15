@@ -105,7 +105,12 @@ class HotelOption(BaseModel):
             return max(0, min(5, int(v)))
         return v
 
-    @field_validator("price_per_night_usd", "total_price_usd", "distance_from_center_km", mode="after")
+    @field_validator(
+        "price_per_night_usd",
+        "total_price_usd",
+        "distance_from_center_km",
+        mode="after",
+    )
     @classmethod
     def _non_negative_float(cls, v: float) -> float:
         return max(0.0, v)
@@ -450,10 +455,19 @@ class TripHandbook(BaseModel):
         except ValueError:
             return v.strip().lower()
 
-    @field_validator("total_budget_usd", "budget_flights", "budget_accommodation",
-                     "budget_transport", "budget_meals", "budget_activities",
-                     "budget_misc", "budget_total", "budget_per_person",
-                     "exchange_rate", mode="after")
+    @field_validator(
+        "total_budget_usd",
+        "budget_flights",
+        "budget_accommodation",
+        "budget_transport",
+        "budget_meals",
+        "budget_activities",
+        "budget_misc",
+        "budget_total",
+        "budget_per_person",
+        "exchange_rate",
+        mode="after",
+    )
     @classmethod
     def _non_negative_float(cls, v: float) -> float:
         return max(0.0, v)
@@ -462,9 +476,12 @@ class TripHandbook(BaseModel):
     def _auto_budget_total(self) -> TripHandbook:
         """If budget_total is 0 but components exist, compute the sum."""
         components = (
-            self.budget_flights + self.budget_accommodation +
-            self.budget_transport + self.budget_meals +
-            self.budget_activities + self.budget_misc
+            self.budget_flights
+            + self.budget_accommodation
+            + self.budget_transport
+            + self.budget_meals
+            + self.budget_activities
+            + self.budget_misc
         )
         if self.budget_total == 0 and components > 0:
             self.budget_total = components

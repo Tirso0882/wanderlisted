@@ -237,15 +237,21 @@ async def _multi_query_rag(
 
     all_result_sets: list[list[dict]] = []
     wiki_ns = namespace_for()
-    client_ns = namespace_for(tenant) if tenant and tenant.lower() != DEFAULT_TENANT else None
+    client_ns = (
+        namespace_for(tenant) if tenant and tenant.lower() != DEFAULT_TENANT else None
+    )
 
     for sq in sub_queries:
         matches: list[dict] = []
         if client_ns:
-            matches = await _async_query_namespace(index, emb_gen, sq, client_ns, destinations, 4)
+            matches = await _async_query_namespace(
+                index, emb_gen, sq, client_ns, destinations, 4
+            )
         if len(matches) < 4:
             remaining = 4 - len(matches)
-            wiki_matches = await _async_query_namespace(index, emb_gen, sq, wiki_ns, destinations, remaining)
+            wiki_matches = await _async_query_namespace(
+                index, emb_gen, sq, wiki_ns, destinations, remaining
+            )
             for m in wiki_matches:
                 m.setdefault("metadata", {})["content_tier"] = "community"
             matches.extend(wiki_matches)
@@ -305,9 +311,7 @@ async def _multi_query_rag(
     return f"{header}\n\n{body}"
 
 
-def _cross_source_rerank(
-    query: str, rag_text: str, web_text: str
-) -> tuple[str, str]:
+def _cross_source_rerank(query: str, rag_text: str, web_text: str) -> tuple[str, str]:
     """Attempt to rerank combined RAG + web results.
 
     Returns the original texts unchanged when the reranker is unavailable
@@ -315,6 +319,7 @@ def _cross_source_rerank(
     """
     try:
         import os
+
         if not os.environ.get("COHERE_API_KEY"):
             return rag_text, web_text
 

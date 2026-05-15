@@ -32,7 +32,10 @@ _MOCK_OFFER_REQUEST_RESPONSE = {
                 "owner": {"iata_code": "BA", "name": "British Airways"},
                 "slices": [
                     {
-                        "origin": {"iata_code": "JFK", "name": "John F. Kennedy International Airport"},
+                        "origin": {
+                            "iata_code": "JFK",
+                            "name": "John F. Kennedy International Airport",
+                        },
                         "destination": {"iata_code": "LHR", "name": "Heathrow Airport"},
                         "duration": "PT7H30M",
                         "segments": [
@@ -41,7 +44,10 @@ _MOCK_OFFER_REQUEST_RESPONSE = {
                                 "destination": {"iata_code": "LHR"},
                                 "departing_at": "2026-08-15T19:30:00",
                                 "arriving_at": "2026-08-16T07:00:00",
-                                "operating_carrier": {"iata_code": "BA", "name": "British Airways"},
+                                "operating_carrier": {
+                                    "iata_code": "BA",
+                                    "name": "British Airways",
+                                },
                                 "operating_carrier_flight_number": "178",
                                 "duration": "PT7H30M",
                                 "passengers": [
@@ -83,7 +89,10 @@ _MOCK_OFFER_REQUEST_RESPONSE = {
                 "owner": {"iata_code": "BA", "name": "British Airways"},
                 "slices": [
                     {
-                        "origin": {"iata_code": "JFK", "name": "John F. Kennedy International Airport"},
+                        "origin": {
+                            "iata_code": "JFK",
+                            "name": "John F. Kennedy International Airport",
+                        },
                         "destination": {"iata_code": "LHR", "name": "Heathrow Airport"},
                         "duration": "PT7H30M",
                         "segments": [
@@ -92,7 +101,10 @@ _MOCK_OFFER_REQUEST_RESPONSE = {
                                 "destination": {"iata_code": "LHR"},
                                 "departing_at": "2026-08-15T19:30:00",
                                 "arriving_at": "2026-08-16T07:00:00",
-                                "operating_carrier": {"iata_code": "BA", "name": "British Airways"},
+                                "operating_carrier": {
+                                    "iata_code": "BA",
+                                    "name": "British Airways",
+                                },
                                 "operating_carrier_flight_number": "178",
                                 "duration": "PT7H30M",
                                 "passengers": [
@@ -148,7 +160,10 @@ _MOCK_SINGLE_OFFER_RESPONSE = {
                         "destination": {"iata_code": "LHR"},
                         "departing_at": "2026-08-15T19:30:00",
                         "arriving_at": "2026-08-16T07:00:00",
-                        "operating_carrier": {"iata_code": "BA", "name": "British Airways"},
+                        "operating_carrier": {
+                            "iata_code": "BA",
+                            "name": "British Airways",
+                        },
                         "operating_carrier_flight_number": "178",
                         "duration": "PT7H30M",
                         "passengers": [
@@ -249,7 +264,9 @@ async def test_search_flights_no_results(monkeypatch):
     """Test empty results message."""
     monkeypatch.setenv("DUFFEL_ACCESS_TOKEN", "duffel_test_mock123")
 
-    empty_response = {"data": {"id": "orq_test", "offers": [], "slices": [], "passengers": []}}
+    empty_response = {
+        "data": {"id": "orq_test", "offers": [], "slices": [], "passengers": []}
+    }
     respx.post("https://api.duffel.com/air/offer_requests").mock(
         return_value=Response(200, json=empty_response)
     )
@@ -268,7 +285,13 @@ async def test_search_flights_api_error(monkeypatch):
 
     error_response = {
         "meta": {"status": 422, "request_id": "req_test"},
-        "errors": [{"type": "validation_error", "message": "Invalid origin", "title": "Bad Request"}],
+        "errors": [
+            {
+                "type": "validation_error",
+                "message": "Invalid origin",
+                "title": "Bad Request",
+            }
+        ],
     }
     respx.post("https://api.duffel.com/air/offer_requests").mock(
         return_value=Response(422, json=error_response)
@@ -590,9 +613,9 @@ async def test_search_flights_supplier_timeout_in_url(monkeypatch):
     monkeypatch.setenv("DUFFEL_ACCESS_TOKEN", "duffel_test_mock123")
     monkeypatch.setenv("DUFFEL_SUPPLIER_TIMEOUT", "20000")
 
-    route = respx.post(url__startswith="https://api.duffel.com/air/offer_requests").mock(
-        return_value=Response(200, json=_MOCK_OFFER_REQUEST_RESPONSE)
-    )
+    route = respx.post(
+        url__startswith="https://api.duffel.com/air/offer_requests"
+    ).mock(return_value=Response(200, json=_MOCK_OFFER_REQUEST_RESPONSE))
 
     await search_flights.ainvoke(
         {"origin": "JFK", "destination": "LHR", "departure_date": "2026-08-15"}

@@ -70,8 +70,9 @@ def _resolve_deployment(tier: ModelTier, env_prefix: str) -> str:
     Falls back up the chain: utility -> fast -> reasoning.
     """
     if tier == "utility":
-        val = os.environ.get(f"{env_prefix}_UTILITY_DEPLOYMENT_NAME") or \
-              os.environ.get(f"{env_prefix}_FAST_DEPLOYMENT_NAME")
+        val = os.environ.get(f"{env_prefix}_UTILITY_DEPLOYMENT_NAME") or os.environ.get(
+            f"{env_prefix}_FAST_DEPLOYMENT_NAME"
+        )
         if val:
             return val
     if tier in ("fast", "utility"):

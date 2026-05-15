@@ -1,4 +1,5 @@
 """Quick check if fast/utility tiers also need Responses API."""
+
 import asyncio
 import os
 

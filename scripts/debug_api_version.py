@@ -1,4 +1,5 @@
 """Debug: test gpt-5.4-pro with different API versions and configurations."""
+
 import asyncio
 import os
 
@@ -61,9 +62,7 @@ async def main():
         if FAST_DEPLOYMENT:
             print(f"\nFast deployment: {FAST_DEPLOYMENT}\n")
             # Only test current version for fast (we know it works)
-            result = await test_version(
-                client, FAST_DEPLOYMENT, "2025-04-01-preview"
-            )
+            result = await test_version(client, FAST_DEPLOYMENT, "2025-04-01-preview")
             print(f"  {FAST_DEPLOYMENT} + 2025-04-01-preview: {result}")
 
 

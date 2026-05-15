@@ -1,4 +1,5 @@
 """Confirm gpt-5.4-pro works with Responses API using the correct tool format."""
+
 import asyncio
 import os
 

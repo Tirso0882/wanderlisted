@@ -3,6 +3,7 @@
 GPT-5.4-Pro deployed via Azure Foundry ("Direct from Azure") may use the
 Responses API instead of Chat Completions.
 """
+
 import asyncio
 import os
 
@@ -44,7 +45,10 @@ async def main():
         await test_endpoint(
             client,
             f"/openai/deployments/{DEPLOYMENT}/chat/completions?api-version={API_VERSION}",
-            {"messages": [{"role": "user", "content": "Say hi"}], "max_completion_tokens": 10},
+            {
+                "messages": [{"role": "user", "content": "Say hi"}],
+                "max_completion_tokens": 10,
+            },
             "Chat Completions (deployment-scoped)",
         )
 
@@ -80,7 +84,10 @@ async def main():
                             "parameters": {
                                 "type": "object",
                                 "properties": {
-                                    "city": {"type": "string", "description": "City name"}
+                                    "city": {
+                                        "type": "string",
+                                        "description": "City name",
+                                    }
                                 },
                                 "required": ["city"],
                             },
@@ -95,7 +102,11 @@ async def main():
         await test_endpoint(
             client,
             f"/openai/chat/completions?api-version={API_VERSION}",
-            {"model": DEPLOYMENT, "messages": [{"role": "user", "content": "Say hi"}], "max_completion_tokens": 10},
+            {
+                "model": DEPLOYMENT,
+                "messages": [{"role": "user", "content": "Say hi"}],
+                "max_completion_tokens": 10,
+            },
             "Chat Completions (model-routed)",
         )
 

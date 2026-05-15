@@ -46,7 +46,10 @@ _MOCK_AVAILABILITY_RESPONSE = {
                                 "adults": 2,
                                 "children": 0,
                                 "cancellationPolicies": [
-                                    {"amount": "50.00", "from": "2026-06-13T23:59:00+09:00"},
+                                    {
+                                        "amount": "50.00",
+                                        "from": "2026-06-13T23:59:00+09:00",
+                                    },
                                 ],
                                 "dailyRates": [
                                     {"offset": 0, "dailyNet": "97.00"},
@@ -92,8 +95,14 @@ _MOCK_AVAILABILITY_RESPONSE = {
                                 "adults": 2,
                                 "children": 0,
                                 "cancellationPolicies": [
-                                    {"amount": "0.00", "from": "2026-06-10T23:59:00+09:00"},
-                                    {"amount": "625.00", "from": "2026-06-13T23:59:00+09:00"},
+                                    {
+                                        "amount": "0.00",
+                                        "from": "2026-06-10T23:59:00+09:00",
+                                    },
+                                    {
+                                        "amount": "625.00",
+                                        "from": "2026-06-13T23:59:00+09:00",
+                                    },
                                 ],
                             }
                         ],
@@ -135,10 +144,18 @@ _MOCK_CHECKRATE_RESPONSE = {
                         ],
                         "rateBreakDown": {
                             "rateDiscounts": [
-                                {"code": "EBD", "name": "Early Booking", "amount": "-25.00"},
+                                {
+                                    "code": "EBD",
+                                    "name": "Early Booking",
+                                    "amount": "-25.00",
+                                },
                             ],
                             "rateSupplements": [
-                                {"code": "SNG", "name": "Single Supplement", "amount": "30.00"},
+                                {
+                                    "code": "SNG",
+                                    "name": "Single Supplement",
+                                    "amount": "30.00",
+                                },
                             ],
                         },
                         "rateComments": "Check-in from 15:00. Check-out before 11:00.",
@@ -201,7 +218,12 @@ class TestHelpers:
         taxes = {
             "allIncluded": False,
             "taxes": [
-                {"included": False, "amount": "10.00", "currency": "EUR", "type": "TAX"},
+                {
+                    "included": False,
+                    "amount": "10.00",
+                    "currency": "EUR",
+                    "type": "TAX",
+                },
             ],
         }
         result = _format_taxes(taxes)
@@ -230,13 +252,11 @@ class TestSearchHotelsHotelbeds:
     async def test_returns_hotel_results(self, monkeypatch):
         monkeypatch.setenv("HOTELBEDS_API_KEY", "test-key")
         monkeypatch.setenv("HOTELBEDS_API_SECRET", "test-secret")
-        monkeypatch.setenv(
-            "HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com"
-        )
+        monkeypatch.setenv("HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com")
 
-        respx.post(
-            "https://api.test.hotelbeds.com/hotel-api/1.0/hotels"
-        ).mock(return_value=Response(200, json=_MOCK_AVAILABILITY_RESPONSE))
+        respx.post("https://api.test.hotelbeds.com/hotel-api/1.0/hotels").mock(
+            return_value=Response(200, json=_MOCK_AVAILABILITY_RESPONSE)
+        )
 
         result = await search_hotels_hotelbeds.ainvoke(
             {
@@ -258,13 +278,11 @@ class TestSearchHotelsHotelbeds:
     async def test_returns_cancellation_info(self, monkeypatch):
         monkeypatch.setenv("HOTELBEDS_API_KEY", "test-key")
         monkeypatch.setenv("HOTELBEDS_API_SECRET", "test-secret")
-        monkeypatch.setenv(
-            "HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com"
-        )
+        monkeypatch.setenv("HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com")
 
-        respx.post(
-            "https://api.test.hotelbeds.com/hotel-api/1.0/hotels"
-        ).mock(return_value=Response(200, json=_MOCK_AVAILABILITY_RESPONSE))
+        respx.post("https://api.test.hotelbeds.com/hotel-api/1.0/hotels").mock(
+            return_value=Response(200, json=_MOCK_AVAILABILITY_RESPONSE)
+        )
 
         result = await search_hotels_hotelbeds.ainvoke(
             {
@@ -282,13 +300,11 @@ class TestSearchHotelsHotelbeds:
     async def test_returns_daily_rates(self, monkeypatch):
         monkeypatch.setenv("HOTELBEDS_API_KEY", "test-key")
         monkeypatch.setenv("HOTELBEDS_API_SECRET", "test-secret")
-        monkeypatch.setenv(
-            "HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com"
-        )
+        monkeypatch.setenv("HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com")
 
-        respx.post(
-            "https://api.test.hotelbeds.com/hotel-api/1.0/hotels"
-        ).mock(return_value=Response(200, json=_MOCK_AVAILABILITY_RESPONSE))
+        respx.post("https://api.test.hotelbeds.com/hotel-api/1.0/hotels").mock(
+            return_value=Response(200, json=_MOCK_AVAILABILITY_RESPONSE)
+        )
 
         result = await search_hotels_hotelbeds.ainvoke(
             {
@@ -306,13 +322,11 @@ class TestSearchHotelsHotelbeds:
     async def test_returns_location_data(self, monkeypatch):
         monkeypatch.setenv("HOTELBEDS_API_KEY", "test-key")
         monkeypatch.setenv("HOTELBEDS_API_SECRET", "test-secret")
-        monkeypatch.setenv(
-            "HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com"
-        )
+        monkeypatch.setenv("HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com")
 
-        respx.post(
-            "https://api.test.hotelbeds.com/hotel-api/1.0/hotels"
-        ).mock(return_value=Response(200, json=_MOCK_AVAILABILITY_RESPONSE))
+        respx.post("https://api.test.hotelbeds.com/hotel-api/1.0/hotels").mock(
+            return_value=Response(200, json=_MOCK_AVAILABILITY_RESPONSE)
+        )
 
         result = await search_hotels_hotelbeds.ainvoke(
             {
@@ -330,13 +344,11 @@ class TestSearchHotelsHotelbeds:
     async def test_flags_recheck_rates(self, monkeypatch):
         monkeypatch.setenv("HOTELBEDS_API_KEY", "test-key")
         monkeypatch.setenv("HOTELBEDS_API_SECRET", "test-secret")
-        monkeypatch.setenv(
-            "HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com"
-        )
+        monkeypatch.setenv("HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com")
 
-        respx.post(
-            "https://api.test.hotelbeds.com/hotel-api/1.0/hotels"
-        ).mock(return_value=Response(200, json=_MOCK_AVAILABILITY_RESPONSE))
+        respx.post("https://api.test.hotelbeds.com/hotel-api/1.0/hotels").mock(
+            return_value=Response(200, json=_MOCK_AVAILABILITY_RESPONSE)
+        )
 
         result = await search_hotels_hotelbeds.ainvoke(
             {
@@ -354,13 +366,11 @@ class TestSearchHotelsHotelbeds:
     async def test_returns_promotions(self, monkeypatch):
         monkeypatch.setenv("HOTELBEDS_API_KEY", "test-key")
         monkeypatch.setenv("HOTELBEDS_API_SECRET", "test-secret")
-        monkeypatch.setenv(
-            "HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com"
-        )
+        monkeypatch.setenv("HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com")
 
-        respx.post(
-            "https://api.test.hotelbeds.com/hotel-api/1.0/hotels"
-        ).mock(return_value=Response(200, json=_MOCK_AVAILABILITY_RESPONSE))
+        respx.post("https://api.test.hotelbeds.com/hotel-api/1.0/hotels").mock(
+            return_value=Response(200, json=_MOCK_AVAILABILITY_RESPONSE)
+        )
 
         result = await search_hotels_hotelbeds.ainvoke(
             {
@@ -377,13 +387,11 @@ class TestSearchHotelsHotelbeds:
     async def test_no_hotels_found(self, monkeypatch):
         monkeypatch.setenv("HOTELBEDS_API_KEY", "test-key")
         monkeypatch.setenv("HOTELBEDS_API_SECRET", "test-secret")
-        monkeypatch.setenv(
-            "HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com"
-        )
+        monkeypatch.setenv("HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com")
 
-        respx.post(
-            "https://api.test.hotelbeds.com/hotel-api/1.0/hotels"
-        ).mock(return_value=Response(200, json=_MOCK_EMPTY_RESPONSE))
+        respx.post("https://api.test.hotelbeds.com/hotel-api/1.0/hotels").mock(
+            return_value=Response(200, json=_MOCK_EMPTY_RESPONSE)
+        )
 
         result = await search_hotels_hotelbeds.ainvoke(
             {
@@ -399,13 +407,11 @@ class TestSearchHotelsHotelbeds:
     async def test_http_error_returns_message(self, monkeypatch):
         monkeypatch.setenv("HOTELBEDS_API_KEY", "test-key")
         monkeypatch.setenv("HOTELBEDS_API_SECRET", "test-secret")
-        monkeypatch.setenv(
-            "HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com"
-        )
+        monkeypatch.setenv("HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com")
 
-        respx.post(
-            "https://api.test.hotelbeds.com/hotel-api/1.0/hotels"
-        ).mock(return_value=Response(403, text="Quota exceeded"))
+        respx.post("https://api.test.hotelbeds.com/hotel-api/1.0/hotels").mock(
+            return_value=Response(403, text="Quota exceeded")
+        )
 
         result = await search_hotels_hotelbeds.ainvoke(
             {
@@ -422,9 +428,7 @@ class TestSearchHotelsHotelbeds:
     async def test_sends_correct_request_body(self, monkeypatch):
         monkeypatch.setenv("HOTELBEDS_API_KEY", "test-key")
         monkeypatch.setenv("HOTELBEDS_API_SECRET", "test-secret")
-        monkeypatch.setenv(
-            "HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com"
-        )
+        monkeypatch.setenv("HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com")
 
         route_mock = respx.post(
             "https://api.test.hotelbeds.com/hotel-api/1.0/hotels"
@@ -450,9 +454,7 @@ class TestSearchHotelsHotelbeds:
     async def test_sends_children_paxes(self, monkeypatch):
         monkeypatch.setenv("HOTELBEDS_API_KEY", "test-key")
         monkeypatch.setenv("HOTELBEDS_API_SECRET", "test-secret")
-        monkeypatch.setenv(
-            "HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com"
-        )
+        monkeypatch.setenv("HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com")
 
         route_mock = respx.post(
             "https://api.test.hotelbeds.com/hotel-api/1.0/hotels"
@@ -478,9 +480,7 @@ class TestSearchHotelsHotelbeds:
     async def test_sends_filters(self, monkeypatch):
         monkeypatch.setenv("HOTELBEDS_API_KEY", "test-key")
         monkeypatch.setenv("HOTELBEDS_API_SECRET", "test-secret")
-        monkeypatch.setenv(
-            "HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com"
-        )
+        monkeypatch.setenv("HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com")
 
         route_mock = respx.post(
             "https://api.test.hotelbeds.com/hotel-api/1.0/hotels"
@@ -507,9 +507,7 @@ class TestSearchHotelsHotelbeds:
     async def test_auth_headers_present(self, monkeypatch):
         monkeypatch.setenv("HOTELBEDS_API_KEY", "test-key")
         monkeypatch.setenv("HOTELBEDS_API_SECRET", "test-secret")
-        monkeypatch.setenv(
-            "HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com"
-        )
+        monkeypatch.setenv("HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com")
 
         route_mock = respx.post(
             "https://api.test.hotelbeds.com/hotel-api/1.0/hotels"
@@ -545,13 +543,11 @@ class TestSearchHotelsHotelbeds:
     async def test_star_rating_display(self, monkeypatch):
         monkeypatch.setenv("HOTELBEDS_API_KEY", "test-key")
         monkeypatch.setenv("HOTELBEDS_API_SECRET", "test-secret")
-        monkeypatch.setenv(
-            "HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com"
-        )
+        monkeypatch.setenv("HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com")
 
-        respx.post(
-            "https://api.test.hotelbeds.com/hotel-api/1.0/hotels"
-        ).mock(return_value=Response(200, json=_MOCK_AVAILABILITY_RESPONSE))
+        respx.post("https://api.test.hotelbeds.com/hotel-api/1.0/hotels").mock(
+            return_value=Response(200, json=_MOCK_AVAILABILITY_RESPONSE)
+        )
 
         result = await search_hotels_hotelbeds.ainvoke(
             {
@@ -573,13 +569,11 @@ class TestCheckHotelRateHotelbeds:
     async def test_returns_checkrate_results(self, monkeypatch):
         monkeypatch.setenv("HOTELBEDS_API_KEY", "test-key")
         monkeypatch.setenv("HOTELBEDS_API_SECRET", "test-secret")
-        monkeypatch.setenv(
-            "HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com"
-        )
+        monkeypatch.setenv("HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com")
 
-        respx.post(
-            "https://api.test.hotelbeds.com/hotel-api/1.0/checkrates"
-        ).mock(return_value=Response(200, json=_MOCK_CHECKRATE_RESPONSE))
+        respx.post("https://api.test.hotelbeds.com/hotel-api/1.0/checkrates").mock(
+            return_value=Response(200, json=_MOCK_CHECKRATE_RESPONSE)
+        )
 
         result = await check_hotel_rate_hotelbeds.ainvoke(
             {
@@ -595,13 +589,11 @@ class TestCheckHotelRateHotelbeds:
     async def test_returns_rate_breakdown(self, monkeypatch):
         monkeypatch.setenv("HOTELBEDS_API_KEY", "test-key")
         monkeypatch.setenv("HOTELBEDS_API_SECRET", "test-secret")
-        monkeypatch.setenv(
-            "HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com"
-        )
+        monkeypatch.setenv("HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com")
 
-        respx.post(
-            "https://api.test.hotelbeds.com/hotel-api/1.0/checkrates"
-        ).mock(return_value=Response(200, json=_MOCK_CHECKRATE_RESPONSE))
+        respx.post("https://api.test.hotelbeds.com/hotel-api/1.0/checkrates").mock(
+            return_value=Response(200, json=_MOCK_CHECKRATE_RESPONSE)
+        )
 
         result = await check_hotel_rate_hotelbeds.ainvoke(
             {
@@ -618,13 +610,11 @@ class TestCheckHotelRateHotelbeds:
     async def test_returns_modification_policies(self, monkeypatch):
         monkeypatch.setenv("HOTELBEDS_API_KEY", "test-key")
         monkeypatch.setenv("HOTELBEDS_API_SECRET", "test-secret")
-        monkeypatch.setenv(
-            "HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com"
-        )
+        monkeypatch.setenv("HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com")
 
-        respx.post(
-            "https://api.test.hotelbeds.com/hotel-api/1.0/checkrates"
-        ).mock(return_value=Response(200, json=_MOCK_CHECKRATE_RESPONSE))
+        respx.post("https://api.test.hotelbeds.com/hotel-api/1.0/checkrates").mock(
+            return_value=Response(200, json=_MOCK_CHECKRATE_RESPONSE)
+        )
 
         result = await check_hotel_rate_hotelbeds.ainvoke(
             {
@@ -639,13 +629,11 @@ class TestCheckHotelRateHotelbeds:
     async def test_returns_upselling(self, monkeypatch):
         monkeypatch.setenv("HOTELBEDS_API_KEY", "test-key")
         monkeypatch.setenv("HOTELBEDS_API_SECRET", "test-secret")
-        monkeypatch.setenv(
-            "HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com"
-        )
+        monkeypatch.setenv("HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com")
 
-        respx.post(
-            "https://api.test.hotelbeds.com/hotel-api/1.0/checkrates"
-        ).mock(return_value=Response(200, json=_MOCK_CHECKRATE_RESPONSE))
+        respx.post("https://api.test.hotelbeds.com/hotel-api/1.0/checkrates").mock(
+            return_value=Response(200, json=_MOCK_CHECKRATE_RESPONSE)
+        )
 
         result = await check_hotel_rate_hotelbeds.ainvoke(
             {
@@ -662,13 +650,11 @@ class TestCheckHotelRateHotelbeds:
     async def test_returns_rate_comments(self, monkeypatch):
         monkeypatch.setenv("HOTELBEDS_API_KEY", "test-key")
         monkeypatch.setenv("HOTELBEDS_API_SECRET", "test-secret")
-        monkeypatch.setenv(
-            "HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com"
-        )
+        monkeypatch.setenv("HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com")
 
-        respx.post(
-            "https://api.test.hotelbeds.com/hotel-api/1.0/checkrates"
-        ).mock(return_value=Response(200, json=_MOCK_CHECKRATE_RESPONSE))
+        respx.post("https://api.test.hotelbeds.com/hotel-api/1.0/checkrates").mock(
+            return_value=Response(200, json=_MOCK_CHECKRATE_RESPONSE)
+        )
 
         result = await check_hotel_rate_hotelbeds.ainvoke(
             {
@@ -682,13 +668,11 @@ class TestCheckHotelRateHotelbeds:
     async def test_checkrate_http_error(self, monkeypatch):
         monkeypatch.setenv("HOTELBEDS_API_KEY", "test-key")
         monkeypatch.setenv("HOTELBEDS_API_SECRET", "test-secret")
-        monkeypatch.setenv(
-            "HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com"
-        )
+        monkeypatch.setenv("HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com")
 
-        respx.post(
-            "https://api.test.hotelbeds.com/hotel-api/1.0/checkrates"
-        ).mock(return_value=Response(410, text="Rate expired"))
+        respx.post("https://api.test.hotelbeds.com/hotel-api/1.0/checkrates").mock(
+            return_value=Response(410, text="Rate expired")
+        )
 
         result = await check_hotel_rate_hotelbeds.ainvoke(
             {
@@ -703,13 +687,11 @@ class TestCheckHotelRateHotelbeds:
     async def test_checkrate_no_hotel_data(self, monkeypatch):
         monkeypatch.setenv("HOTELBEDS_API_KEY", "test-key")
         monkeypatch.setenv("HOTELBEDS_API_SECRET", "test-secret")
-        monkeypatch.setenv(
-            "HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com"
-        )
+        monkeypatch.setenv("HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com")
 
-        respx.post(
-            "https://api.test.hotelbeds.com/hotel-api/1.0/checkrates"
-        ).mock(return_value=Response(200, json={}))
+        respx.post("https://api.test.hotelbeds.com/hotel-api/1.0/checkrates").mock(
+            return_value=Response(200, json={})
+        )
 
         result = await check_hotel_rate_hotelbeds.ainvoke(
             {
@@ -735,9 +717,7 @@ class TestCheckHotelRateHotelbeds:
     async def test_checkrate_sends_correct_body(self, monkeypatch):
         monkeypatch.setenv("HOTELBEDS_API_KEY", "test-key")
         monkeypatch.setenv("HOTELBEDS_API_SECRET", "test-secret")
-        monkeypatch.setenv(
-            "HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com"
-        )
+        monkeypatch.setenv("HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com")
 
         route_mock = respx.post(
             "https://api.test.hotelbeds.com/hotel-api/1.0/checkrates"

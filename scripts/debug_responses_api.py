@@ -1,4 +1,5 @@
 """Test gpt-5.4-pro via the Responses API with correct parameters."""
+
 import asyncio
 import os
 

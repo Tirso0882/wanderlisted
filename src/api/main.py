@@ -37,7 +37,7 @@ logger = AppLogger(
 # ── Helpers ──────────────────────────────────────────────────────────────────
 def _extract_text_content(content) -> str:
     """Extract text from LangChain message.content.
-    
+
     Handles both:
     - Chat Completions: content is str
     - Responses API: content is list of {"type": "text", "text": "..."} blocks
@@ -238,7 +238,9 @@ async def _run_agent(message: str, session_id: str, graph: CompiledStateGraph) -
         )
 
     return {
-        "message": _extract_text_content(result["messages"][-1].content) if result.get("messages") else "",
+        "message": _extract_text_content(result["messages"][-1].content)
+        if result.get("messages")
+        else "",
         "run_id": run_id,
         "interrupted": interrupted,
         "interrupt_data": interrupt_data if isinstance(interrupt_data, dict) else None,
@@ -343,7 +345,9 @@ async def chat_stream(
         try:
             while True:
                 try:
-                    item = await asyncio.wait_for(queue.get(), timeout=_KEEPALIVE_INTERVAL)
+                    item = await asyncio.wait_for(
+                        queue.get(), timeout=_KEEPALIVE_INTERVAL
+                    )
                 except asyncio.TimeoutError:
                     # No event within the interval — send SSE keepalive comment
                     yield ": keepalive\n\n"
@@ -409,7 +413,9 @@ async def get_session_history(
         if isinstance(msg, HumanMessage):
             messages.append({"role": "user", "content": msg.content})
         elif isinstance(msg, AIMessage) and msg.content:
-            messages.append({"role": "assistant", "content": _extract_text_content(msg.content)})
+            messages.append(
+                {"role": "assistant", "content": _extract_text_content(msg.content)}
+            )
     return {"session_id": session_id, "messages": messages}
 
 
@@ -471,7 +477,11 @@ async def resume_chat(
     except asyncio.TimeoutError:
         raise HTTPException(status_code=504, detail="Resume timed out.")
 
-    last_message = _extract_text_content(result["messages"][-1].content) if result.get("messages") else ""
+    last_message = (
+        _extract_text_content(result["messages"][-1].content)
+        if result.get("messages")
+        else ""
+    )
 
     # Determine the status
     status = "completed"

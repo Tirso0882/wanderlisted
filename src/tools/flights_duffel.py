@@ -29,7 +29,13 @@ from datetime import date
 
 import httpx
 from langchain_core.tools import tool
-from tenacity import RetryError, retry, retry_if_exception, stop_after_attempt, wait_exponential
+from tenacity import (
+    RetryError,
+    retry,
+    retry_if_exception,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 
 # ── Configuration ────────────────────────────────────────────────────────
@@ -126,7 +132,9 @@ def _format_conditions(conditions: dict | None) -> str:
     elif not change.get("allowed"):
         parts.append("Change: Not allowed")
     elif change.get("penalty_amount") and float(change["penalty_amount"]) > 0:
-        parts.append(f"Change: {change['penalty_currency']} {change['penalty_amount']} fee")
+        parts.append(
+            f"Change: {change['penalty_currency']} {change['penalty_amount']} fee"
+        )
     else:
         parts.append("Change: Free")
 
@@ -136,7 +144,9 @@ def _format_conditions(conditions: dict | None) -> str:
     elif not refund.get("allowed"):
         parts.append("Refund: Not allowed")
     elif refund.get("penalty_amount") and float(refund["penalty_amount"]) > 0:
-        parts.append(f"Refund: {refund['penalty_currency']} {refund['penalty_amount']} penalty")
+        parts.append(
+            f"Refund: {refund['penalty_currency']} {refund['penalty_amount']} penalty"
+        )
     else:
         parts.append("Refund: Free")
 
@@ -155,14 +165,18 @@ def _format_offer(offer: dict, index: int) -> list[str]:
 
     slices = offer.get("slices", [])
     if not slices:
-        lines.append(f"  {index}. {airline_code} ({airline_name}) — {total_currency} {total_amount}")
+        lines.append(
+            f"  {index}. {airline_code} ({airline_name}) — {total_currency} {total_amount}"
+        )
         return lines
 
     # Outbound slice
     outbound = slices[0]
     segments = outbound.get("segments", [])
     if not segments:
-        lines.append(f"  {index}. {airline_code} ({airline_name}) — {total_currency} {total_amount}")
+        lines.append(
+            f"  {index}. {airline_code} ({airline_name}) — {total_currency} {total_amount}"
+        )
         return lines
 
     first_seg = segments[0]
@@ -187,7 +201,9 @@ def _format_offer(offer: dict, index: int) -> list[str]:
     baggage_str = ""
     seg_passengers = first_seg.get("passengers", [])
     if seg_passengers:
-        cabin = seg_passengers[0].get("cabin_class_marketing_name") or seg_passengers[0].get("cabin_class", "economy")
+        cabin = seg_passengers[0].get("cabin_class_marketing_name") or seg_passengers[
+            0
+        ].get("cabin_class", "economy")
         baggages = seg_passengers[0].get("baggages", [])
         if baggages:
             baggage_str = f"\n     Bags included: {_format_baggage(baggages)}"
@@ -213,7 +229,9 @@ def _format_offer(offer: dict, index: int) -> list[str]:
         ret_segs = ret.get("segments", [])
         if ret_segs:
             ret_dep_airport = ret_segs[0].get("origin", {}).get("iata_code", "???")
-            ret_arr_airport = ret_segs[-1].get("destination", {}).get("iata_code", "???")
+            ret_arr_airport = (
+                ret_segs[-1].get("destination", {}).get("iata_code", "???")
+            )
             ret_dep = ret_segs[0].get("departing_at", "")
             ret_arr = ret_segs[-1].get("arriving_at", "")
             ret_dur_str, _ = _parse_iso_duration(ret.get("duration"))
@@ -269,9 +287,15 @@ async def _create_offer_request(
             )
             if response.status_code >= 400:
                 msg = _parse_duffel_error(response)
-                if _is_retryable(httpx.HTTPStatusError("", request=response.request, response=response)):
+                if _is_retryable(
+                    httpx.HTTPStatusError(
+                        "", request=response.request, response=response
+                    )
+                ):
                     response.raise_for_status()
-                raise httpx.HTTPStatusError(msg, request=response.request, response=response)
+                raise httpx.HTTPStatusError(
+                    msg, request=response.request, response=response
+                )
             return response.json()
 
 
@@ -293,9 +317,15 @@ async def _get_offer(offer_id: str) -> dict:
             )
             if response.status_code >= 400:
                 msg = _parse_duffel_error(response)
-                if _is_retryable(httpx.HTTPStatusError("", request=response.request, response=response)):
+                if _is_retryable(
+                    httpx.HTTPStatusError(
+                        "", request=response.request, response=response
+                    )
+                ):
                     response.raise_for_status()
-                raise httpx.HTTPStatusError(msg, request=response.request, response=response)
+                raise httpx.HTTPStatusError(
+                    msg, request=response.request, response=response
+                )
             return response.json()
 
 
@@ -319,9 +349,15 @@ async def _get_place_suggestions(
             )
             if response.status_code >= 400:
                 msg = _parse_duffel_error(response)
-                if _is_retryable(httpx.HTTPStatusError("", request=response.request, response=response)):
+                if _is_retryable(
+                    httpx.HTTPStatusError(
+                        "", request=response.request, response=response
+                    )
+                ):
                     response.raise_for_status()
-                raise httpx.HTTPStatusError(msg, request=response.request, response=response)
+                raise httpx.HTTPStatusError(
+                    msg, request=response.request, response=response
+                )
             return response.json()
 
 
@@ -535,7 +571,9 @@ async def confirm_flight_price(
     if payment_reqs:
         if not payment_reqs.get("requires_instant_payment"):
             pay_by = payment_reqs.get("payment_required_by", "")
-            results.append(f"  💡 This offer can be held without immediate payment (pay by: {pay_by})")
+            results.append(
+                f"  💡 This offer can be held without immediate payment (pay by: {pay_by})"
+            )
 
     return "\n".join(results)
 
@@ -662,10 +700,7 @@ async def search_cheapest_flight_in_month(
             continue
 
     if not all_offers:
-        return (
-            f"No flights found from {origin} to {destination} "
-            f"in {year}-{month:02d}."
-        )
+        return f"No flights found from {origin} to {destination} in {year}-{month:02d}."
 
     # Sort by price and return top 5
     all_offers.sort(key=lambda x: float(x[1].get("total_amount", "999999")))

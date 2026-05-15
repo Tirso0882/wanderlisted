@@ -1,4 +1,5 @@
 """Debug: check exactly what create_agent binds and sends to Azure."""
+
 import os
 
 os.environ["LANGCHAIN_TRACING_V2"] = "false"
@@ -37,13 +38,19 @@ def main():
 
     # Test: does bind_tools + ainvoke work with reasoning?
     print("Testing bind_tools + ainvoke on reasoning tier...")
-    result = asyncio.run(bound.ainvoke([HumanMessage(content="What tools do you have?")]))
-    print(f"  OK: {type(result).__name__}, content={result.content[:100] if result.content else 'none'}")
+    result = asyncio.run(
+        bound.ainvoke([HumanMessage(content="What tools do you have?")])
+    )
+    print(
+        f"  OK: {type(result).__name__}, content={result.content[:100] if result.content else 'none'}"
+    )
     print()
 
     # Now test create_agent
     print("Testing create_agent executor...")
-    executor = create_agent(model=llm, tools=agent.tools, system_prompt=agent.system_prompt)
+    executor = create_agent(
+        model=llm, tools=agent.tools, system_prompt=agent.system_prompt
+    )
 
     # Check the model node inside create_agent's graph
     for node_name, node in executor.nodes.items():
@@ -53,9 +60,11 @@ def main():
     # Test create_agent with ainvoke
     print("Running create_agent executor.ainvoke()...")
     try:
-        result = asyncio.run(executor.ainvoke(
-            {"messages": [HumanMessage(content="Tell me about Paris safety")]},
-        ))
+        result = asyncio.run(
+            executor.ainvoke(
+                {"messages": [HumanMessage(content="Tell me about Paris safety")]},
+            )
+        )
         msgs = result.get("messages", [])
         print(f"  OK: {len(msgs)} messages")
     except Exception as e:

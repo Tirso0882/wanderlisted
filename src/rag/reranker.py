@@ -57,7 +57,9 @@ def rerank(
     try:
         import cohere
     except ImportError:
-        logger.warning("cohere package not installed — falling back to original ranking")
+        logger.warning(
+            "cohere package not installed — falling back to original ranking"
+        )
         return _fallback_ranking(candidates, top_n)
 
     try:
@@ -90,7 +92,9 @@ def rerank(
         return ranked
 
     except Exception:
-        logger.warning("Cohere rerank failed — falling back to original ranking", exc_info=True)
+        logger.warning(
+            "Cohere rerank failed — falling back to original ranking", exc_info=True
+        )
         return _fallback_ranking(candidates, top_n)
 
 

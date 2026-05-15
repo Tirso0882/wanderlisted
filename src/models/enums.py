@@ -54,7 +54,11 @@ class TransitMode(StrEnum):
     @classmethod
     def _missing_(cls, value: object) -> "TransitMode":
         if isinstance(value, str):
-            aliases = {"walking": cls.WALK, "driving": cls.DRIVE, "cycling": cls.BICYCLE}
+            aliases = {
+                "walking": cls.WALK,
+                "driving": cls.DRIVE,
+                "cycling": cls.BICYCLE,
+            }
             hit = aliases.get(_normalise(value))
             if hit:
                 return hit

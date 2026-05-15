@@ -21,7 +21,9 @@ class TestDecomposeQuery:
         """Broad query should be decomposed into sub-queries."""
         mock_llm = AsyncMock()
         mock_response = MagicMock()
-        mock_response.content = '["Tokyo local food", "Tokyo public transport", "Tokyo temples"]'
+        mock_response.content = (
+            '["Tokyo local food", "Tokyo public transport", "Tokyo temples"]'
+        )
         mock_llm.ainvoke.return_value = mock_response
         mock_get_model.return_value = mock_llm
 
@@ -86,12 +88,28 @@ class TestMergeResults:
     def test_deduplicates_by_text(self):
         """Same text appearing in multiple result sets should be merged."""
         set_a = [
-            {"text": "Tokyo temples are beautiful", "score": 0.70, "metadata": {"section": "See"}},
-            {"text": "Try ramen in Shinjuku", "score": 0.65, "metadata": {"section": "Eat"}},
+            {
+                "text": "Tokyo temples are beautiful",
+                "score": 0.70,
+                "metadata": {"section": "See"},
+            },
+            {
+                "text": "Try ramen in Shinjuku",
+                "score": 0.65,
+                "metadata": {"section": "Eat"},
+            },
         ]
         set_b = [
-            {"text": "Tokyo temples are beautiful", "score": 0.75, "metadata": {"section": "See"}},
-            {"text": "Take the JR Pass for trains", "score": 0.60, "metadata": {"section": "Get around"}},
+            {
+                "text": "Tokyo temples are beautiful",
+                "score": 0.75,
+                "metadata": {"section": "See"},
+            },
+            {
+                "text": "Take the JR Pass for trains",
+                "score": 0.60,
+                "metadata": {"section": "Get around"},
+            },
         ]
 
         merged = merge_results([set_a, set_b])

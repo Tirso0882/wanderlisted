@@ -136,21 +136,27 @@ async def search_destination_guides(
 
     top_k = max(1, min(top_k, 10))
 
-    logger.debug(f"RAG query: {query!r}, destinations={destinations!r}, tenant={tenant!r}")
+    logger.debug(
+        f"RAG query: {query!r}, destinations={destinations!r}, tenant={tenant!r}"
+    )
 
     # --- Multi-tenant retrieval: client namespace first, Wikivoyage fallback ---
     matches: list[dict] = []
 
     if tenant and tenant.lower() != DEFAULT_TENANT:
         client_ns = namespace_for(tenant)
-        matches = await _async_query_namespace(index, emb_gen, query, client_ns, destinations, top_k)
+        matches = await _async_query_namespace(
+            index, emb_gen, query, client_ns, destinations, top_k
+        )
         logger.info(f"Client namespace '{client_ns}' → {len(matches)} match(es)")
 
     # Fallback to Wikivoyage if client results are insufficient
     wiki_ns = namespace_for()  # "wikivoyage/destination_guides"
     if len(matches) < top_k:
         remaining = top_k - len(matches)
-        wiki_matches = await _async_query_namespace(index, emb_gen, query, wiki_ns, destinations, remaining)
+        wiki_matches = await _async_query_namespace(
+            index, emb_gen, query, wiki_ns, destinations, remaining
+        )
         # Tag wiki results so the agent knows the source tier
         for m in wiki_matches:
             m.setdefault("metadata", {})["content_tier"] = "community"
@@ -190,7 +196,9 @@ async def search_destination_guides(
         text = match["metadata"].get("text", "")
         score = match.get("score", 0)
         section = match["metadata"].get("section", "")
-        tier = match["metadata"].get("content_tier", "client" if tenant else "community")
+        tier = match["metadata"].get(
+            "content_tier", "client" if tenant else "community"
+        )
         sections.append(
             f"[{i}] (Source: {source}, section: {section}, "
             f"relevance: {score:.2f}, tier: {tier})\n{text}"
