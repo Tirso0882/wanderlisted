@@ -1,7 +1,9 @@
 .PHONY: help install dev test reindex rag-test clean lint fmt \
        docker-build docker-up docker-down eval-layer1 \
+       smoke smoke-simple harness harness-agent \
        k8s-cluster k8s-load k8s-load-deps k8s-secrets k8s-up k8s-status k8s-logs k8s-down \
-       k8s-redeploy k8s-smoke-test
+       k8s-redeploy k8s-smoke-test \
+       frontend frontend-build frontend-install
 
 help:
 	@echo "Wanderlisted — Travel Agent Build System"
@@ -17,6 +19,11 @@ help:
 	@echo "  make lint         — Lint code with ruff"
 	@echo "  make fmt          — Format code with ruff"
 	@echo "  make clean        — Remove cache, logs, and compiled files"
+	@echo ""
+	@echo "Frontend:"
+	@echo "  make frontend         — Start Next.js dev server (http://localhost:3000)"
+	@echo "  make frontend-build   — Production build"
+	@echo "  make frontend-install — Install frontend dependencies"
 	@echo ""
 	@echo "Docker:"
 	@echo "  make docker-build — Build the production Docker image"
@@ -34,6 +41,14 @@ help:
 	@echo "  make k8s-redeploy   — Full code-change loop: build → load → rollout"
 	@echo "  make k8s-smoke-test — Hit every endpoint and report pass/fail"
 	@echo ""
+	@echo "Smoke Tests:"
+	@echo "  make smoke           — Quick graph smoke test (full agent pipeline)"
+	@echo "  make smoke-simple    — Triage-only smoke test (shallow reply path)"
+	@echo ""
+	@echo "Agent Harness:"
+	@echo "  make harness                    — Test ALL agents, HTML report"
+	@echo "  make harness-agent AGENT=flights [ARGS='--dest Paris --open'] — Test one agent"
+	@echo ""
 	@echo "Evaluation:"
 	@echo "  make eval-layer1  — Run Layer 1 code-based evaluator tests"
 	@echo ""
@@ -44,6 +59,7 @@ install:
 	.venv/bin/pip install -r requirements.txt
 
 dev:
+	HITL_SAFETY_REVIEW=false HITL_BUDGET_REVIEW=false HITL_HUMAN_REVIEW=false \
 	.venv/bin/python -m uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
 
 test:
@@ -68,6 +84,9 @@ coverage:
 
 lint:
 	.venv/bin/ruff check src/ tests/ scripts/
+
+lint-fix:
+	.venv/bin/ruff check src/ tests/ scripts/ --fix
 
 fmt:
 	.venv/bin/ruff format src/ tests/ scripts/
@@ -198,3 +217,29 @@ k8s-smoke-test:
 # ── Evaluation ────────────────────────────────────────────────────
 eval-layer1:
 	.venv/bin/pytest tests/test_evaluators.py -x --tb=short -q
+
+# ── Agent Harness (individual agent testing with HTML reports) ────
+# Optional: ARGS="--dest Paris --open"  (extra flags passed to harness)
+harness:
+	.venv/bin/python scripts/agent_harness.py $(ARGS)
+
+harness-agent:
+	@test -n "$(AGENT)" || (echo "Usage: make harness-agent AGENT=flights [ARGS='--dest Paris --open']" && exit 1)
+	.venv/bin/python scripts/agent_harness.py --agents $(AGENT) $(ARGS)
+
+# ── Smoke Tests (graph-level) ────────────────────────────────────
+smoke:
+	.venv/bin/python scripts/test_graph_invoke.py
+
+smoke-simple:
+	.venv/bin/python scripts/test_graph_invoke.py --simple "Hello"
+
+# ── Frontend ──────────────────────────────────────────────────────
+frontend-install:
+	cd frontend && pnpm install
+
+frontend:
+	cd frontend && pnpm dev
+
+frontend-build:
+	cd frontend && pnpm build

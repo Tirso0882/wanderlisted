@@ -19,6 +19,14 @@ rag:
   chunk_overlap: 200
   min_chunk_size: 200
   max_section_size: 3000
+  default_tenant: "wikivoyage"
+  reranker:
+    enabled: true
+    model: "rerank-v3.5"
+    top_n: 5
+  query_decomposition:
+    enabled: true
+    max_sub_queries: 4
 
 # ── Routing ──────────────────────────────────────────────────────────────
 routing:
@@ -46,6 +54,15 @@ timeouts:
   hotels: 30
   weather: 10
   currency: 10
+
+# ── HITL Gates ───────────────────────────────────────────────────────────
+# Toggle human-in-the-loop interrupt gates.
+# Set to true for interactive use (LangGraph Studio), false for headless (webapp).
+# Override per-gate via env: HITL_SAFETY_REVIEW=false, HITL_BUDGET_REVIEW=false, etc.
+hitl:
+  safety_review: false
+  budget_review: false
+  human_review: false
 
 # ── API ──────────────────────────────────────────────────────────────────
 api:
