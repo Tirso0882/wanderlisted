@@ -1,4 +1,11 @@
-"""RAG indexer — builds and syncs a Pinecone vector index from destination guides.
+"""RAG indexer — builds and syncs a Pinecone vector index.
+
+Supports **multi-tenant** namespaces so each client gets isolated content:
+    - ``<tenant>/destination_guides``  — client-provided brochures / guides
+    - ``wikivoyage/destination_guides`` — community fallback (Wikivoyage)
+
+When a tenant has no content for a destination, the retrieval layer falls
+back to the Wikivoyage namespace automatically.
 
 Uses hash-based staleness detection: the index is only re-embedded when
 source documents change.  Pinecone is a managed cloud vector database so
@@ -24,7 +31,7 @@ from custom_logging import AppLogger
 from src.rag.chunker import DocumentChunker
 from src.rag.embeddings import EmbeddingGenerator
 
-load_dotenv()
+load_dotenv(override=True)
 
 logger = AppLogger(logger_name="rag.indexer", level="DEBUG")
 
@@ -37,7 +44,22 @@ MANIFEST_PATH = CACHE_DIR / "manifest.json"
 
 # ── Pinecone config ─────────────────────────────────────────────────────
 INDEX_NAME = os.environ["PINECONE_INDEX_NAME"]
-NAMESPACE = "destination_guides"
+
+# Multi-tenant namespace: "<tenant>/destination_guides"
+# Default tenant is "wikivoyage" for the community fallback content.
+DEFAULT_TENANT = "wikivoyage"
+NAMESPACE = "destination_guides"  # kept for backward compat imports
+
+
+def namespace_for(tenant: str | None = None) -> str:
+    """Build a Pinecone namespace string for *tenant*.
+
+    Examples:
+        ``namespace_for()``          → ``"wikivoyage/destination_guides"``
+        ``namespace_for("acme")``    → ``"acme/destination_guides"``
+    """
+    tenant = (tenant or DEFAULT_TENANT).strip().lower().replace(" ", "_")
+    return f"{tenant}/destination_guides"
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────
@@ -124,13 +146,23 @@ def _load_and_chunk(guides_dir: Path) -> list[Document]:
 # ── Public API ───────────────────────────────────────────────────────────
 
 
-def build_index(guides_dir: Path | None = None):
+def build_index(
+    guides_dir: Path | None = None,
+    *,
+    tenant: str | None = None,
+):
     """Build (or skip if fresh) the Pinecone vector index.
+
+    Args:
+        guides_dir: Directory containing ``.md`` files to index.
+        tenant: Client tenant ID (e.g. ``"acme_travel"``).  Defaults to
+                ``"wikivoyage"`` for the community fallback content.
 
     Returns ``(index, embedding_generator)`` or ``None`` when *guides_dir*
     has no markdown files.
     """
     guides_dir = guides_dir or GUIDES_DIR
+    ns = namespace_for(tenant)
 
     if not any(guides_dir.glob("*.md")):
         logger.warning(f"No .md files found in {guides_dir} — RAG disabled")
@@ -147,19 +179,19 @@ def build_index(guides_dir: Path | None = None):
 
     # Fast path: manifest matches — skip re-embedding
     if not _is_stale(guides_dir):
-        logger.info("✓ Pinecone index up-to-date — skipping re-embed")
+        logger.info(f"✓ Pinecone index up-to-date for '{ns}' — skipping re-embed")
         return index, emb_gen
 
     # Slow path: re-chunk, re-embed and upsert
-    logger.info("✗ Source documents changed — re-indexing into Pinecone …")
+    logger.info(f"✗ Source documents changed — re-indexing into Pinecone namespace '{ns}' …")
     documents = _load_and_chunk(guides_dir)
     logger.info(f"  Loaded {len(documents)} chunks from {guides_dir}")
 
     # Clear existing vectors in namespace before upserting
     try:
-        index.delete(delete_all=True, namespace=NAMESPACE)
+        index.delete(delete_all=True, namespace=ns)
     except NotFoundException:
-        logger.debug(f"Namespace '{NAMESPACE}' not found — skipping delete (first run)")
+        logger.debug(f"Namespace '{ns}' not found — skipping delete (first run)")
 
     # Embed and upsert in batches
     batch_size = emb_gen.config.batch_size
@@ -175,25 +207,29 @@ def build_index(guides_dir: Path | None = None):
                 {
                     "id": f"chunk-{i + j}",
                     "values": vec,
-                    "metadata": {**meta, "text": text},
+                    "metadata": {**meta, "text": text, "tenant": tenant or DEFAULT_TENANT},
                 }
             )
-        index.upsert(vectors=upsert_data, namespace=NAMESPACE)
+        index.upsert(vectors=upsert_data, namespace=ns)
 
     _save_manifest(guides_dir)
-    logger.info(f"  Upserted {len(documents)} vectors into Pinecone '{INDEX_NAME}'")
+    logger.info(f"  Upserted {len(documents)} vectors into Pinecone '{INDEX_NAME}' namespace '{ns}'")
 
     return index, emb_gen
 
 
 if __name__ == "__main__":
-    result = build_index()
+    import sys
+
+    tenant = sys.argv[1] if len(sys.argv) > 1 else None
+    result = build_index(tenant=tenant)
     if result is None:
         print("No guides found — nothing indexed.")
     else:
         index, _ = result
+        ns_name = namespace_for(tenant)
         stats = index.describe_index_stats()
-        ns = stats.get("namespaces", {}).get(NAMESPACE, {})
+        ns = stats.get("namespaces", {}).get(ns_name, {})
         print(
-            f"\nPinecone index '{INDEX_NAME}' — {ns.get('vector_count', '?')} vectors in namespace '{NAMESPACE}'"
+            f"\nPinecone index '{INDEX_NAME}' — {ns.get('vector_count', '?')} vectors in namespace '{ns_name}'"
         )
