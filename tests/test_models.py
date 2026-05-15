@@ -76,6 +76,7 @@ class TestBudgetBreakdownModel:
             "misc",
             "total",
             "per_person",
+            "target_budget",
             "currency",
             "summary",
         }
@@ -108,7 +109,16 @@ class TestCabinClassEnum:
 
 class TestTransitModeEnum:
     def test_valid_values(self):
-        for val in ("walk", "transit", "drive", "train", "bus", "ferry", "bicycle", "subway"):
+        for val in (
+            "walk",
+            "transit",
+            "drive",
+            "train",
+            "bus",
+            "ferry",
+            "bicycle",
+            "subway",
+        ):
             assert TransitMode(val).value == val
 
     def test_aliases(self):
@@ -152,7 +162,15 @@ class TestAdvisoryLevelEnum:
 
 class TestPackingCategoryEnum:
     def test_valid_values(self):
-        for val in ("clothing", "documents", "tech", "health", "money", "toiletries", "accessories"):
+        for val in (
+            "clothing",
+            "documents",
+            "tech",
+            "health",
+            "money",
+            "toiletries",
+            "accessories",
+        ):
             assert PackingCategory(val).value == val
 
     def test_unknown_defaults_to_clothing(self):
@@ -198,9 +216,14 @@ class TestSeasonEnum:
 class TestBudgetBreakdownValidation:
     def test_negative_values_clamped_to_zero(self):
         b = BudgetBreakdown(
-            flights=-100, accommodation=-50, transport=-10,
-            meals=-20, activities=-30, misc=-5,
-            total=-999, per_person=-200,
+            flights=-100,
+            accommodation=-50,
+            transport=-10,
+            meals=-20,
+            activities=-30,
+            misc=-5,
+            total=-999,
+            per_person=-200,
         )
         assert b.flights == 0.0
         assert b.accommodation == 0.0
@@ -222,8 +245,12 @@ class TestBudgetBreakdownValidation:
 
     def test_auto_total_when_zero(self):
         b = BudgetBreakdown(
-            flights=100, accommodation=200, transport=50,
-            meals=75, activities=60, misc=15,
+            flights=100,
+            accommodation=200,
+            transport=50,
+            meals=75,
+            activities=60,
+            misc=15,
         )
         assert b.total == pytest.approx(500.0)
 
@@ -266,7 +293,10 @@ class TestFlightSegmentValidation:
         assert FlightSegment(cabin_class="FIRST").cabin_class == "first"
 
     def test_cabin_class_normalises_hyphens(self):
-        assert FlightSegment(cabin_class="premium-economy").cabin_class == "premium_economy"
+        assert (
+            FlightSegment(cabin_class="premium-economy").cabin_class
+            == "premium_economy"
+        )
 
     def test_cabin_class_default(self):
         assert FlightSegment().cabin_class == "economy"
@@ -546,9 +576,12 @@ class TestTripHandbookValidation:
     def test_negative_budget_fields_clamped(self):
         th = TripHandbook(
             total_budget_usd=-500,
-            budget_flights=-100, budget_accommodation=-200,
-            budget_transport=-50, budget_meals=-75,
-            budget_activities=-60, budget_misc=-15,
+            budget_flights=-100,
+            budget_accommodation=-200,
+            budget_transport=-50,
+            budget_meals=-75,
+            budget_activities=-60,
+            budget_misc=-15,
         )
         assert th.total_budget_usd == 0.0
         assert th.budget_flights == 0.0
@@ -556,9 +589,12 @@ class TestTripHandbookValidation:
 
     def test_auto_budget_total_when_zero(self):
         th = TripHandbook(
-            budget_flights=500, budget_accommodation=800,
-            budget_transport=200, budget_meals=300,
-            budget_activities=150, budget_misc=50,
+            budget_flights=500,
+            budget_accommodation=800,
+            budget_transport=200,
+            budget_meals=300,
+            budget_activities=150,
+            budget_misc=50,
         )
         assert th.budget_total == pytest.approx(2000.0)
 
@@ -576,34 +612,41 @@ class TestRoutingDecisionValidation:
     def test_valid_agents_pass(self):
         rd = RoutingDecision(
             agents=["FlightsAgent", "HotelsAgent"],
-            reasoning="Testing", user_message="Testing",
+            reasoning="Testing",
+            user_message="Testing",
         )
         assert rd.agents == ["FlightsAgent", "HotelsAgent"]
 
     def test_hallucinated_agents_stripped(self):
         rd = RoutingDecision(
             agents=["FlightsAgent", "FakeAgent", "WeatherAgent"],
-            reasoning="Testing", user_message="Testing",
+            reasoning="Testing",
+            user_message="Testing",
         )
         assert rd.agents == ["FlightsAgent"]
 
     def test_all_invalid_agents_yields_empty(self):
         rd = RoutingDecision(
             agents=["BadAgent", "NonsenseAgent"],
-            reasoning="Testing", user_message="Testing",
+            reasoning="Testing",
+            user_message="Testing",
         )
         assert rd.agents == []
 
     def test_destinations_lowercased_and_stripped(self):
         rd = RoutingDecision(
-            agents=[], reasoning="Testing", user_message="Testing",
+            agents=[],
+            reasoning="Testing",
+            user_message="Testing",
             destinations=["  PARIS  ", " Tokyo ", "NEW YORK"],
         )
         assert rd.destinations == ["paris", "tokyo", "new york"]
 
     def test_empty_destinations_filtered(self):
         rd = RoutingDecision(
-            agents=[], reasoning="Testing", user_message="Testing",
+            agents=[],
+            reasoning="Testing",
+            user_message="Testing",
             destinations=["rome", "", "  "],
         )
         assert rd.destinations == ["rome"]
