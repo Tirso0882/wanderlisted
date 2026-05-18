@@ -57,6 +57,7 @@ jobs:
   # Job 2: Unit tests + coverage — fail-fast, 80% minimum
   # ──────────────────────────────────────────────────────────────────
   test:
+    needs: [secrets-scan]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -72,6 +73,7 @@ jobs:
   # Validates routing, budget completeness, handbook sections
   # ──────────────────────────────────────────────────────────────────
   eval-layer1:
+    needs: [secrets-scan]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -86,7 +88,7 @@ jobs:
   # Job 4: Docker build dry-run — catch Dockerfile issues on PRs
   # ──────────────────────────────────────────────────────────────────
   docker-build:
-    needs: [lint]
+    needs: [lint, test, eval-layer1]
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
