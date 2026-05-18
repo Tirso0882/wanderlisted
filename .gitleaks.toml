@@ -1,0 +1,26 @@
+# Gitleaks configuration for Wanderlisted
+# https://github.com/gitleaks/gitleaks
+
+title = "Wanderlisted Secret Scanning"
+
+[extend]
+# Use the default gitleaks ruleset as the base
+useDefault = true
+
+# Allow known test/placeholder values used in CI and tests
+[allowlist]
+  description = "Known test/placeholder values"
+  regexTarget = "match"
+  regexes = [
+    '''duffel_test_fake''',
+    '''duffel_test_mock123''',
+    '''PLACEHOLDER_GOOGLE_MAPS_KEY''',
+    '''test-key''',
+  ]
+  paths = [
+    '''.env\.example''',
+    '''docs/''',
+    '''\.venv''',
+    '''node_modules''',
+    '''\.git''',
+  ]

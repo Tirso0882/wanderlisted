@@ -22,6 +22,19 @@ env:
 
 jobs:
   # ──────────────────────────────────────────────────────────────────
+  # Job 0: Secret scanning — block commits containing API keys/tokens
+  # ──────────────────────────────────────────────────────────────────
+  secrets-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ──────────────────────────────────────────────────────────────────
   # Job 1: Lint + format — fast fail on code style
   # ──────────────────────────────────────────────────────────────────
   lint:
@@ -83,7 +96,7 @@ jobs:
   # Job 5: Build + push Docker image (main branch only)
   # ──────────────────────────────────────────────────────────────────
   build-and-push:
-    needs: [lint, test, eval-layer1]
+    needs: [secrets-scan, lint, test, eval-layer1]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
