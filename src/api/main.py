@@ -190,12 +190,19 @@ class ChatRequest(BaseModel):
         if v is None:
             return v
         valid = {
-            "FlightsAgent", "HotelsAgent", "DestinationAgent",
-            "RestaurantsAgent", "ActivitiesAgent", "TransportationAgent",
-            "BudgetAgent", "ItineraryAgent",
+            "FlightsAgent",
+            "HotelsAgent",
+            "DestinationAgent",
+            "RestaurantsAgent",
+            "ActivitiesAgent",
+            "TransportationAgent",
+            "BudgetAgent",
+            "ItineraryAgent",
         }
         if v not in valid:
-            raise ValueError(f"Invalid target_agent '{v}'. Must be one of: {', '.join(sorted(valid))}")
+            raise ValueError(
+                f"Invalid target_agent '{v}'. Must be one of: {', '.join(sorted(valid))}"
+            )
         return v
 
 
@@ -231,7 +238,12 @@ class SessionInfo(BaseModel):
 
 # ── Core graph runner ──────────────────────────────────────────────────────
 @traceable(run_type="chain", name="wanderlisted_chat")
-async def _run_agent(message: str, session_id: str, graph: CompiledStateGraph, target_agent: str | None = None) -> dict:
+async def _run_agent(
+    message: str,
+    session_id: str,
+    graph: CompiledStateGraph,
+    target_agent: str | None = None,
+) -> dict:
     """Run the multi-agent supervisor graph and return response data."""
     import uuid as _uuid
 
@@ -289,7 +301,9 @@ async def chat(request: ChatRequest, graph: CompiledStateGraph = Depends(_graph_
         )
 
     try:
-        data = await _run_agent(request.message, session_id, graph, target_agent=request.target_agent)
+        data = await _run_agent(
+            request.message, session_id, graph, target_agent=request.target_agent
+        )
     except asyncio.TimeoutError:
         raise HTTPException(
             status_code=504,
@@ -331,7 +345,9 @@ async def chat_stream(
         async def _stream_graph():
             """Push graph events into the queue; signal completion with _SENTINEL."""
             try:
-                graph_input: dict = {"messages": [HumanMessage(content=request.message)]}
+                graph_input: dict = {
+                    "messages": [HumanMessage(content=request.message)]
+                }
                 if request.target_agent:
                     graph_input["target_agent"] = request.target_agent
 
