@@ -38,14 +38,14 @@
       "latitude": 19.4101878,
       "longitude": -99.1701384,
       "photo_urls": [
-        "https://places.googleapis.com/v1/places/ChIJGSbIU0D_0YURrylilye2LTw/photos/Ab43m-sL8amZpDUFFbDGcOWvhl4K090WrZCVHIobJ2lnrn_RJKuIX7Ob-rUF4D8x69Qnc6eo3ohw9EOqnQdkIqexjzbgYR6Vg6iQabbCsFynY1oG8p93tsPqXBIgxYu2Xf-DZ6FXLKQqiQo0gAQhrulDn0zWZoANFgc1uQ-ajRh3gdJvFYsgJUUk_m8xlTAz0rtz_I9iU3TAU5L3lA602XvH-9NtrpvfzsZ29k3zsk_zcVSXaBLvb9HMaAUSYBJYcJcxSpp8ACFbLWgrw8BQJeBWuGgPnitzCmpsu52xYtHkhBVpzQ/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+        "https://places.googleapis.com/v1/places/ChIJGSbIU0D_0YURrylilye2LTw/photos/Ab43m-sL8amZpDUFFbDGcOWvhl4K090WrZCVHIobJ2lnrn_RJKuIX7Ob-rUF4D8x69Qnc6eo3ohw9EOqnQdkIqexjzbgYR6Vg6iQabbCsFynY1oG8p93tsPqXBIgxYu2Xf-DZ6FXLKQqiQo0gAQhrulDn0zWZoANFgc1uQ-ajRh3gdJvFYsgJUUk_m8xlTAz0rtz_I9iU3TAU5L3lA602XvH-9NtrpvfzsZ29k3zsk_zcVSXaBLvb9HMaAUSYBJYcJcxSpp8ACFbLWgrw8BQJeBWuGgPnitzCmpsu52xYtHkhBVpzQ/media?maxHeightPx=400&key=PLACEHOLDER_GOOGLE_MAPS_KEY"
       ],
       "google_maps_url": "https://maps.google.com/?cid=4336322297387428271&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
       "website_url": "https://www.dominioncondesa.com/",
       "description": "Chic accommodations with kitchenettes in a polished hotel featuring breakfast & a rooftop patio.",
       "distance_from_center_km": 0.0,
       "nearby_attractions": [],
-      "map_embed_url": "https://www.google.com/maps/embed/v1/place?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&q=Casa+Mali+by+Dominion%2C+Hip%C3%B3dromo%2C+Cuauht%C3%A9moc%2C+Ciudad+de+M%C3%A9xico&zoom=15"
+      "map_embed_url": "https://www.google.com/maps/embed/v1/place?key=PLACEHOLDER_GOOGLE_MAPS_KEY&q=Casa+Mali+by+Dominion%2C+Hip%C3%B3dromo%2C+Cuauht%C3%A9moc%2C+Ciudad+de+M%C3%A9xico&zoom=15"
     },
     {
       "name": "Hotel Villa Condesa",
@@ -65,14 +65,14 @@
       "latitude": 19.416860399999997,
       "longitude": -99.1725933,
       "photo_urls": [
-        "https://places.googleapis.com/v1/places/ChIJ77VSfEb_0YUR18ulo2pelBc/photos/Ab43m-uN4zPFdXd99lIb0yZ4KzTZ9i0cYp3kpdfFt80PlLbrZz6MUfRTfFeYVME6f53KahmGzeSaxT8CZ16I99FiFnyi2mVr2b-NKxJxfJMk1MIlh1o0XVNQDAV0x34-4NfRXx083liwpcL6TVQgpE4KDxx-r7lZ9hUzPobVb6uJv3faYm32npohrh11HuxrEbrZnJ-hw-Oz9rDpRcoZUKgmS6i14dltqAbkBQp_I8oeu74NrI40QZC412odUFL6lALTDvNSHdVnMH1TQG0t8BQVX4yU0sUX3BOAB1rXkdgn7RAMvVndq3J7WEXjT4nrXtkE6HmUJ2mml0xYqIVnbeG8ttepr1t3sbdvOxQWLEnbj5khRT7F_yn7sdMM1PgtB3BqsyT-32id3XaY1_ipn0-DYJKhfaD8i022YsAsC2AhdstKxQ/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+        "https://places.googleapis.com/v1/places/ChIJ77VSfEb_0YUR18ulo2pelBc/photos/Ab43m-uN4zPFdXd99lIb0yZ4KzTZ9i0cYp3kpdfFt80PlLbrZz6MUfRTfFeYVME6f53KahmGzeSaxT8CZ16I99FiFnyi2mVr2b-NKxJxfJMk1MIlh1o0XVNQDAV0x34-4NfRXx083liwpcL6TVQgpE4KDxx-r7lZ9hUzPobVb6uJv3faYm32npohrh11HuxrEbrZnJ-hw-Oz9rDpRcoZUKgmS6i14dltqAbkBQp_I8oeu74NrI40QZC412odUFL6lALTDvNSHdVnMH1TQG0t8BQVX4yU0sUX3BOAB1rXkdgn7RAMvVndq3J7WEXjT4nrXtkE6HmUJ2mml0xYqIVnbeG8ttepr1t3sbdvOxQWLEnbj5khRT7F_yn7sdMM1PgtB3BqsyT-32id3XaY1_ipn0-DYJKhfaD8i022YsAsC2AhdstKxQ/media?maxHeightPx=400&key=PLACEHOLDER_GOOGLE_MAPS_KEY"
       ],
       "google_maps_url": "https://maps.google.com/?cid=1699086771530615767&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
       "website_url": "http://www.villacondesa.com.mx/",
       "description": "Unfussy rooms in an upscale hotel offering a garden, a restaurant & a lounge with a fireplace.",
       "distance_from_center_km": 0.0,
       "nearby_attractions": [],
-      "map_embed_url": "https://www.google.com/maps/embed/v1/place?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&q=Hotel+Villa+Condesa%2C+Roma+Nte.%2C+Cuauht%C3%A9moc%2C+Ciudad+de+M%C3%A9xico&zoom=15"
+      "map_embed_url": "https://www.google.com/maps/embed/v1/place?key=PLACEHOLDER_GOOGLE_MAPS_KEY&q=Hotel+Villa+Condesa%2C+Roma+Nte.%2C+Cuauht%C3%A9moc%2C+Ciudad+de+M%C3%A9xico&zoom=15"
     },
     {
       "name": "La Valise mx City, an SLH Hotel",
@@ -92,14 +92,14 @@
       "latitude": 19.4190845,
       "longitude": -99.1630579,
       "photo_urls": [
-        "https://places.googleapis.com/v1/places/ChIJFUXg7Tn_0YUR3q1zT3j9wcQ/photos/Ab43m-u0q0jpeK-NDp4u8E1p7aYUJreCRiKzS6gfmnBRA9UEnu6_aniIAdQ06bASoRohThZ1x83RVO4Qz0olxozs-TUhJM770z6iDPeuKRae0sX70MM6XIq1b9OxutuckUYiGd-BVTzoiaKo2V8rBkTX4CO8zt78FYlthaD8BSQrwwj7j0WKbNZ6wrtXqMZgu1dWRo2RIrWJXqEAYbYWUK9cBGslYjXo4VxP7wIX4NTg_4XTzlDFy8IbNNE_cUNCkSg-OG_sKXtW8p6u_KoRhqJGHAgvKrSDXZlP97KTzB9wc2nNLA/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+        "https://places.googleapis.com/v1/places/ChIJFUXg7Tn_0YUR3q1zT3j9wcQ/photos/Ab43m-u0q0jpeK-NDp4u8E1p7aYUJreCRiKzS6gfmnBRA9UEnu6_aniIAdQ06bASoRohThZ1x83RVO4Qz0olxozs-TUhJM770z6iDPeuKRae0sX70MM6XIq1b9OxutuckUYiGd-BVTzoiaKo2V8rBkTX4CO8zt78FYlthaD8BSQrwwj7j0WKbNZ6wrtXqMZgu1dWRo2RIrWJXqEAYbYWUK9cBGslYjXo4VxP7wIX4NTg_4XTzlDFy8IbNNE_cUNCkSg-OG_sKXtW8p6u_KoRhqJGHAgvKrSDXZlP97KTzB9wc2nNLA/media?maxHeightPx=400&key=PLACEHOLDER_GOOGLE_MAPS_KEY"
       ],
       "google_maps_url": "https://maps.google.com/?cid=14177891795109916126&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
       "website_url": "https://www.lavalisecdmx.com/",
       "description": "Trendy, individually furnished suites in a polished property featuring complimentary Wi-Fi.",
       "distance_from_center_km": 0.0,
       "nearby_attractions": [],
-      "map_embed_url": "https://www.google.com/maps/embed/v1/place?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&q=La+Valise+mx+City%2C+an+SLH+Hotel%2C+Roma+Nte.%2C+Cuauht%C3%A9moc%2C+Ciudad+de+M%C3%A9xico&zoom=15"
+      "map_embed_url": "https://www.google.com/maps/embed/v1/place?key=PLACEHOLDER_GOOGLE_MAPS_KEY&q=La+Valise+mx+City%2C+an+SLH+Hotel%2C+Roma+Nte.%2C+Cuauht%C3%A9moc%2C+Ciudad+de+M%C3%A9xico&zoom=15"
     },
     {
       "name": "Casa Decu",
@@ -119,14 +119,14 @@
       "latitude": 19.4087934,
       "longitude": -99.1712067,
       "photo_urls": [
-        "https://places.googleapis.com/v1/places/ChIJPcZfxUH_0YURkNkmHn0Sj50/photos/Ab43m-tNszs_2hm5g2JG5azRpQD3nHOUA5mkX4mxFrqUiZ_brUWWCmSxX7dQbEw99vI6VzSLA9SL2-RhK1LKWl7MK5YbVTp-VW4_rNZxa0U_LgoUUOMIMTYcXdv95cnhIaK6sjY1wOaUBtCsrs8nW4TEnLbrShPnw1xlk_Ig8rN9g0Rq13rv2QUijyBQ1jF-PBGgVDm7z0Gpk3jTqijHFKw2LQrULuyRsf8sj0j1o28EVUXwhDZJf9chg59dqFrRBtOKQALREXs7xncUW6t1ygKMMcbirFPuYkPg2jAexX6R0ck/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+        "https://places.googleapis.com/v1/places/ChIJPcZfxUH_0YURkNkmHn0Sj50/photos/Ab43m-tNszs_2hm5g2JG5azRpQD3nHOUA5mkX4mxFrqUiZ_brUWWCmSxX7dQbEw99vI6VzSLA9SL2-RhK1LKWl7MK5YbVTp-VW4_rNZxa0U_LgoUUOMIMTYcXdv95cnhIaK6sjY1wOaUBtCsrs8nW4TEnLbrShPnw1xlk_Ig8rN9g0Rq13rv2QUijyBQ1jF-PBGgVDm7z0Gpk3jTqijHFKw2LQrULuyRsf8sj0j1o28EVUXwhDZJf9chg59dqFrRBtOKQALREXs7xncUW6t1ygKMMcbirFPuYkPg2jAexX6R0ck/media?maxHeightPx=400&key=PLACEHOLDER_GOOGLE_MAPS_KEY"
       ],
       "google_maps_url": "https://maps.google.com/?cid=11353313514210384272&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
       "website_url": "http://decuhotels.com/casa-decu",
       "description": "Stylish rooms & suites in a hip hotel featuring a rooftop garden & a gym, plus complimentary Wi-Fi.",
       "distance_from_center_km": 0.0,
       "nearby_attractions": [],
-      "map_embed_url": "https://www.google.com/maps/embed/v1/place?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&q=Casa+Decu%2C+Hip%C3%B3dromo+Condesa%2C+Cuauht%C3%A9moc%2C+Ciudad+de+M%C3%A9xico&zoom=15"
+      "map_embed_url": "https://www.google.com/maps/embed/v1/place?key=PLACEHOLDER_GOOGLE_MAPS_KEY&q=Casa+Decu%2C+Hip%C3%B3dromo+Condesa%2C+Cuauht%C3%A9moc%2C+Ciudad+de+M%C3%A9xico&zoom=15"
     }
   ],
   "days": [
@@ -183,7 +183,7 @@
               "website_url": "https://mexicocity.cdmx.gob.mx/venues/mercado-medellin/?lang=es",
               "google_maps_url": "https://maps.google.com/?cid=3201368549878217095&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
               "photo_urls": [
-                "https://places.googleapis.com/v1/places/ChIJ48KvaD7_0YURhzmZCryLbSw/photos/Ab43m-vYVQ_yKtjWM7EAh_XDKHPgZ6dyrK94StsDIl9S-zsFkN4HHQL0wiFYKASpAux0kEC3n8bDQw4yhuq-PxSgIXjqd73Z4XYHtLmpwAdsHMUGXlmLkIlOU2uyAWAo-1FQgWv2ONJXPoVxDm4_ACcFEp4N1HBXmRPXp98AtNfSHZS-CT4qiTj4FqEstFi8mbFldJSsXsfiCwOiwQL4cXFnQcVHqX-6VoXSRxT84eX2HQIUAzWK1RjozJIq2-I0-W5AHF_6oWBGWI-V4Apjr5kh-4dCI8Ev4LpFb_nX6XOWLcdalVudrZshHSUvje-dek6ZCfyvsxnvWTy6swJFGhnYXY_05TZkJCwLiFUSW3QCyxhEwsKQc-t-t6eEjRnwOmhlzUVYvwqEfXQMZe4pLJoy7PsKV2S_CueoyEomUl7MJfTYKQ/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+                "https://places.googleapis.com/v1/places/ChIJ48KvaD7_0YURhzmZCryLbSw/photos/Ab43m-vYVQ_yKtjWM7EAh_XDKHPgZ6dyrK94StsDIl9S-zsFkN4HHQL0wiFYKASpAux0kEC3n8bDQw4yhuq-PxSgIXjqd73Z4XYHtLmpwAdsHMUGXlmLkIlOU2uyAWAo-1FQgWv2ONJXPoVxDm4_ACcFEp4N1HBXmRPXp98AtNfSHZS-CT4qiTj4FqEstFi8mbFldJSsXsfiCwOiwQL4cXFnQcVHqX-6VoXSRxT84eX2HQIUAzWK1RjozJIq2-I0-W5AHF_6oWBGWI-V4Apjr5kh-4dCI8Ev4LpFb_nX6XOWLcdalVudrZshHSUvje-dek6ZCfyvsxnvWTy6swJFGhnYXY_05TZkJCwLiFUSW3QCyxhEwsKQc-t-t6eEjRnwOmhlzUVYvwqEfXQMZe4pLJoy7PsKV2S_CueoyEomUl7MJfTYKQ/media?maxHeightPx=400&key=PLACEHOLDER_GOOGLE_MAPS_KEY"
               ],
               "opening_hours": [],
               "latitude": 19.4104231,
@@ -222,7 +222,7 @@
               "website_url": "https://linktr.ee/jazzatlancapital",
               "google_maps_url": "https://maps.google.com/?cid=9072297591703007155&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
               "photo_urls": [
-                "https://places.googleapis.com/v1/places/ChIJwzBiHjn_0YURs-8WspdG530/photos/Ab43m-vdsFcTufC6pCxvnqYMrCCEyPLy1W3N79z8DYPTNC7c_JswHBWZg0b748bq6ww1HFp9HDGifj8z1yKRDJ0sGW2oFfxXSZrxq1LoYxOaVGaV7Wj9wynfhbTf0rdAVjk1-DSeEdzo6zracq7iriWZzYSxkXhY5raWjn9-reOqb7LM-mDh-CWKko5e4LDTie8br_USd1GzBsKs-zixGOF3q1UPrMEPmNpfCHK6KbrIDjHElZCBNpt0DTrKrovhvZxqQbnkhvr3EwDGDaTv2ERXmvdBZatlGRcs8FcrfHbImIv9eg/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+                "https://places.googleapis.com/v1/places/ChIJwzBiHjn_0YURs-8WspdG530/photos/Ab43m-vdsFcTufC6pCxvnqYMrCCEyPLy1W3N79z8DYPTNC7c_JswHBWZg0b748bq6ww1HFp9HDGifj8z1yKRDJ0sGW2oFfxXSZrxq1LoYxOaVGaV7Wj9wynfhbTf0rdAVjk1-DSeEdzo6zracq7iriWZzYSxkXhY5raWjn9-reOqb7LM-mDh-CWKko5e4LDTie8br_USd1GzBsKs-zixGOF3q1UPrMEPmNpfCHK6KbrIDjHElZCBNpt0DTrKrovhvZxqQbnkhvr3EwDGDaTv2ERXmvdBZatlGRcs8FcrfHbImIv9eg/media?maxHeightPx=400&key=PLACEHOLDER_GOOGLE_MAPS_KEY"
               ],
               "opening_hours": [],
               "latitude": 19.4159187,
@@ -251,7 +251,7 @@
       "cultural_tip": "",
       "daily_cost_usd": 48.0,
       "walking_km": 6.0,
-      "route_map_url": "https://www.google.com/maps/embed/v1/directions?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&origin=19.4145%2C-99.1713&destination=19.4159187%2C-99.1648283&mode=walking&waypoints=19.4104231%2C-99.1633804"
+      "route_map_url": "https://www.google.com/maps/embed/v1/directions?key=PLACEHOLDER_GOOGLE_MAPS_KEY&origin=19.4145%2C-99.1713&destination=19.4159187%2C-99.1648283&mode=walking&waypoints=19.4104231%2C-99.1633804"
     },
     {
       "day_number": 2,
@@ -281,7 +281,7 @@
               "website_url": "https://mexicocity.cdmx.gob.mx/venues/mercado-medellin/?lang=es",
               "google_maps_url": "https://maps.google.com/?cid=3201368549878217095&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
               "photo_urls": [
-                "https://places.googleapis.com/v1/places/ChIJ48KvaD7_0YURhzmZCryLbSw/photos/Ab43m-vYVQ_yKtjWM7EAh_XDKHPgZ6dyrK94StsDIl9S-zsFkN4HHQL0wiFYKASpAux0kEC3n8bDQw4yhuq-PxSgIXjqd73Z4XYHtLmpwAdsHMUGXlmLkIlOU2uyAWAo-1FQgWv2ONJXPoVxDm4_ACcFEp4N1HBXmRPXp98AtNfSHZS-CT4qiTj4FqEstFi8mbFldJSsXsfiCwOiwQL4cXFnQcVHqX-6VoXSRxT84eX2HQIUAzWK1RjozJIq2-I0-W5AHF_6oWBGWI-V4Apjr5kh-4dCI8Ev4LpFb_nX6XOWLcdalVudrZshHSUvje-dek6ZCfyvsxnvWTy6swJFGhnYXY_05TZkJCwLiFUSW3QCyxhEwsKQc-t-t6eEjRnwOmhlzUVYvwqEfXQMZe4pLJoy7PsKV2S_CueoyEomUl7MJfTYKQ/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+                "https://places.googleapis.com/v1/places/ChIJ48KvaD7_0YURhzmZCryLbSw/photos/Ab43m-vYVQ_yKtjWM7EAh_XDKHPgZ6dyrK94StsDIl9S-zsFkN4HHQL0wiFYKASpAux0kEC3n8bDQw4yhuq-PxSgIXjqd73Z4XYHtLmpwAdsHMUGXlmLkIlOU2uyAWAo-1FQgWv2ONJXPoVxDm4_ACcFEp4N1HBXmRPXp98AtNfSHZS-CT4qiTj4FqEstFi8mbFldJSsXsfiCwOiwQL4cXFnQcVHqX-6VoXSRxT84eX2HQIUAzWK1RjozJIq2-I0-W5AHF_6oWBGWI-V4Apjr5kh-4dCI8Ev4LpFb_nX6XOWLcdalVudrZshHSUvje-dek6ZCfyvsxnvWTy6swJFGhnYXY_05TZkJCwLiFUSW3QCyxhEwsKQc-t-t6eEjRnwOmhlzUVYvwqEfXQMZe4pLJoy7PsKV2S_CueoyEomUl7MJfTYKQ/media?maxHeightPx=400&key=PLACEHOLDER_GOOGLE_MAPS_KEY"
               ],
               "opening_hours": [],
               "latitude": 19.4104231,
@@ -320,7 +320,7 @@
               "website_url": "https://www.facebook.com/MERCADODEARTESANIASLACIUDADELA",
               "google_maps_url": "https://maps.google.com/?cid=4782874056937184&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
               "photo_urls": [
-                "https://places.googleapis.com/v1/places/ChIJQ9Gr0Sr_0YUR4E4rpf_9EAA/photos/Ab43m-uMjW7Us0NZzrO1vtNcP3op-7FlKUmivfoAs86nhUCjBa8KRF6KyR7pX4KIRHxPsUXapO6rw3EpwBUD1F3n5PhcYtSXC-PPbGuqueyxByMJxcopWrXWkV_S-2VxL3kNLfLHjVqfi2yQhpAa8mo7iuu2rc-7_V-8EYyRUfZkCB2tZPFQejQBziwyKJCTd_-lzyipLyIcu70cS4YosO59AfeZ1VUwhA2kOt53PlvZN7zIZdz_I1WJYHuTnkSljv245T0q7jQfye3vlF0NIKIOaSqYGDuddaGA2UoSIYAd2KAeOPiAea6ZhUliubeZDy_j21Pyyvk5lX_ShBamFenEq360E24VemYQUxtivAO5OIwRhEnp8l-FOzKDxx0e3XDEDQuGZYEK8z397TI8x7sV1lc1L8KpDoqFr0N2q9plLLclY8S_/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+                "https://places.googleapis.com/v1/places/ChIJQ9Gr0Sr_0YUR4E4rpf_9EAA/photos/Ab43m-uMjW7Us0NZzrO1vtNcP3op-7FlKUmivfoAs86nhUCjBa8KRF6KyR7pX4KIRHxPsUXapO6rw3EpwBUD1F3n5PhcYtSXC-PPbGuqueyxByMJxcopWrXWkV_S-2VxL3kNLfLHjVqfi2yQhpAa8mo7iuu2rc-7_V-8EYyRUfZkCB2tZPFQejQBziwyKJCTd_-lzyipLyIcu70cS4YosO59AfeZ1VUwhA2kOt53PlvZN7zIZdz_I1WJYHuTnkSljv245T0q7jQfye3vlF0NIKIOaSqYGDuddaGA2UoSIYAd2KAeOPiAea6ZhUliubeZDy_j21Pyyvk5lX_ShBamFenEq360E24VemYQUxtivAO5OIwRhEnp8l-FOzKDxx0e3XDEDQuGZYEK8z397TI8x7sV1lc1L8KpDoqFr0N2q9plLLclY8S_/media?maxHeightPx=400&key=PLACEHOLDER_GOOGLE_MAPS_KEY"
               ],
               "opening_hours": [],
               "latitude": 19.4308122,
@@ -359,7 +359,7 @@
               "website_url": "https://www.facebook.com/Lacasamerida109",
               "google_maps_url": "https://maps.google.com/?cid=3026525010620911255&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
               "photo_urls": [
-                "https://places.googleapis.com/v1/places/ChIJISFbuDr_0YURlw7lQXZgACo/photos/Ab43m-vp6Cj7FQx_syFSpzr_VomeyAZ_GK4G-LkRurxh3A6HSaC0a23PKJcVtKjs1-hcbycdTvhDAWLF4aJVdkW2pZJsHBeVDpiICvDUu6hzRoxI7X6kqiw6x1na1Hnu4KOT9XAlfk9YdPwr0YW81u8_T242ciBxV5XT4Qzi_siSqKQIFi6V39mqZ4CrUa1FVa2V6cApezZ6EbZo8gdY7urOPveNdXopTG_E66TNWxuVEh3_T1mVxyQg0naXSN5kgo7xEXlnnUWPyALPS2Fr0MHrowACiwTQL4izI0-cLwdDAvXqe57bVFDjnt753G8lKiP6hjckUnGN928jxLznngDILOuJGIXjW2tyA5VDQS17gCk-zgSRcvxIhM2wkf0jE7REevA_S_2vvBfgyr61o4Tyxjg2o2F079xgq0iCnSXE4MsnDNd_5ERSYrnQ3dl62Z1-/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+                "https://places.googleapis.com/v1/places/ChIJISFbuDr_0YURlw7lQXZgACo/photos/Ab43m-vp6Cj7FQx_syFSpzr_VomeyAZ_GK4G-LkRurxh3A6HSaC0a23PKJcVtKjs1-hcbycdTvhDAWLF4aJVdkW2pZJsHBeVDpiICvDUu6hzRoxI7X6kqiw6x1na1Hnu4KOT9XAlfk9YdPwr0YW81u8_T242ciBxV5XT4Qzi_siSqKQIFi6V39mqZ4CrUa1FVa2V6cApezZ6EbZo8gdY7urOPveNdXopTG_E66TNWxuVEh3_T1mVxyQg0naXSN5kgo7xEXlnnUWPyALPS2Fr0MHrowACiwTQL4izI0-cLwdDAvXqe57bVFDjnt753G8lKiP6hjckUnGN928jxLznngDILOuJGIXjW2tyA5VDQS17gCk-zgSRcvxIhM2wkf0jE7REevA_S_2vvBfgyr61o4Tyxjg2o2F079xgq0iCnSXE4MsnDNd_5ERSYrnQ3dl62Z1-/media?maxHeightPx=400&key=PLACEHOLDER_GOOGLE_MAPS_KEY"
               ],
               "opening_hours": [],
               "latitude": 19.4190574,
@@ -388,7 +388,7 @@
       "cultural_tip": "",
       "daily_cost_usd": 60.0,
       "walking_km": 5.0,
-      "route_map_url": "https://www.google.com/maps/embed/v1/directions?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&origin=19.4104231%2C-99.1633804&destination=19.4190574%2C-99.1575491&mode=walking&waypoints=19.4308122%2C-99.14936929999999"
+      "route_map_url": "https://www.google.com/maps/embed/v1/directions?key=PLACEHOLDER_GOOGLE_MAPS_KEY&origin=19.4104231%2C-99.1633804&destination=19.4190574%2C-99.1575491&mode=walking&waypoints=19.4308122%2C-99.14936929999999"
     },
     {
       "day_number": 3,
@@ -418,7 +418,7 @@
               "website_url": "https://mercadojamaica.com/",
               "google_maps_url": "https://maps.google.com/?cid=777042942593653135&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
               "photo_urls": [
-                "https://places.googleapis.com/v1/places/ChIJj4OJKZX-0YURj9mEeHCcyAo/photos/Ab43m-slu1KiF0BWRftifkDXQaECakC6i3vpmmsc1hoWCf3MWVhMl-u1zgPDBp-anyKyMF4Wp8-cBwU36ftl1gz1z9CXNlnGU6PLCMNXYVWuCmW8w0A9JYRHbQIpUbaas60ZIksWg8vbD4mm6K_VLjcRic2RCxa2_dh1Q5PdtRDYYHRlRaYINsCO3QiVvSpeYixh8BNRuty0mL_CszHLhC_tVRthHuqrKJvM5kIIr-uk3hjTX9kamOAOSeDmQ8iuvxPYr_bCsGonrJCYAS65LxC7gGv_fzpWvAd7LJEEsXIKwqv7ix7z1m_LH9izLz2KrklTmKLInzE4KNNJNN1-pIf81mbq3oDMe719q-vtIRGJuDMpk4LwXiIDzj4GhEPA-Vt0GLqyfoJLso7ooEkC-l3ykuJcjJ0Za1nvubngt5yJf3sRLzF3/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+                "https://places.googleapis.com/v1/places/ChIJj4OJKZX-0YURj9mEeHCcyAo/photos/Ab43m-slu1KiF0BWRftifkDXQaECakC6i3vpmmsc1hoWCf3MWVhMl-u1zgPDBp-anyKyMF4Wp8-cBwU36ftl1gz1z9CXNlnGU6PLCMNXYVWuCmW8w0A9JYRHbQIpUbaas60ZIksWg8vbD4mm6K_VLjcRic2RCxa2_dh1Q5PdtRDYYHRlRaYINsCO3QiVvSpeYixh8BNRuty0mL_CszHLhC_tVRthHuqrKJvM5kIIr-uk3hjTX9kamOAOSeDmQ8iuvxPYr_bCsGonrJCYAS65LxC7gGv_fzpWvAd7LJEEsXIKwqv7ix7z1m_LH9izLz2KrklTmKLInzE4KNNJNN1-pIf81mbq3oDMe719q-vtIRGJuDMpk4LwXiIDzj4GhEPA-Vt0GLqyfoJLso7ooEkC-l3ykuJcjJ0Za1nvubngt5yJf3sRLzF3/media?maxHeightPx=400&key=PLACEHOLDER_GOOGLE_MAPS_KEY"
               ],
               "opening_hours": [],
               "latitude": 19.408065,
@@ -457,7 +457,7 @@
               "website_url": "https://productora-df.com.mx/en/project/laguna/",
               "google_maps_url": "",
               "photo_urls": [
-                "https://places.googleapis.com/v1/places/ChIJMRL-tSX_0YURcIB4CkeP9ag/photos/Ab43m-u8GquY6-9E6x3mft9O5n1EqQSidaIxY8RxAFNxtJngQVtvemRtR-X8Dwd-X8XqWtWPCySLtlBTB_0bVQczkq2MSZfywdVPEAx2msRD7dYEENDFjjo65xcbqraNzVazG6U77fzeFZPQ_n7vh_7ds4mBqu5v9dvJwu3IV3RUu3zWoLJDOhUFkj1xDOXX2CQJMv_sQWbOeUPrZ45GRq_gL1gcdoyA8QzxKakyigna164S8z2FR2rK3VAhjS3m6IcAKKYfkrotPdmHy-hPjVQUKjQhCG-soke5NtNIJTS4jf0biA/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+                "https://places.googleapis.com/v1/places/ChIJMRL-tSX_0YURcIB4CkeP9ag/photos/Ab43m-u8GquY6-9E6x3mft9O5n1EqQSidaIxY8RxAFNxtJngQVtvemRtR-X8Dwd-X8XqWtWPCySLtlBTB_0bVQczkq2MSZfywdVPEAx2msRD7dYEENDFjjo65xcbqraNzVazG6U77fzeFZPQ_n7vh_7ds4mBqu5v9dvJwu3IV3RUu3zWoLJDOhUFkj1xDOXX2CQJMv_sQWbOeUPrZ45GRq_gL1gcdoyA8QzxKakyigna164S8z2FR2rK3VAhjS3m6IcAKKYfkrotPdmHy-hPjVQUKjQhCG-soke5NtNIJTS4jf0biA/media?maxHeightPx=400&key=PLACEHOLDER_GOOGLE_MAPS_KEY"
               ],
               "opening_hours": [
                 "Tue–Sat 11:00–20:00",
@@ -499,7 +499,7 @@
               "website_url": "https://bajocircuito.com/",
               "google_maps_url": "https://maps.google.com/?cid=16526148539939984684&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
               "photo_urls": [
-                "https://places.googleapis.com/v1/places/ChIJbYCgKVv_0YURLJV2rImsWOU/photos/Ab43m-vKlfNfF_A9811dutY_yrj7kjrslkmdyWtf_duCTheh-3xvfhKW_Bh5ieQ-9-tz7sqElOHHOZJuK_Uk1U8NvIzBK_qeDS3JEZbet7OegLPDlFW2Pur3U9AKsXGIydxwc5O7NlYM_4xnXp02jyA8tmO18FNT-qIHthqAbY2v2P89EXlftHHpBzCIKuK2fOURrG_NXfPSo2gKFC94sX6K0_WLsTzMy2p-S1mfNGXe4o9kFcg8mTHDFmFJevFMi6nL-YKq97wrG-ucm1u8gjHpfCShlNL7NH-L4u7kqoCiM0atDA/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+                "https://places.googleapis.com/v1/places/ChIJbYCgKVv_0YURLJV2rImsWOU/photos/Ab43m-vKlfNfF_A9811dutY_yrj7kjrslkmdyWtf_duCTheh-3xvfhKW_Bh5ieQ-9-tz7sqElOHHOZJuK_Uk1U8NvIzBK_qeDS3JEZbet7OegLPDlFW2Pur3U9AKsXGIydxwc5O7NlYM_4xnXp02jyA8tmO18FNT-qIHthqAbY2v2P89EXlftHHpBzCIKuK2fOURrG_NXfPSo2gKFC94sX6K0_WLsTzMy2p-S1mfNGXe4o9kFcg8mTHDFmFJevFMi6nL-YKq97wrG-ucm1u8gjHpfCShlNL7NH-L4u7kqoCiM0atDA/media?maxHeightPx=400&key=PLACEHOLDER_GOOGLE_MAPS_KEY"
               ],
               "opening_hours": [
                 "Varies by event"
@@ -530,7 +530,7 @@
       "cultural_tip": "",
       "daily_cost_usd": 37.0,
       "walking_km": 4.5,
-      "route_map_url": "https://www.google.com/maps/embed/v1/directions?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&origin=19.408065%2C-99.1230732&destination=19.4161098%2C-99.1793293&mode=walking&waypoints=19.4209%2C-99.1502"
+      "route_map_url": "https://www.google.com/maps/embed/v1/directions?key=PLACEHOLDER_GOOGLE_MAPS_KEY&origin=19.408065%2C-99.1230732&destination=19.4161098%2C-99.1793293&mode=walking&waypoints=19.4209%2C-99.1502"
     },
     {
       "day_number": 4,
@@ -560,7 +560,7 @@
               "website_url": "http://mercadosancosme.wordpress.com/",
               "google_maps_url": "https://maps.google.com/?cid=16809177050937041242&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
               "photo_urls": [
-                "https://places.googleapis.com/v1/places/ChIJU6moy8j40YURWiHAD3gxRuk/photos/Ab43m-v6kmF7uHjg2iW-VUOcjF54p5SpHsupHux6VP9QOTtCQ4VfS211P4ffkc_3NpBNg5qeL3xPxsZlA6SsgXZGv-UeljtMzQZXNilnvFQDjDnNS3b-7ZGXataSr12aKwM3jFaI4VVOGmjnFFSiWDy9x1NzPa0QwwC5TA3_80cW-DCrcrpMAzMaK_2TQs6wgQoSkSpGRFWwUDVYwKe4oCdyTj0C-Icd9bo11k9Zn_Y7tmnW2v5fkSs776lWpLfPCLgdJ4KA7EvicE9lIDwLGAWqr7V9-fGKL3Iio10qPQhoMS6ID1fZOrEY1np8eQGexzySo1NEYX_G1FHWf2PKqbF8riOZGXlOFVt_4bI3Tnb9yRQ0O_onfXISR--yiF4zE8YBVnc3rHzTZoMiCHKWJciK7Nv8ZNebodgYNuWhw7p5rFM/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+                "https://places.googleapis.com/v1/places/ChIJU6moy8j40YURWiHAD3gxRuk/photos/Ab43m-v6kmF7uHjg2iW-VUOcjF54p5SpHsupHux6VP9QOTtCQ4VfS211P4ffkc_3NpBNg5qeL3xPxsZlA6SsgXZGv-UeljtMzQZXNilnvFQDjDnNS3b-7ZGXataSr12aKwM3jFaI4VVOGmjnFFSiWDy9x1NzPa0QwwC5TA3_80cW-DCrcrpMAzMaK_2TQs6wgQoSkSpGRFWwUDVYwKe4oCdyTj0C-Icd9bo11k9Zn_Y7tmnW2v5fkSs776lWpLfPCLgdJ4KA7EvicE9lIDwLGAWqr7V9-fGKL3Iio10qPQhoMS6ID1fZOrEY1np8eQGexzySo1NEYX_G1FHWf2PKqbF8riOZGXlOFVt_4bI3Tnb9yRQ0O_onfXISR--yiF4zE8YBVnc3rHzTZoMiCHKWJciK7Nv8ZNebodgYNuWhw7p5rFM/media?maxHeightPx=400&key=PLACEHOLDER_GOOGLE_MAPS_KEY"
               ],
               "opening_hours": [],
               "latitude": 19.4418924,
@@ -599,7 +599,7 @@
               "website_url": "http://www.casacomtesse.com/",
               "google_maps_url": "https://maps.google.com/?cid=1049988402866184394&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
               "photo_urls": [
-                "https://places.googleapis.com/v1/places/ChIJ2YNnemn_0YURymAeq-NOkg4/photos/Ab43m-tvueNss50WbCOgNrEBfZuCoBjUJFeSTXwYnNAuaF0fJ-944To99A1TnHrADsiUIRf1BhtRKS6KdAoYShxEtUyttal7K82mvQAF7s5LWLNIxNcpUmr94C0xdqGya2NGHiJbwTHkgoDicPMdQr7hiXvJLF4sGF13BG-at3uHs5pszEGYFgwFKoRLkNmpgxSNeupqaMCVo8a2-xgiEK0MFxtzGCfG4xSEYl5xOvCBdd6ahoeeGAkao4fT3JN90ri0jIkvaeU_5Bbh8n8ssyK66UhDmFqqih1M_QaHL96TYQUa4w/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+                "https://places.googleapis.com/v1/places/ChIJ2YNnemn_0YURymAeq-NOkg4/photos/Ab43m-tvueNss50WbCOgNrEBfZuCoBjUJFeSTXwYnNAuaF0fJ-944To99A1TnHrADsiUIRf1BhtRKS6KdAoYShxEtUyttal7K82mvQAF7s5LWLNIxNcpUmr94C0xdqGya2NGHiJbwTHkgoDicPMdQr7hiXvJLF4sGF13BG-at3uHs5pszEGYFgwFKoRLkNmpgxSNeupqaMCVo8a2-xgiEK0MFxtzGCfG4xSEYl5xOvCBdd6ahoeeGAkao4fT3JN90ri0jIkvaeU_5Bbh8n8ssyK66UhDmFqqih1M_QaHL96TYQUa4w/media?maxHeightPx=400&key=PLACEHOLDER_GOOGLE_MAPS_KEY"
               ],
               "opening_hours": [
                 "Open 24 hours (per listing)"
@@ -640,7 +640,7 @@
               "website_url": "https://linktr.ee/jazzatlancapital",
               "google_maps_url": "https://maps.google.com/?cid=9072297591703007155&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
               "photo_urls": [
-                "https://places.googleapis.com/v1/places/ChIJwzBiHjn_0YURs-8WspdG530/photos/Ab43m-vdsFcTufC6pCxvnqYMrCCEyPLy1W3N79z8DYPTNC7c_JswHBWZg0b748bq6ww1HFp9HDGifj8z1yKRDJ0sGW2oFfxXSZrxq1LoYxOaVGaV7Wj9wynfhbTf0rdAVjk1-DSeEdzo6zracq7iriWZzYSxkXhY5raWjn9-reOqb7LM-mDh-CWKko5e4LDTie8br_USd1GzBsKs-zixGOF3q1UPrMEPmNpfCHK6KbrIDjHElZCBNpt0DTrKrovhvZxqQbnkhvr3EwDGDaTv2ERXmvdBZatlGRcs8FcrfHbImIv9eg/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+                "https://places.googleapis.com/v1/places/ChIJwzBiHjn_0YURs-8WspdG530/photos/Ab43m-vdsFcTufC6pCxvnqYMrCCEyPLy1W3N79z8DYPTNC7c_JswHBWZg0b748bq6ww1HFp9HDGifj8z1yKRDJ0sGW2oFfxXSZrxq1LoYxOaVGaV7Wj9wynfhbTf0rdAVjk1-DSeEdzo6zracq7iriWZzYSxkXhY5raWjn9-reOqb7LM-mDh-CWKko5e4LDTie8br_USd1GzBsKs-zixGOF3q1UPrMEPmNpfCHK6KbrIDjHElZCBNpt0DTrKrovhvZxqQbnkhvr3EwDGDaTv2ERXmvdBZatlGRcs8FcrfHbImIv9eg/media?maxHeightPx=400&key=PLACEHOLDER_GOOGLE_MAPS_KEY"
               ],
               "opening_hours": [],
               "latitude": 19.4159187,
@@ -669,7 +669,7 @@
       "cultural_tip": "",
       "daily_cost_usd": 56.5,
       "walking_km": 5.0,
-      "route_map_url": "https://www.google.com/maps/embed/v1/directions?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&origin=19.4418924%2C-99.1623377&destination=19.4159187%2C-99.1648283&mode=walking&waypoints=19.4047051%2C-99.1737789"
+      "route_map_url": "https://www.google.com/maps/embed/v1/directions?key=PLACEHOLDER_GOOGLE_MAPS_KEY&origin=19.4418924%2C-99.1623377&destination=19.4159187%2C-99.1648283&mode=walking&waypoints=19.4047051%2C-99.1737789"
     },
     {
       "day_number": 5,
@@ -699,7 +699,7 @@
               "website_url": "",
               "google_maps_url": "https://maps.google.com/?cid=8638990294780037140&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
               "photo_urls": [
-                "https://places.googleapis.com/v1/places/ChIJeYLOZMT_0YURFEhp2ubb43c/photos/Ab43m-tVa9INuoD8Di_Ayn5saes8oHnI_1hputDuEO5Gj2kS84OsHYe7Mip_w4cua7uh-4dnwQwW8Rmt0b5grAS912qyJbtrvjUeme77-yNLZkjPOwn7UtsT6M7EAzlj8IxK6ydywhxjj_ow3p4bx27xaDeaXlx4XElzEsXng6rMlAp3-mP9eUhvvrM8WYUj0P3GsZDWXz7PSksmNMEUnaHi_JzRFZv7oPQkLZWJvfuvUpd3hgYLAxEVK_rFVG300zE7CeLDHbITGEEP1bEwyhqB-zu1_RS0PI_p75Be33xgO8H0IFLDMx5U88iT_OzFLzTropAOpAmu0HeXBFQ_Xca_DOZsoi67ckciMtLudLh5ZTmJterthcYGBsyvabRjeMBKUxPqbA64IncExAK9lGiwtnu-lzZfPaPFiNoBpMarWuYLQ_Y/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+                "https://places.googleapis.com/v1/places/ChIJeYLOZMT_0YURFEhp2ubb43c/photos/Ab43m-tVa9INuoD8Di_Ayn5saes8oHnI_1hputDuEO5Gj2kS84OsHYe7Mip_w4cua7uh-4dnwQwW8Rmt0b5grAS912qyJbtrvjUeme77-yNLZkjPOwn7UtsT6M7EAzlj8IxK6ydywhxjj_ow3p4bx27xaDeaXlx4XElzEsXng6rMlAp3-mP9eUhvvrM8WYUj0P3GsZDWXz7PSksmNMEUnaHi_JzRFZv7oPQkLZWJvfuvUpd3hgYLAxEVK_rFVG300zE7CeLDHbITGEEP1bEwyhqB-zu1_RS0PI_p75Be33xgO8H0IFLDMx5U88iT_OzFLzTropAOpAmu0HeXBFQ_Xca_DOZsoi67ckciMtLudLh5ZTmJterthcYGBsyvabRjeMBKUxPqbA64IncExAK9lGiwtnu-lzZfPaPFiNoBpMarWuYLQ_Y/media?maxHeightPx=400&key=PLACEHOLDER_GOOGLE_MAPS_KEY"
               ],
               "opening_hours": [],
               "latitude": 19.3528679,
@@ -738,7 +738,7 @@
               "website_url": "https://mercadosonora.com.mx/",
               "google_maps_url": "https://maps.google.com/?cid=16121866506867316183&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
               "photo_urls": [
-                "https://places.googleapis.com/v1/places/ChIJZ2lB4Mf-0YUR1xUYsitgvN8/photos/Ab43m-utNbdUzZTIH-lw0bJp6FoDLLM1oOGh3u8sQF0HXSrQcSPPR0oSw8lZOX2l0j2jwKgcJvuS6-1Ip1bKqFOul-iG5NwXJX8up3tzQR9sLjdOc82uhYeQAgkeQmqMkwga3vNRjzP87vrZJuRZ-VAf3wDQZcgTO6UXFtfRRMAQ3jDuls0yCo0KdUfYsGo3gb2q719CrRJxHaei1UKMhcu0XApPleJTicxdvjpl1h0dFEgc5UfAk9JGcaHLTODbeWadwQxMvloFCOzRjucdInyXUW8RcLIK6KqBTatXdThDAgQgZODNg2B53nSMlKDrYM5fjF4ZrEZ1p3iV6CZXKALDGyJ7dgoGpIutAQvYbuK8MniFrgZPS2NO8FjfDyj4Br08GUuccTPW9HPu0XS6eMxSA93vu8pRrgEXr2lXgDwfDDsy5ds/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+                "https://places.googleapis.com/v1/places/ChIJZ2lB4Mf-0YUR1xUYsitgvN8/photos/Ab43m-utNbdUzZTIH-lw0bJp6FoDLLM1oOGh3u8sQF0HXSrQcSPPR0oSw8lZOX2l0j2jwKgcJvuS6-1Ip1bKqFOul-iG5NwXJX8up3tzQR9sLjdOc82uhYeQAgkeQmqMkwga3vNRjzP87vrZJuRZ-VAf3wDQZcgTO6UXFtfRRMAQ3jDuls0yCo0KdUfYsGo3gb2q719CrRJxHaei1UKMhcu0XApPleJTicxdvjpl1h0dFEgc5UfAk9JGcaHLTODbeWadwQxMvloFCOzRjucdInyXUW8RcLIK6KqBTatXdThDAgQgZODNg2B53nSMlKDrYM5fjF4ZrEZ1p3iV6CZXKALDGyJ7dgoGpIutAQvYbuK8MniFrgZPS2NO8FjfDyj4Br08GUuccTPW9HPu0XS6eMxSA93vu8pRrgEXr2lXgDwfDDsy5ds/media?maxHeightPx=400&key=PLACEHOLDER_GOOGLE_MAPS_KEY"
               ],
               "opening_hours": [],
               "latitude": 19.4221205,
@@ -777,7 +777,7 @@
               "website_url": "http://departamento.tv/",
               "google_maps_url": "https://maps.google.com/?cid=7517091371642899874&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
               "photo_urls": [
-                "https://places.googleapis.com/v1/places/ChIJozNiIEz_0YURos3tdsYSUmg/photos/Ab43m-uqhCvYkf_RJWP8E9tOo40a4bXXL-nmiuI1r7Ukp-tn_fE58a4927bjDMOQJjLrpZl2paaE_vsrvOnXv74jCApgHiP-h4brA1Fydy86c_iihF7FSaGv9kDSEIrplRWdQPxYm5k9N8Icx2a5l_MmJfN2Rn1hWorskBhOAYCL79pDyVFw1RocWDMOJ0s4bxs-qOPXBaQ-_y3lw8wwgg6aZeM200giV5Q4eH7byfRX0MqpVDiB4ymKgHhI1alfBRLhTQIvKDzH-Bqphxagh05uiI7MwHusBC4zH9I3-_rRyOo10Q/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+                "https://places.googleapis.com/v1/places/ChIJozNiIEz_0YURos3tdsYSUmg/photos/Ab43m-uqhCvYkf_RJWP8E9tOo40a4bXXL-nmiuI1r7Ukp-tn_fE58a4927bjDMOQJjLrpZl2paaE_vsrvOnXv74jCApgHiP-h4brA1Fydy86c_iihF7FSaGv9kDSEIrplRWdQPxYm5k9N8Icx2a5l_MmJfN2Rn1hWorskBhOAYCL79pDyVFw1RocWDMOJ0s4bxs-qOPXBaQ-_y3lw8wwgg6aZeM200giV5Q4eH7byfRX0MqpVDiB4ymKgHhI1alfBRLhTQIvKDzH-Bqphxagh05uiI7MwHusBC4zH9I3-_rRyOo10Q/media?maxHeightPx=400&key=PLACEHOLDER_GOOGLE_MAPS_KEY"
               ],
               "opening_hours": [],
               "latitude": 19.4176009,
@@ -806,7 +806,7 @@
       "cultural_tip": "",
       "daily_cost_usd": 58.0,
       "walking_km": 3.5,
-      "route_map_url": "https://www.google.com/maps/embed/v1/directions?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&origin=19.3528679%2C-99.1620664&destination=19.4176009%2C-99.1618273&mode=walking&waypoints=19.4221205%2C-99.1247031"
+      "route_map_url": "https://www.google.com/maps/embed/v1/directions?key=PLACEHOLDER_GOOGLE_MAPS_KEY&origin=19.3528679%2C-99.1620664&destination=19.4176009%2C-99.1618273&mode=walking&waypoints=19.4221205%2C-99.1247031"
     },
     {
       "day_number": 6,
@@ -836,7 +836,7 @@
               "website_url": "",
               "google_maps_url": "https://maps.google.com/?cid=11376355233979147071&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
               "photo_urls": [
-                "https://places.googleapis.com/v1/places/ChIJb8brj_n_0YURP6P7j8_u4J0/photos/Ab43m-vMIMHYQ9OfbjrDBe3VK82WIr0hEN60DtkYD43_FKfvptI86Iz4HkB4nJCNc9kmqwrpl0v_swq45IH9pWdtWkjVE7f4HfCIxBHsHkQ8gFVSrepuHvoRiT153S4WGmPBFVZLXpaxfgO0FB22Tyk-CSNRn8VRZBlnfJq0O18JOMt0qL6jKVwhMUw_XnbF-z5Kxkxf0wFuzrRzd9fEjGfGpkA10OJQBRQGpVR4DrpMplDyRocO3fdjwgJZTxTagHm7kHYGz2JzElGWPgR727GbvnCUsl9WV0ffIOrY49ZzoqyZ82n16M7AUf7TOmZzBjtTEqXYhCj6QwiqiS1gHrHZudIDIzWUQNT1wVy7RqLT8DqAKJQeVHMl0zr_GUCI_p2kL3Yw2qcKIhbOt71HL3somdMNRPLEW8AD38DKR5z25Nw/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+                "https://places.googleapis.com/v1/places/ChIJb8brj_n_0YURP6P7j8_u4J0/photos/Ab43m-vMIMHYQ9OfbjrDBe3VK82WIr0hEN60DtkYD43_FKfvptI86Iz4HkB4nJCNc9kmqwrpl0v_swq45IH9pWdtWkjVE7f4HfCIxBHsHkQ8gFVSrepuHvoRiT153S4WGmPBFVZLXpaxfgO0FB22Tyk-CSNRn8VRZBlnfJq0O18JOMt0qL6jKVwhMUw_XnbF-z5Kxkxf0wFuzrRzd9fEjGfGpkA10OJQBRQGpVR4DrpMplDyRocO3fdjwgJZTxTagHm7kHYGz2JzElGWPgR727GbvnCUsl9WV0ffIOrY49ZzoqyZ82n16M7AUf7TOmZzBjtTEqXYhCj6QwiqiS1gHrHZudIDIzWUQNT1wVy7RqLT8DqAKJQeVHMl0zr_GUCI_p2kL3Yw2qcKIhbOt71HL3somdMNRPLEW8AD38DKR5z25Nw/media?maxHeightPx=400&key=PLACEHOLDER_GOOGLE_MAPS_KEY"
               ],
               "opening_hours": [],
               "latitude": 19.4261124,
@@ -875,7 +875,7 @@
               "website_url": "",
               "google_maps_url": "",
               "photo_urls": [
-                "https://places.googleapis.com/v1/places/ChIJ__9zdWr_0YUR4SVaBAVl1HU/photos/Ab43m-sTRDYqPnyMwMi9LY58LhuRBOUtN8yk_tAaFOHcYbt8wdyViKan1lS0w_CF1MRo_iN78Bpy91hpJFS7vRESefsAsplORo1iTkjHjzv1pFhgqsHYHUQGGxjFIwy7C7BNwWYTQ1SSN32-7AUtW-VYZTrQFi_vUbn8ug31bcvItcAwT9QvqiQGA81iRXLHQSQRjxyl77TNDis-G8Riw3o8z3o0jLk5TWRYlrMCa2OaKkXrx6RHbw6xBedFfVhrzkUEuXEL8Hz9gK8oM9-dbDJTUPxWbKs2JJ5-AN8l7lF_-fCnLA/media?maxHeightPx=400&key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04"
+                "https://places.googleapis.com/v1/places/ChIJ__9zdWr_0YUR4SVaBAVl1HU/photos/Ab43m-sTRDYqPnyMwMi9LY58LhuRBOUtN8yk_tAaFOHcYbt8wdyViKan1lS0w_CF1MRo_iN78Bpy91hpJFS7vRESefsAsplORo1iTkjHjzv1pFhgqsHYHUQGGxjFIwy7C7BNwWYTQ1SSN32-7AUtW-VYZTrQFi_vUbn8ug31bcvItcAwT9QvqiQGA81iRXLHQSQRjxyl77TNDis-G8Riw3o8z3o0jLk5TWRYlrMCa2OaKkXrx6RHbw6xBedFfVhrzkUEuXEL8Hz9gK8oM9-dbDJTUPxWbKs2JJ5-AN8l7lF_-fCnLA/media?maxHeightPx=400&key=PLACEHOLDER_GOOGLE_MAPS_KEY"
               ],
               "opening_hours": [],
               "latitude": 19.4145,
@@ -929,7 +929,7 @@
       "cultural_tip": "",
       "daily_cost_usd": 38.0,
       "walking_km": 2.0,
-      "route_map_url": "https://www.google.com/maps/embed/v1/directions?key=AIzaSyAwGsRTXn2NIHhIbuRGn9iY9nEcab4-s04&origin=19.4261124%2C-99.1251527&destination=19.4145%2C-99.1713&mode=walking&waypoints=19.4145%2C-99.1713"
+      "route_map_url": "https://www.google.com/maps/embed/v1/directions?key=PLACEHOLDER_GOOGLE_MAPS_KEY&origin=19.4261124%2C-99.1251527&destination=19.4145%2C-99.1713&mode=walking&waypoints=19.4145%2C-99.1713"
     }
   ],
   "budget_flights": 0.0,
