@@ -41,6 +41,7 @@ jobs:
   # Job 1: Lint + format — fast fail on code style
   # ──────────────────────────────────────────────────────────────────
   lint:
+    needs: [secrets-scan]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -56,6 +57,7 @@ jobs:
   # Job 2: Unit tests + coverage — fail-fast, 80% minimum
   # ──────────────────────────────────────────────────────────────────
   test:
+    needs: [secrets-scan]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -71,6 +73,7 @@ jobs:
   # Validates routing, budget completeness, handbook sections
   # ──────────────────────────────────────────────────────────────────
   eval-layer1:
+    needs: [secrets-scan]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -85,7 +88,7 @@ jobs:
   # Job 4: Docker build dry-run — catch Dockerfile issues on PRs
   # ──────────────────────────────────────────────────────────────────
   docker-build:
-    needs: [lint]
+    needs: [lint, test, eval-layer1]
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
@@ -99,7 +102,7 @@ jobs:
   # Job 5: Build + push Docker image (main branch only)
   # ──────────────────────────────────────────────────────────────────
   build-and-push:
-    needs: [secrets-scan, lint, test, eval-layer1]
+    needs: [lint, test, eval-layer1]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
