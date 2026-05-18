@@ -1,0 +1,105 @@
+name: Deploy to Test
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  AZURE_RG: wanderlisted-rg
+  ACR_NAME: wanderlistedacr
+  IMAGE_TAG: ${{ github.sha }}
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ env.IMAGE_TAG }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Login to ACR
+        run: az acr login --name ${{ env.ACR_NAME }}
+
+      - name: Build & push API image
+        run: |
+          docker build -t ${{ env.ACR_NAME }}.azurecr.io/wanderlisted-api:${{ env.IMAGE_TAG }} .
+          docker push ${{ env.ACR_NAME }}.azurecr.io/wanderlisted-api:${{ env.IMAGE_TAG }}
+
+      - name: Build & push Frontend image
+        run: |
+          docker build \
+            --build-arg API_URL=https://wanderlisted-api-test.${CONTAINER_ENV_FQDN} \
+            -t ${{ env.ACR_NAME }}.azurecr.io/wanderlisted-frontend:${{ env.IMAGE_TAG }} \
+            ./frontend
+          docker push ${{ env.ACR_NAME }}.azurecr.io/wanderlisted-frontend:${{ env.IMAGE_TAG }}
+        env:
+          CONTAINER_ENV_FQDN: ${{ secrets.TEST_ENV_FQDN }}
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy infrastructure
+        uses: azure/arm-deploy@v2
+        with:
+          resourceGroupName: ${{ env.AZURE_RG }}
+          template: ./infra/main.bicep
+          parameters: ./infra/parameters.test.bicepparam
+          additionalArguments: --parameters imageTag=${{ env.IMAGE_TAG }}
+
+      - name: Update API secrets
+        run: |
+          az containerapp secret set \
+            --name wanderlisted-api-test \
+            --resource-group ${{ env.AZURE_RG }} \
+            --secrets \
+              azure-openai-key=${{ secrets.AZURE_OPENAI_API_KEY }} \
+              azure-openai-endpoint=${{ secrets.AZURE_OPENAI_ENDPOINT }} \
+              duffel-token=${{ secrets.DUFFEL_ACCESS_TOKEN }} \
+              google-maps-key=${{ secrets.GOOGLE_MAPS_API_KEY }} \
+              pinecone-key=${{ secrets.PINECONE_API_KEY }} \
+              tavily-key=${{ secrets.TAVILY_API_KEY }} \
+              hotelbeds-key=${{ secrets.HOTELBEDS_API_KEY }} \
+              hotelbeds-secret=${{ secrets.HOTELBEDS_API_SECRET }}
+
+      - name: Set API environment variables
+        run: |
+          az containerapp update \
+            --name wanderlisted-api-test \
+            --resource-group ${{ env.AZURE_RG }} \
+            --set-env-vars \
+              AZURE_OPENAI_API_KEY=secretref:azure-openai-key \
+              AZURE_OPENAI_ENDPOINT=secretref:azure-openai-endpoint \
+              AZURE_OPENAI_DEPLOYMENT_NAME=${{ vars.AZURE_OPENAI_DEPLOYMENT_NAME }} \
+              AZURE_OPENAI_API_VERSION=${{ vars.AZURE_OPENAI_API_VERSION }} \
+              DUFFEL_ACCESS_TOKEN=secretref:duffel-token \
+              GOOGLE_MAPS_API_KEY=secretref:google-maps-key \
+              PINECONE_API_KEY=secretref:pinecone-key \
+              PINECONE_INDEX_NAME=${{ vars.PINECONE_INDEX_NAME }} \
+              TAVILY_API_KEY=secretref:tavily-key \
+              HOTELBEDS_API_KEY=secretref:hotelbeds-key \
+              HOTELBEDS_API_SECRET=secretref:hotelbeds-secret \
+              LLM_PROVIDER=azure_openai \
+              ENVIRONMENT=test
