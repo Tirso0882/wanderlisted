@@ -49,8 +49,8 @@ export function ResultsPanel() {
   const handbook = useChatStore((s) => s.handbook);
   const budget = useChatStore((s) => s.budget);
   const agents = useChatStore((s) => s.agents);
-  const activeTab = useChatStore((s) => s.activeTab);
-  const setActiveTab = useChatStore((s) => s.setActiveTab);
+  const activeTab = useChatStore((s) => s.activeView);
+  const setActiveTab = useChatStore((s) => s.setActiveView);
 
   // Extract data from handbook
   const flights = handbook?.flights ?? [];

@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { streamChat, type StreamCallbacks } from "@/lib/api/stream";
-import { loadMockHandbook, extractBudget } from "@/lib/mock-data";
 import type {
   AgentName,
   AgentStatus,
@@ -25,6 +24,20 @@ export interface AgentState {
   name: AgentName;
   status: AgentStatus;
 }
+
+// ── View modes ──────────────────────────────────────────────────────────
+
+export type ViewMode =
+  | "home"
+  | "flights"
+  | "hotels"
+  | "destination"
+  | "activities"
+  | "restaurants"
+  | "transport"
+  | "budget"
+  | "itinerary"
+  | "full-plan";
 
 // ── Store shape ─────────────────────────────────────────────────────────
 
@@ -50,18 +63,20 @@ interface ChatState {
   components: Record<string, unknown> | null;
   handbook: TripHandbook | null;
   isMockMode: boolean;
-  activeTab: string;
+
+  // View state
+  activeView: ViewMode;
 
   // Actions
   sendMessage: (content: string) => void;
   stopStreaming: () => void;
   clearChat: () => void;
+  goHome: () => void;
+  setActiveView: (view: ViewMode) => void;
   setInterruptData: (data: InterruptData | null) => void;
   setComponents: (components: Record<string, unknown> | null) => void;
   setBudget: (budget: BudgetBreakdown | null) => void;
   setHandbook: (handbook: TripHandbook | null) => void;
-  setActiveTab: (tab: string) => void;
-  loadMockData: () => Promise<void>;
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────
@@ -82,6 +97,27 @@ const INITIAL_AGENTS: Record<AgentName, AgentStatus> = {
   ItineraryAgent: "idle",
 };
 
+/** Detect intent from user message to route the view */
+function detectIntent(message: string): ViewMode | null {
+  const lower = message.toLowerCase();
+  const patterns: [ViewMode, RegExp][] = [
+    ["flights", /\b(flight|fly|airport|airline|book.*fly|plane)\b/],
+    ["hotels", /\b(hotel|stay|accommodation|lodging|hostel|airbnb|check.?in)\b/],
+    ["destination", /\b(destination|city|country|where.*(go|visit)|guide|info.*(about|on))\b/],
+    ["activities", /\b(activit|thing.*to.*do|attraction|sightseeing|museum|tour|adventure)\b/],
+    ["restaurants", /\b(restaurant|food|eat|dining|cuisine|meal|lunch|dinner|breakfast|cafe)\b/],
+    ["transport", /\b(transport|getting.*around|taxi|uber|subway|metro|bus|train|rental.*car)\b/],
+    ["budget", /\b(budget|cost|price|expense|money|spend|cheap|afford)\b/],
+    ["itinerary", /\b(itinerary|schedule|plan.*trip|day.*plan|full.*plan)\b/],
+    ["full-plan", /\b(full.*trip|complete.*plan|plan.*everything|whole.*trip)\b/],
+  ];
+
+  for (const [view, regex] of patterns) {
+    if (regex.test(lower)) return view;
+  }
+  return null;
+}
+
 // ── Store ───────────────────────────────────────────────────────────────
 
 export const useChatStore = create<ChatState>()(
@@ -99,11 +135,14 @@ export const useChatStore = create<ChatState>()(
       components: null,
       handbook: null,
       isMockMode: false,
-      activeTab: "overview",
+      activeView: "home" as ViewMode,
 
       sendMessage: (content: string) => {
         const state = get();
         if (state.isStreaming) return;
+
+        // Detect which view to show based on user intent
+        const detectedView = detectIntent(content);
 
         // Add user message
         const userMsg: ChatMessage = {
@@ -118,6 +157,7 @@ export const useChatStore = create<ChatState>()(
           isStreaming: true,
           streamingContent: "",
           interruptData: null,
+          ...(detectedView ? { activeView: detectedView } : {}),
         });
 
         // Start streaming
@@ -132,12 +172,24 @@ export const useChatStore = create<ChatState>()(
           },
           onAgentStart: (agentName) => {
             const name = agentName as AgentName;
+            // Auto-route to the correct view when agent starts
+            const agentViewMap: Record<AgentName, ViewMode> = {
+              FlightsAgent: "flights",
+              HotelsAgent: "hotels",
+              DestinationAgent: "destination",
+              RestaurantsAgent: "restaurants",
+              ActivitiesAgent: "activities",
+              TransportationAgent: "transport",
+              BudgetAgent: "budget",
+              ItineraryAgent: "itinerary",
+            };
+            const targetView = agentViewMap[name];
             set((s) => ({
               agents: { ...s.agents, [name]: "running" as AgentStatus },
+              ...(targetView && s.activeView === "home" ? { activeView: targetView } : {}),
             }));
           },
           onToolResult: (_toolName) => {
-            // Mark the currently running agent as completed when its tool finishes
             set((s) => {
               const updated = { ...s.agents };
               for (const [key, status] of Object.entries(updated)) {
@@ -201,7 +253,6 @@ export const useChatStore = create<ChatState>()(
               }));
             }
 
-            // Check for interrupt data in the done payload
             const interrupted = data?.interrupted as boolean | undefined;
             const interruptPayload = data?.interrupt_data as InterruptData | undefined;
 
@@ -218,10 +269,26 @@ export const useChatStore = create<ChatState>()(
           },
         };
 
+        // Map activeView to backend agent name for single-agent isolation
+        const viewToAgent: Partial<Record<ViewMode, string>> = {
+          flights: "FlightsAgent",
+          hotels: "HotelsAgent",
+          destination: "DestinationAgent",
+          restaurants: "RestaurantsAgent",
+          activities: "ActivitiesAgent",
+          transport: "TransportationAgent",
+          budget: "BudgetAgent",
+          itinerary: "ItineraryAgent",
+        };
+
+        const currentView = detectedView ?? state.activeView;
+        const targetAgent = viewToAgent[currentView];
+
         const controller = streamChat(
           {
             message: content,
             session_id: state.sessionId ?? undefined,
+            ...(targetAgent ? { target_agent: targetAgent } : {}),
           },
           callbacks,
         );
@@ -271,44 +338,19 @@ export const useChatStore = create<ChatState>()(
           components: null,
           handbook: null,
           isMockMode: false,
-          activeTab: "overview",
+          activeView: "home",
         });
       },
 
+      goHome: () => {
+        set({ activeView: "home" });
+      },
+
+      setActiveView: (view) => set({ activeView: view }),
       setInterruptData: (data) => set({ interruptData: data }),
       setComponents: (components) => set({ components }),
       setBudget: (budget) => set({ budget }),
       setHandbook: (handbook) => set({ handbook }),
-      setActiveTab: (tab) => set({ activeTab: tab }),
-
-      loadMockData: async () => {
-        try {
-          const handbook = await loadMockHandbook();
-          const budget = extractBudget(handbook);
-
-          // Mark all agents as completed
-          const completedAgents: Record<AgentName, AgentStatus> = {
-            FlightsAgent: handbook.flights.length > 0 ? "completed" : "idle",
-            HotelsAgent: handbook.hotels.length > 0 ? "completed" : "idle",
-            DestinationAgent: "completed",
-            RestaurantsAgent: "completed",
-            ActivitiesAgent: "completed",
-            TransportationAgent: "completed",
-            BudgetAgent: budget.total > 0 ? "completed" : "idle",
-            ItineraryAgent: handbook.days.length > 0 ? "completed" : "idle",
-          };
-
-          set({
-            handbook,
-            budget,
-            agents: completedAgents,
-            isMockMode: true,
-            activeTab: "hotels",
-          });
-        } catch (err) {
-          console.error("Failed to load mock data:", err);
-        }
-      },
     }),
     {
       name: "wanderlisted-chat",
@@ -321,13 +363,11 @@ export const useChatStore = create<ChatState>()(
               removeItem: () => {},
             },
       ),
+      version: 3,
+      migrate: () => ({ messages: [], sessionId: null }),
       partialize: (state) => ({
         messages: state.messages,
         sessionId: state.sessionId,
-        budget: state.budget,
-        components: state.components,
-        handbook: state.handbook,
-        isMockMode: state.isMockMode,
       }),
     },
   ),

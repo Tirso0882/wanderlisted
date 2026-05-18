@@ -99,7 +99,7 @@ const STATUS_STYLE: Record<AgentStatus, string> = {
 
 export function OverviewTab() {
   const agents = useChatStore((s) => s.agents);
-  const setActiveTab = useChatStore((s) => s.setActiveTab);
+  const setActiveView = useChatStore((s) => s.setActiveView);
   const handbook = useChatStore((s) => s.handbook);
 
   const completedCount = Object.values(agents).filter(
@@ -140,7 +140,7 @@ export function OverviewTab() {
                   : "opacity-60"
               }`}
               onClick={() => {
-                if (isClickable) setActiveTab(agent.tab);
+                if (isClickable) setActiveView(agent.tab as import("@/stores/chat-store").ViewMode);
               }}
             >
               <CardContent className="flex items-start gap-3 p-4">
