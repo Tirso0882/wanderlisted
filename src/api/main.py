@@ -165,6 +165,16 @@ class ChatRequest(BaseModel):
         default=None,
         description="Session ID for conversation continuity. Omit to start a new session.",
     )
+    target_agent: str | None = Field(
+        default=None,
+        description=(
+            "Isolate a single agent. When set, bypasses triage/supervisor "
+            "and routes directly to this agent only. "
+            "Valid: FlightsAgent, HotelsAgent, DestinationAgent, "
+            "RestaurantsAgent, ActivitiesAgent, TransportationAgent, "
+            "BudgetAgent, ItineraryAgent."
+        ),
+    )
 
     @field_validator("message")
     @classmethod
@@ -173,6 +183,20 @@ class ChatRequest(BaseModel):
         if not stripped:
             raise ValueError("message must contain non-whitespace characters")
         return stripped
+
+    @field_validator("target_agent")
+    @classmethod
+    def validate_target_agent(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        valid = {
+            "FlightsAgent", "HotelsAgent", "DestinationAgent",
+            "RestaurantsAgent", "ActivitiesAgent", "TransportationAgent",
+            "BudgetAgent", "ItineraryAgent",
+        }
+        if v not in valid:
+            raise ValueError(f"Invalid target_agent '{v}'. Must be one of: {', '.join(sorted(valid))}")
+        return v
 
 
 class ChatResponse(BaseModel):
@@ -207,15 +231,19 @@ class SessionInfo(BaseModel):
 
 # ── Core graph runner ──────────────────────────────────────────────────────
 @traceable(run_type="chain", name="wanderlisted_chat")
-async def _run_agent(message: str, session_id: str, graph: CompiledStateGraph) -> dict:
+async def _run_agent(message: str, session_id: str, graph: CompiledStateGraph, target_agent: str | None = None) -> dict:
     """Run the multi-agent supervisor graph and return response data."""
     import uuid as _uuid
 
     run_id = str(_uuid.uuid4())
 
+    graph_input: dict = {"messages": [HumanMessage(content=message)]}
+    if target_agent:
+        graph_input["target_agent"] = target_agent
+
     result = await asyncio.wait_for(
         graph.ainvoke(
-            {"messages": [HumanMessage(content=message)]},
+            graph_input,
             config={"configurable": {"thread_id": session_id}},
         ),
         timeout=_REQUEST_TIMEOUT,
@@ -261,7 +289,7 @@ async def chat(request: ChatRequest, graph: CompiledStateGraph = Depends(_graph_
         )
 
     try:
-        data = await _run_agent(request.message, session_id, graph)
+        data = await _run_agent(request.message, session_id, graph, target_agent=request.target_agent)
     except asyncio.TimeoutError:
         raise HTTPException(
             status_code=504,
@@ -303,8 +331,12 @@ async def chat_stream(
         async def _stream_graph():
             """Push graph events into the queue; signal completion with _SENTINEL."""
             try:
+                graph_input: dict = {"messages": [HumanMessage(content=request.message)]}
+                if request.target_agent:
+                    graph_input["target_agent"] = request.target_agent
+
                 async for node_output in graph.astream(
-                    {"messages": [HumanMessage(content=request.message)]},
+                    graph_input,
                     config={"configurable": {"thread_id": session_id}},
                     stream_mode="updates",
                 ):

@@ -676,6 +676,19 @@ async def supervisor_node(state: TravelAgentState, *, supervisor_agent) -> dict:
             "data, return agents: [] so the synthesizer handles it."
         )
 
+    # Single-agent isolation: skip LLM routing, force to target agent only
+    target = state.get("target_agent", "")
+    if target and target in AGENT_TO_NODE:
+        return {
+            "messages": [AIMessage(content=f"Routing to {target}...")],
+            "current_agent": "supervisor",
+            "itinerary_components": {
+                **components,
+                "routing": [target],
+                "completed_agents": [],
+            },
+        }
+
     last_message = state["messages"][-1]
     decision = await supervisor_agent.aget_routing_decision(
         _extract_text_content(last_message.content),
@@ -1414,7 +1427,13 @@ async def synthesize_node(state: TravelAgentState, *, llm) -> dict:
 
 
 def route_after_triage(state: TravelAgentState) -> str:
-    """Route after triage: shallow queries -> shallow_reply, deep -> supervisor."""
+    """Route after triage: shallow queries -> shallow_reply, deep -> supervisor.
+
+    When target_agent is set, always route to supervisor (which will
+    short-circuit to only that one agent).
+    """
+    if state.get("target_agent"):
+        return "supervisor"
     agent = state.get("current_agent", "")
     if agent == "triage:shallow":
         return "shallow_reply"

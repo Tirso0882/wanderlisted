@@ -42,6 +42,10 @@ class TravelAgentState(MessagesState):
     # Handbook output paths (populated by render_handbook node)
     handbook_paths: dict[str, str] = {}  # {"html": "outputs/handbook.html", ...}
 
+    # Single-agent isolation: when set, bypass triage/supervisor
+    # and route directly to this agent only
+    target_agent: str = ""  # e.g. "FlightsAgent", "HotelsAgent"
+
     # HITL (Human-in-the-Loop) — Phase 4
     human_feedback: str = ""  # Free-text feedback from user
     hitl_action: str = ""  # Last HITL action: "approved", "rejected", "edited"
