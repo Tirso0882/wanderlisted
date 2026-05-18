@@ -9,6 +9,16 @@ You are an expert git workflow assistant. Perform the full categorized-commit �
 
 ## Workflow
 
+### Step 0: Create a feature branch
+- Check the current branch: `git branch --show-current`
+- If already on `main` or `master`, create and switch to a new branch **before touching anything**:
+  ```
+  git checkout -b <type>/<short-description>
+  ```
+  Branch name: `<type>/<kebab-case-summary>` (e.g. `feat/views-architecture`, `fix/leaked-api-key`, `chore/secret-scanning`)
+- If already on a feature branch, continue on it — do not create a new one
+- Ask me to confirm the branch name before creating it
+
 ### Step 1: Assess & categorize changes
 - Run `git status` and `git diff --stat` to see everything that changed
 - Group files into **categories** by type of change. Each category becomes one commit:
@@ -50,9 +60,15 @@ For **each category** (in order: `chore` → `fix` → `refactor` → `feat` →
 - If the branch has no upstream, use `git push -u origin HEAD`
 
 ### Step 4: Create PR
-- Use the GitHub CLI (`gh`) to create a pull request:
+- Write the PR body to a temp file first to avoid shell quoting issues:
   ```
-  gh pr create --title "<overall summary>" --body "<PR description>"
+  cat > /tmp/pr-body.md << 'EOF'
+  <PR description>
+  EOF
+  ```
+- Then create the PR using `--body-file`:
+  ```
+  gh pr create --title "<overall summary>" --body-file /tmp/pr-body.md --base main
   ```
 - PR title: summarize the overall change (not just one commit)
 - PR description should include:
@@ -64,6 +80,7 @@ For **each category** (in order: `chore` → `fix` → `refactor` → `feat` →
 - Target branch: `main` (unless I specify otherwise)
 
 ## Rules
+- **Never commit directly to `main` or `master`** — always use a feature branch (Step 0)
 - Never force-push without asking me first
 - Never commit secrets, `.env` files, or `__pycache__/`
 - Always show categorization + commit messages and wait for my OK before executing
