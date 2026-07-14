@@ -209,14 +209,14 @@ __marimo__/
 
 # Folders
 logs/
+notes/
 outputs/
 
 # Files
-notes.txt
 documentation_history.txt
 
 # Personal documents
-doc/
+docs/
 
 # LangGraph API runtime state
 .langgraph_api/

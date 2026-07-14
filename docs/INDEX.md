@@ -13,7 +13,9 @@
 | Deploy to production                      | [Docker Production Guide](operations/DOCKER_PRODUCTION_GUIDE.md)  |
 | Understand the stage progression           | [Stage Progression](getting-started/STAGE_PROGRESSION_SUMMARY.md) |
 | Read LangChain/LangGraph reference         | [Reference Docs](reference/)                                      |
-| Understand an architectural decision       | [ADRs](adr/)                                                      |
+| Understand an architectural decision       | [ADRs](adr/README.md)                                             |
+| Deploy across cloud / edge / on-prem       | [Deployment Topology](architecture/DEPLOYMENT_TOPOLOGY.md)        |
+| See what we're experimenting with next     | [Research Backlog](RESEARCH_BACKLOG.md)                           |
 
 ---
 
@@ -22,6 +24,7 @@
 ```
 docs/
 ├── INDEX.md                          ← You are here
+├── RESEARCH_BACKLOG.md               # "Next big thing" experimentation backlog
 │
 ├── getting-started/                  # Onboarding & setup
 │   ├── GETTING_STARTED.md            # Prerequisites, setup, first run
@@ -29,6 +32,7 @@ docs/
 │
 ├── architecture/                     # System design & decisions
 │   ├── ARCHITECTURE_OVERVIEW.md      # High-level architecture, agents, data flow
+│   ├── DEPLOYMENT_TOPOLOGY.md        # Cloud / edge / on-prem component matrix
 │   ├── STAGE4_MULTIAGENT_PLAN.md     # Stage 4 design document
 │   ├── STAGE4_MULTIAGENT_SUPERVISOR.md
 │   ├── CHUNKING_STRATEGY_RATIONALE.md
@@ -58,7 +62,12 @@ docs/
 │   └── RAG_METRICS_QUICK_REFERENCE.md
 │
 ├── adr/                              # Architecture Decision Records
-│   └── (future ADRs go here)
+│   ├── README.md                     # ADR index + format
+│   ├── 0001-multi-agent-supervisor-parallel-fanout.md
+│   ├── 0002-responses-api-for-reasoning-models.md
+│   ├── 0003-custom-reducers-for-parallel-state-merge.md
+│   ├── 0004-tiered-models-and-semaphore-concurrency.md
+│   └── 0005-two-tier-rag-chunking-strategy.md
 │
 ├── prompts/                          # Prompt development notes
 │   ├── main_travel_task.md
