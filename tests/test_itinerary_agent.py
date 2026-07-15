@@ -27,11 +27,10 @@ class TestItineraryAgent:
     def test_has_correct_tools(self):
         tool_names = {t.name for t in self.agent.tools}
         assert "optimize_day_route" in tool_names
-        assert "get_distance_matrix" in tool_names
 
     def test_tool_count(self):
-        assert len(self.agent.tools) == 2
+        assert len(self.agent.tools) == 1
 
     def test_repr(self):
         assert "ItineraryAgent" in repr(self.agent)
-        assert "tools=2" in repr(self.agent)
+        assert "tools=1" in repr(self.agent)

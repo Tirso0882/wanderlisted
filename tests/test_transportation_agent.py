@@ -26,13 +26,11 @@ class TestTransportationAgent:
 
     def test_has_correct_tools(self):
         tool_names = {t.name for t in self.agent.tools}
-        assert "get_directions" in tool_names
-        assert "get_distance_matrix" in tool_names
         assert "compute_route" in tool_names
 
     def test_tool_count(self):
-        assert len(self.agent.tools) == 3
+        assert len(self.agent.tools) == 1
 
     def test_repr(self):
         assert "TransportationAgent" in repr(self.agent)
-        assert "tools=3" in repr(self.agent)
+        assert "tools=1" in repr(self.agent)

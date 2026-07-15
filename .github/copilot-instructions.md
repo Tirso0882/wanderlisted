@@ -134,7 +134,7 @@ All gpt-5.4 family models are **reasoning models**. Key constraints:
 | `search_hotels_hotelbeds`, `check_hotel_rate_hotelbeds` | Hotelbeds Booking API | `tools/hotels_hotelbeds.py` |
 | `search_activities` | Google Places (New) | `tools/activities.py` |
 | `search_places_nearby`, `search_places_text` | Google Places | `tools/google_maps.py` |
-| `get_directions`, `get_distance_matrix`, `compute_route`, `optimize_day_route` | Google Maps / Routes | `tools/google_maps.py` |
+| `compute_route`, `optimize_day_route` | Google Routes | `tools/google_maps.py` |
 | `get_timezone` | Google Time Zone | `tools/google_maps.py` |
 | `search_destination_guides` | Pinecone RAG | `tools/destination_rag.py` |
 | `research_destination` | RAG + Tavily + Cohere reranking | `tools/destination_research.py` |

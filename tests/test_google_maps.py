@@ -9,8 +9,6 @@ from httpx import Response
 from src.tools.google_maps import (
     search_places_nearby,
     search_places_text,
-    get_directions,
-    get_distance_matrix,
     compute_route,
     optimize_day_route,
     get_timezone,
@@ -42,56 +40,6 @@ _MOCK_GEOCODE_RESPONSE = {
     "results": [{"geometry": {"location": {"lat": 38.3452, "lng": -0.4810}}}],
 }
 
-_MOCK_DIRECTIONS_RESPONSE = {
-    "status": "OK",
-    "routes": [
-        {
-            "legs": [
-                {
-                    "start_address": "Alicante Station",
-                    "end_address": "Playa Postiguet",
-                    "distance": {"text": "2.1 km"},
-                    "duration": {"text": "8 mins"},
-                    "steps": [
-                        {
-                            "html_instructions": "Head <b>south</b>",
-                            "distance": {"text": "0.5 km"},
-                            "duration": {"text": "2 mins"},
-                        },
-                        {
-                            "html_instructions": "Turn <b>left</b> onto Av Salamanca",
-                            "distance": {"text": "1.6 km"},
-                            "duration": {"text": "6 mins"},
-                        },
-                    ],
-                }
-            ]
-        }
-    ],
-}
-
-_MOCK_DISTANCE_MATRIX_RESPONSE = {
-    "status": "OK",
-    "origin_addresses": ["Alicante Station"],
-    "destination_addresses": ["Playa Postiguet", "Castle of Santa Barbara"],
-    "rows": [
-        {
-            "elements": [
-                {
-                    "status": "OK",
-                    "distance": {"text": "2.1 km"},
-                    "duration": {"text": "8 mins"},
-                },
-                {
-                    "status": "OK",
-                    "distance": {"text": "3.5 km"},
-                    "duration": {"text": "12 mins"},
-                },
-            ]
-        }
-    ],
-}
-
 _MOCK_ROUTES_RESPONSE = {
     "routes": [
         {
@@ -103,6 +51,45 @@ _MOCK_ROUTES_RESPONSE = {
                 {"distanceMeters": 5000, "duration": "900s"},
                 {"distanceMeters": 4000, "duration": "720s"},
                 {"distanceMeters": 3400, "duration": "300s"},
+            ],
+        }
+    ],
+}
+
+_MOCK_ROUTE_STEPS_RESPONSE = {
+    "routes": [
+        {
+            "distanceMeters": 2100,
+            "duration": "480s",
+            "legs": [
+                {
+                    "distanceMeters": 2100,
+                    "duration": "480s",
+                    "steps": [
+                        {
+                            "distanceMeters": 500,
+                            "staticDuration": "120s",
+                            "navigationInstruction": {
+                                "instructions": "Head south on Av Salamanca"
+                            },
+                        },
+                        {
+                            "distanceMeters": 1600,
+                            "staticDuration": "360s",
+                            "transitDetails": {
+                                "stopDetails": {
+                                    "departureStop": {"name": "Mercado"},
+                                    "arrivalStop": {"name": "Postiguet"},
+                                },
+                                "transitLine": {
+                                    "nameShort": "L2",
+                                    "vehicle": {"type": "TRAM"},
+                                },
+                                "stopCount": 4,
+                            },
+                        },
+                    ],
+                }
             ],
         }
     ],
@@ -296,106 +283,6 @@ class TestSearchPlacesText:
         assert "500" in result
 
 
-# ── get_directions ───────────────────────────────────────────────────────
-
-
-class TestGetDirections:
-    @respx.mock
-    async def test_returns_route(self, monkeypatch):
-        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
-        respx.get("https://maps.googleapis.com/maps/api/directions/json").mock(
-            return_value=Response(200, json=_MOCK_DIRECTIONS_RESPONSE)
-        )
-        result = await get_directions.ainvoke(
-            {
-                "origin": "Alicante Station",
-                "destination": "Playa Postiguet",
-            }
-        )
-        assert "Alicante Station" in result
-        assert "Playa Postiguet" in result
-        assert "2.1 km" in result
-        assert "8 mins" in result
-
-    @respx.mock
-    async def test_api_status_error(self, monkeypatch):
-        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
-        respx.get("https://maps.googleapis.com/maps/api/directions/json").mock(
-            return_value=Response(200, json={"status": "NOT_FOUND"})
-        )
-        result = await get_directions.ainvoke(
-            {
-                "origin": "Nowhere",
-                "destination": "Nowhere Else",
-            }
-        )
-        assert "NOT_FOUND" in result
-
-    @respx.mock
-    async def test_http_error_returns_message(self, monkeypatch):
-        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
-        respx.get("https://maps.googleapis.com/maps/api/directions/json").mock(
-            return_value=Response(429, text="Rate limited")
-        )
-        result = await get_directions.ainvoke(
-            {
-                "origin": "A",
-                "destination": "B",
-            }
-        )
-        assert "error" in result.lower()
-        assert "429" in result
-
-
-# ── get_distance_matrix ──────────────────────────────────────────────────
-
-
-class TestGetDistanceMatrix:
-    @respx.mock
-    async def test_returns_matrix(self, monkeypatch):
-        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
-        respx.get("https://maps.googleapis.com/maps/api/distancematrix/json").mock(
-            return_value=Response(200, json=_MOCK_DISTANCE_MATRIX_RESPONSE)
-        )
-        result = await get_distance_matrix.ainvoke(
-            {
-                "origins": "Alicante Station",
-                "destinations": "Playa Postiguet|Castle of Santa Barbara",
-            }
-        )
-        assert "2.1 km" in result
-        assert "3.5 km" in result
-        assert "driving" in result.lower()
-
-    @respx.mock
-    async def test_api_status_error(self, monkeypatch):
-        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
-        respx.get("https://maps.googleapis.com/maps/api/distancematrix/json").mock(
-            return_value=Response(200, json={"status": "INVALID_REQUEST"})
-        )
-        result = await get_distance_matrix.ainvoke(
-            {
-                "origins": "bad",
-                "destinations": "bad",
-            }
-        )
-        assert "INVALID_REQUEST" in result
-
-    @respx.mock
-    async def test_http_error_returns_message(self, monkeypatch):
-        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
-        respx.get("https://maps.googleapis.com/maps/api/distancematrix/json").mock(
-            return_value=Response(403, text="Forbidden")
-        )
-        result = await get_distance_matrix.ainvoke(
-            {
-                "origins": "A",
-                "destinations": "B",
-            }
-        )
-        assert "error" in result.lower()
-
-
 # ── compute_route ────────────────────────────────────────────────────────
 
 
@@ -461,6 +348,44 @@ class TestComputeRoute:
         )
         assert "error" in result.lower()
         assert "400" in result
+
+
+class TestComputeRouteSteps:
+    @respx.mock
+    async def test_includes_turn_by_turn_and_transit_steps(self, monkeypatch):
+        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
+        respx.post("https://routes.googleapis.com/directions/v2:computeRoutes").mock(
+            return_value=Response(200, json=_MOCK_ROUTE_STEPS_RESPONSE)
+        )
+        result = await compute_route.ainvoke(
+            {
+                "origin": "Mercado",
+                "destination": "Postiguet",
+                "travel_mode": "TRANSIT",
+            }
+        )
+        assert "Steps:" in result
+        assert "Head south on Av Salamanca" in result
+        assert "TRAM L2" in result
+        assert "Mercado → Postiguet" in result
+        assert "4 stops" in result
+
+    @respx.mock
+    async def test_include_steps_false_omits_step_fields(self, monkeypatch):
+        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
+        route_mock = respx.post(
+            "https://routes.googleapis.com/directions/v2:computeRoutes"
+        ).mock(return_value=Response(200, json=_MOCK_ROUTE_STEPS_RESPONSE))
+        result = await compute_route.ainvoke(
+            {
+                "origin": "A",
+                "destination": "B",
+                "include_steps": False,
+            }
+        )
+        assert "Steps:" not in result
+        field_mask = route_mock.calls[0].request.headers.get("x-goog-fieldmask", "")
+        assert "routes.legs.steps" not in field_mask
 
 
 # ── optimize_day_route ───────────────────────────────────────────────────
@@ -848,26 +773,6 @@ class TestRequestErrors:
             side_effect=httpx.ConnectError("Connection refused")
         )
         result = await search_places_text.ainvoke({"query": "test"})
-        assert "could not reach" in result.lower()
-
-    @respx.mock
-    async def test_directions_request_error(self, monkeypatch):
-        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
-        respx.get("https://maps.googleapis.com/maps/api/directions/json").mock(
-            side_effect=httpx.ConnectError("Connection refused")
-        )
-        result = await get_directions.ainvoke({"origin": "A", "destination": "B"})
-        assert "could not reach" in result.lower()
-
-    @respx.mock
-    async def test_distance_matrix_request_error(self, monkeypatch):
-        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
-        respx.get("https://maps.googleapis.com/maps/api/distancematrix/json").mock(
-            side_effect=httpx.ConnectError("Connection refused")
-        )
-        result = await get_distance_matrix.ainvoke(
-            {"origins": "A", "destinations": "B"}
-        )
         assert "could not reach" in result.lower()
 
     @respx.mock

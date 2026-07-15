@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Live integration test for all 7 enabled Google Maps Platform APIs.
+"""Live integration test for all 5 enabled Google Maps Platform APIs.
 
 Usage:
     .venv/bin/python scripts/test_google_apis.py
@@ -10,11 +10,9 @@ Each test makes a real API call and prints the full tool output.
 Enabled APIs tested:
   1. Geocoding API         -> _geocode()
   2. Places API (New)      -> search_places_nearby, search_places_text
-  3. Directions API        -> get_directions
-  4. Distance Matrix API   -> get_distance_matrix
-  5. Routes API            -> compute_route, optimize_day_route
-  6. Time Zone API         -> get_timezone
-  7. Maps Embed API        -> URL generation (no HTTP call)
+  3. Routes API            -> compute_route, optimize_day_route
+  4. Time Zone API         -> get_timezone
+  5. Maps Embed API        -> URL generation (no HTTP call)
 """
 
 import os
@@ -39,8 +37,6 @@ if os.path.exists(_env_path):
 from src.tools.google_maps import (
     search_places_nearby,
     search_places_text,
-    get_directions,
-    get_distance_matrix,
     compute_route,
     optimize_day_route,
     get_timezone,
@@ -127,38 +123,7 @@ def test_places_text():
     return result
 
 
-# ─── 4. Directions API ───────────────────────────────────────────────
-
-
-def test_directions():
-    # Use lat/lng to avoid geocoding dependency
-    result = get_directions.invoke(
-        {
-            "origin": "35.6812,139.7671",  # Tokyo Station
-            "destination": "35.7148,139.7967",  # Senso-ji
-            "mode": "driving",
-        }
-    )
-    assert "Route:" in result, f"Unexpected: {result[:100]}"
-    return result
-
-
-# ─── 5. Distance Matrix API ──────────────────────────────────────────
-
-
-def test_distance_matrix():
-    result = get_distance_matrix.invoke(
-        {
-            "origins": "Tokyo Station",
-            "destinations": "Senso-ji Temple|Tokyo Tower|Meiji Shrine",
-            "mode": "driving",
-        }
-    )
-    assert "Distance Matrix" in result, f"Unexpected: {result[:100]}"
-    return result
-
-
-# ─── 6. Routes API — Compute Route ───────────────────────────────────
+# ─── 4. Routes API — Compute Route ───────────────────────────────────
 
 
 def test_compute_route():
@@ -173,7 +138,7 @@ def test_compute_route():
     return result
 
 
-# ─── 7. Routes API — Optimize Day Route ──────────────────────────────
+# ─── 5. Routes API — Optimize Day Route ──────────────────────────────
 
 
 def test_optimize_route():
@@ -189,7 +154,7 @@ def test_optimize_route():
     return result
 
 
-# ─── 8. Time Zone API ────────────────────────────────────────────────
+# ─── 6. Time Zone API ────────────────────────────────────────────────
 
 
 def test_timezone():
@@ -202,7 +167,7 @@ def test_timezone():
     return result
 
 
-# ─── 9. Maps Embed API (URL generation — no HTTP call) ───────────────
+# ─── 7. Maps Embed API (URL generation — no HTTP call) ───────────────
 
 
 def test_maps_embed():
@@ -230,15 +195,13 @@ def main():
     print(f"   Key: {key[:8]}...{key[-4:]}")
     print(f"   Test location: {TEST_ADDRESS} ({TEST_LATLNG})")
     print(
-        "   Enabled APIs: 7 (Geocoding, Places New, Directions, Distance Matrix, Routes, Time Zone, Maps Embed)"
+        "   Enabled APIs: 5 (Geocoding, Places New, Routes, Time Zone, Maps Embed)"
     )
 
     tests = [
         ("Geocoding API", "_geocode()", test_geocoding),
         ("Places API (New)", "search_places_nearby", test_places_nearby),
         ("Places API (New)", "search_places_text", test_places_text),
-        ("Directions API", "get_directions", test_directions),
-        ("Distance Matrix API", "get_distance_matrix", test_distance_matrix),
         ("Routes API", "compute_route", test_compute_route),
         ("Routes API", "optimize_day_route", test_optimize_route),
         ("Time Zone API", "get_timezone", test_timezone),
@@ -270,10 +233,8 @@ def main():
     print(f"\n{YELLOW}  API → Agent mapping:{RESET}")
     print("  Geocoding        → internal _geocode() helper (address→coords)")
     print("  Places (New)     → RestaurantsAgent, ActivitiesAgent, HotelsAgent")
-    print("  Directions       → TransportationAgent (step-by-step transit)")
-    print("  Distance Matrix  → TransportationAgent, ItineraryAgent")
     print(
-        "  Routes           → TransportationAgent, ItineraryAgent (route optimisation)"
+        "  Routes           → TransportationAgent, ItineraryAgent (directions, transit steps, route optimisation)"
     )
     print("  Time Zone        → DestinationAgent (local timezone info)")
     print("  Maps Embed       → Handbook HTML template (map iframes)\n")

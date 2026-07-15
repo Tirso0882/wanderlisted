@@ -1149,9 +1149,9 @@ Optimised:      Hotel → Meiji Shrine → Imperial Palace → Senso-ji → Toky
 
 Visualise as a numbered route with distance/duration between each stop.
 
-#### 5.5.3 Transit Directions Panel (Google Directions API)
+#### 5.5.3 Transit Directions Panel (Google Routes API)
 
-The `get_directions` tool returns step-by-step directions with transit line names and vehicle types. Render as a collapsible panel per day:
+The `compute_route` tool returns step-by-step directions with transit line names and vehicle types (set `include_steps=True`, `travel_mode="TRANSIT"`). Render as a collapsible panel per day:
 
 ```
 🚶 Walk 3 min to Shinjuku Station (South Exit)
@@ -1159,9 +1159,9 @@ The `get_directions` tool returns step-by-step directions with transit line name
 🚶 Walk 8 min to Meiji Shrine entrance
 ```
 
-#### 5.5.4 Distance Matrix Proximity Badges
+#### 5.5.4 Proximity Badges
 
-The `get_distance_matrix` tool can compute hotel-to-attraction distances in bulk. Show as badges:
+The `compute_route` tool computes hotel-to-attraction distances (call once per destination). Show as badges:
 
 ```
 🏨→🏯 Meiji Shrine: 12 min walk
@@ -1212,7 +1212,7 @@ https://maps.googleapis.com/maps/api/staticmap?
 | Accessibility | None | WCAG 2.1 AA: ARIA labels, `role="tablist"`, keyboard navigation, `prefers-reduced-motion`, `prefers-color-scheme: dark`, minimum 4.5:1 contrast ratios |
 | Dark mode | None | `@media (prefers-color-scheme: dark)` with adjusted palette, reduced-brightness photos, dark map tiles |
 | Dietary indicators | Not shown | Per-restaurant icons: 🥬 vegetarian, 🌾 gluten-free, ☪ halal, 🕐 kosher — based on `dietary_restrictions` from user profile |
-| Proximity badges | Not shown | "12 min walk from hotel" on each activity card, from Distance Matrix API |
+| Proximity badges | Not shown | "12 min walk from hotel" on each activity card, from Routes API |
 
 ---
 
@@ -1289,19 +1289,19 @@ Every field in the Jinja2 template maps to a specific agent and tool:
 |---|---|---|---|
 | Hero header | SupervisorAgent (user profile extraction) | — | `TripHandbook` top-level fields |
 | Safety banner | DestinationAgent | `get_safety_info` (REST Countries) | `SafetyInfo` |
-| Route bar | TransportationAgent | `get_distance_matrix` (Google Maps) | `route_cities` + `route_transport` |
+| Route bar | TransportationAgent | `compute_route` (Google Routes) | `route_cities` + `route_transport` |
 | Day cards — activities | ActivitiesAgent | `search_activities` (Google Places) | `PlaceCard` (with `photo_urls`, `opening_hours`, `google_maps_url`) |
 | Day cards — restaurants | RestaurantsAgent | `search_places_nearby`, `search_places_text` (Google Places) | `PlaceCard` (with dietary compatibility flags) |
 | Day cards — weather | DestinationAgent | `get_weather` (OpenWeatherMap) | `DayWeather` |
-| Day cards — transit | TransportationAgent | `get_directions` (Google Directions) | `TransitStep` |
+| Day cards — transit | TransportationAgent | `compute_route` (Google Routes) | `TransitStep` |
 | Day cards — route order | ItineraryAgent | `optimize_day_route` (Google Routes) | `DayPlan.optimised_stop_order` |
-| Day cards — proximity | ItineraryAgent | `get_distance_matrix` (Google Maps) | Distance values injected into `PlaceCard` or `TransitStep` |
+| Day cards — proximity | ItineraryAgent | `optimize_day_route` (Google Routes) | Distance values injected into `PlaceCard` or `TransitStep` |
 | Day cards — cultural tip | DestinationAgent | `search_destination_guides` (Pinecone RAG) | `DayPlan.cultural_tip` |
 | Day cards — daily cost | BudgetAgent | `calculate_budget` | `DayPlan.daily_cost_usd` |
 | Flights tab | FlightsAgent | `search_flights` (Duffel) | `FlightOption` + `FlightSegment` |
 | Hotels tab | HotelsAgent | `search_hotels_hotelbeds` (Hotelbeds) | `HotelOption` |
 | Budget tab | BudgetAgent | `calculate_budget`, `convert_currency` | `BudgetBreakdown` + exchange rate |
-| Maps tab | ItineraryAgent + TransportationAgent | `get_distance_matrix`, `optimize_day_route` (Google Routes/Maps) | lat/lng from all `PlaceCard` + `HotelOption` |
+| Maps tab | ItineraryAgent + TransportationAgent | `compute_route`, `optimize_day_route` (Google Routes) | lat/lng from all `PlaceCard` + `HotelOption` |
 | Safety tab | DestinationAgent | `get_safety_info`, RAG | `SafetyInfo` |
 | Culture tab | DestinationAgent | RAG (`search_destination_guides`) | `CultureGuide` |
 | Packing tab | ItineraryAssemblerAgent (derived) | Weather + activities + safety data | `PackingItem[]` |

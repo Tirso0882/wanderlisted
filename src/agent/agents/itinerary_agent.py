@@ -6,7 +6,7 @@ structured ``TripHandbook``, the renderer converts it to HTML / Markdown / JSON.
 
 from src.agent.agents.base import SpecializedAgent
 from src.agent.prompts import ITINERARY_SYSTEM_PROMPT
-from src.tools.google_maps import optimize_day_route, get_distance_matrix
+from src.tools.google_maps import optimize_day_route
 
 
 class ItineraryAgent(SpecializedAgent):
@@ -17,7 +17,7 @@ class ItineraryAgent(SpecializedAgent):
 
     @property
     def tools(self):
-        return [optimize_day_route, get_distance_matrix]
+        return [optimize_day_route]
 
     @property
     def system_prompt(self) -> str:

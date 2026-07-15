@@ -1,13 +1,16 @@
 """Google Maps Platform tools for Wanderlisted travel agent.
 
-Enabled APIs (7):
+Enabled APIs (5):
   - Geocoding API          → _geocode() helper (address ↔ lat/lng)
   - Places API (New)       → search_places_nearby, search_places_text
-  - Directions API         → get_directions
-  - Distance Matrix API    → get_distance_matrix
   - Routes API             → compute_route, optimize_day_route
   - Time Zone API          → get_timezone
   - Maps Embed API         → used directly in handbook_template.html.j2 iframes
+
+Routing is consolidated on the modern Routes API: ``compute_route`` handles
+point-to-point directions (with turn-by-turn / transit steps) and multi-stop
+routes, while ``optimize_day_route`` reorders a day's stops. The legacy
+Directions and Distance Matrix APIs are no longer used.
 
 All calls go through a single API key read from GOOGLE_MAPS_API_KEY.
 Each tool is stateless and safe to use inside any subagent.
@@ -321,141 +324,6 @@ def search_places_text(
     )
 
 
-# ── Directions API ──────────────────────────────────────────────────────
-
-
-@tool
-def get_directions(
-    origin: str,
-    destination: str,
-    mode: str = "transit",
-    departure_time: str = "",
-) -> str:
-    """Get directions between two points using Google Directions API.
-
-    Args:
-        origin: Start point — address or "lat,lng".
-        destination: End point — address or "lat,lng".
-        mode: Travel mode: "driving", "walking", "bicycling", "transit".
-        departure_time: ISO datetime or "now" for transit (optional).
-    """
-    key = _api_key()
-    params = {
-        "origin": origin,
-        "destination": destination,
-        "mode": mode,
-        "key": key,
-    }
-    if departure_time:
-        params["departure_time"] = departure_time
-
-    url = f"{_BASE_URL}/directions/json?{urlencode(params)}"
-    logger.debug(f"Directions: {origin} → {destination} ({mode})")
-    try:
-        resp = httpx.get(url, timeout=15)
-        resp.raise_for_status()
-    except httpx.HTTPStatusError as e:
-        logger.error(
-            "Directions HTTP error %s: %s",
-            e.response.status_code,
-            e.response.text[:200],
-        )
-        return f"Directions API error (HTTP {e.response.status_code})."
-    except httpx.RequestError as e:
-        logger.error("Directions request error: %s", e)
-        return f"Could not reach Directions API: {e}"
-    data = resp.json()
-
-    if data.get("status") != "OK":
-        return f"Directions API error: {data.get('status')} — {data.get('error_message', '')}"
-
-    route = data["routes"][0]
-    leg = route["legs"][0]
-    steps_text = []
-    for i, step in enumerate(leg["steps"][:15], 1):  # Cap at 15 steps
-        instr = step.get("html_instructions", "").replace("<b>", "").replace("</b>", "")
-        instr = instr.replace('<div style="font-size:0.9em">', " ").replace(
-            "</div>", ""
-        )
-        dist = step["distance"]["text"]
-        dur = step["duration"]["text"]
-        transit_info = ""
-        if "transit_details" in step:
-            td = step["transit_details"]
-            line = td.get("line", {})
-            transit_info = f" [{line.get('vehicle', {}).get('type', '')} {line.get('short_name', line.get('name', ''))}]"
-        steps_text.append(f"  {i}. {instr} ({dist}, {dur}){transit_info}")
-
-    return (
-        f"Route: {leg['start_address']} → {leg['end_address']}\n"
-        f"Distance: {leg['distance']['text']}\n"
-        f"Duration: {leg['duration']['text']}\n"
-        f"Mode: {mode}\n\n"
-        f"Steps:\n" + "\n".join(steps_text)
-    )
-
-
-# ── Distance Matrix API ─────────────────────────────────────────────────
-
-
-@tool
-def get_distance_matrix(
-    origins: str,
-    destinations: str,
-    mode: str = "driving",
-) -> str:
-    """Get travel distances and durations between multiple origins and destinations.
-
-    Args:
-        origins: Pipe-separated origins, e.g. "Tokyo Station|Shinjuku Station".
-        destinations: Pipe-separated destinations, e.g. "Senso-ji Temple|Tokyo Tower".
-        mode: Travel mode: "driving", "walking", "bicycling", "transit".
-    """
-    key = _api_key()
-    params = {
-        "origins": origins,
-        "destinations": destinations,
-        "mode": mode,
-        "key": key,
-    }
-    url = f"{_BASE_URL}/distancematrix/json?{urlencode(params)}"
-    logger.debug(f"Distance Matrix: {origins} → {destinations} ({mode})")
-    try:
-        resp = httpx.get(url, timeout=15)
-        resp.raise_for_status()
-    except httpx.HTTPStatusError as e:
-        logger.error(
-            "Distance Matrix HTTP error %s: %s",
-            e.response.status_code,
-            e.response.text[:200],
-        )
-        return f"Distance Matrix API error (HTTP {e.response.status_code})."
-    except httpx.RequestError as e:
-        logger.error("Distance Matrix request error: %s", e)
-        return f"Could not reach Distance Matrix API: {e}"
-    data = resp.json()
-
-    if data.get("status") != "OK":
-        return f"Distance Matrix error: {data.get('status')}"
-
-    origin_addrs = data.get("origin_addresses", [])
-    dest_addrs = data.get("destination_addresses", [])
-    rows = data.get("rows", [])
-
-    lines = []
-    for i, row in enumerate(rows):
-        for j, elem in enumerate(row.get("elements", [])):
-            status = elem.get("status", "UNKNOWN")
-            if status == "OK":
-                dist = elem["distance"]["text"]
-                dur = elem["duration"]["text"]
-                lines.append(f"• {origin_addrs[i]} → {dest_addrs[j]}: {dist}, {dur}")
-            else:
-                lines.append(f"• {origin_addrs[i]} → {dest_addrs[j]}: {status}")
-
-    return f"Distance Matrix ({mode}):\n" + "\n".join(lines)
-
-
 # ── Routes API (compute routes) ─────────────────────────────────────────
 
 
@@ -465,20 +333,47 @@ def compute_route(
     destination: str,
     travel_mode: str = "DRIVE",
     waypoints: str = "",
+    include_steps: bool = True,
 ) -> str:
-    """Compute an optimised route using Google Routes API.
+    """Compute a route with the Google Routes API.
+
+    The single routing tool for Wanderlisted. Handles simple A→B directions,
+    transit routing with line details, and multi-stop routes with automatic
+    waypoint optimisation. Replaces the legacy Directions and Distance Matrix
+    APIs.
 
     Args:
         origin: Start address or "lat,lng".
         destination: End address or "lat,lng".
         travel_mode: DRIVE, BICYCLE, WALK, TRANSIT, TWO_WHEELER.
-        waypoints: Optional comma-separated intermediate stops.
+        waypoints: Optional comma-separated intermediate stops. Ignored for
+            TRANSIT, which is point-to-point only.
+        include_steps: Include turn-by-turn / transit step details (default True).
     """
     key = _api_key()
+    travel_mode = travel_mode.upper()
+    is_transit = travel_mode == "TRANSIT"
+
+    field_mask = [
+        "routes.duration",
+        "routes.distanceMeters",
+        "routes.legs.duration",
+        "routes.legs.distanceMeters",
+        "routes.optimizedIntermediateWaypointIndex",
+    ]
+    if include_steps:
+        field_mask += [
+            "routes.legs.steps.distanceMeters",
+            "routes.legs.steps.staticDuration",
+            "routes.legs.steps.navigationInstruction",
+            "routes.legs.steps.travelMode",
+            "routes.legs.steps.transitDetails",
+        ]
+
     headers = {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": key,
-        "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.legs,routes.optimizedIntermediateWaypointIndex",
+        "X-Goog-FieldMask": ",".join(field_mask),
     }
 
     def _make_waypoint(addr: str) -> dict:
@@ -497,7 +392,8 @@ def compute_route(
         "destination": _make_waypoint(destination),
         "travelMode": travel_mode,
     }
-    if waypoints:
+    # TRANSIT is point-to-point only; waypoint optimisation applies to other modes.
+    if waypoints and not is_transit:
         body["intermediates"] = [_make_waypoint(w) for w in waypoints.split(",")]
         body["optimizeWaypointOrder"] = True
 
@@ -533,10 +429,15 @@ def compute_route(
     result = f"Route: {origin} → {destination}\nDistance: {dist_km:.1f} km\nDuration: {duration}\nMode: {travel_mode}"
 
     opt_order = route.get("optimizedIntermediateWaypointIndex")
-    if opt_order and waypoints:
+    if opt_order and waypoints and not is_transit:
         wp_list = [w.strip() for w in waypoints.split(",")]
         ordered = [wp_list[i] for i in opt_order]
         result += f"\nOptimised stop order: {' → '.join(ordered)}"
+
+    if include_steps:
+        steps = _format_route_steps(route)
+        if steps:
+            result += "\n\nSteps:\n" + steps
 
     return result
 
@@ -724,6 +625,40 @@ def _looks_like_latlng(text: str) -> bool:
         return True
     except ValueError:
         return False
+
+
+def _format_route_steps(route: dict) -> str:
+    """Format up to 15 turn-by-turn / transit steps from a Routes API route."""
+    lines: list[str] = []
+    for leg in route.get("legs", []):
+        for step in leg.get("steps", []):
+            if len(lines) >= 15:  # Cap at 15 steps
+                return "\n".join(lines)
+            dist_m = step.get("distanceMeters", 0)
+            dist_str = f"{dist_m / 1000:.1f} km" if dist_m >= 1000 else f"{dist_m} m"
+            dur = step.get("staticDuration", "")
+            transit = step.get("transitDetails")
+            if transit:
+                line = transit.get("transitLine", {})
+                name = line.get("nameShort") or line.get("name", "")
+                vehicle = line.get("vehicle", {}).get("type", "")
+                stop_details = transit.get("stopDetails", {})
+                dep = stop_details.get("departureStop", {}).get("name", "")
+                arr = stop_details.get("arrivalStop", {}).get("name", "")
+                count = transit.get("stopCount", "")
+                detail = f"[{vehicle} {name}]".strip()
+                segment = f"{dep} → {arr}" if dep or arr else ""
+                extra = f" ({count} stops)" if count else ""
+                dur_str = f" [{dur}]" if dur else ""
+                lines.append(f"  {len(lines) + 1}. {detail} {segment}{extra}{dur_str}".rstrip())
+            else:
+                instr = step.get("navigationInstruction", {}).get("instructions", "")
+                instr = instr.replace("\n", " ").strip()
+                if not instr:
+                    continue
+                dur_str = f", {dur}" if dur else ""
+                lines.append(f"  {len(lines) + 1}. {instr} ({dist_str}{dur_str})")
+    return "\n".join(lines)
 
 
 def _geocode(address: str, key: str) -> str | None:

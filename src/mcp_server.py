@@ -54,8 +54,7 @@ from src.tools.weather import get_weather
 from src.tools.budget import calculate_budget
 from src.tools.destination_rag import search_destination_guides
 from src.tools.google_maps import (
-    get_directions,
-    get_distance_matrix,
+    compute_route,
     get_timezone,
     optimize_day_route,
     search_places_nearby,
@@ -82,8 +81,7 @@ _TOOL_REGISTRY: dict[str, tuple[Any, bool]] = {
     "search_destination_guides": (search_destination_guides, False),
     "search_places_nearby": (search_places_nearby, False),
     "search_places_text": (search_places_text, False),
-    "get_directions": (get_directions, False),
-    "get_distance_matrix": (get_distance_matrix, False),
+    "compute_route": (compute_route, False),
     "get_timezone": (get_timezone, False),
     "optimize_day_route": (optimize_day_route, False),
     "search_web": (search_web, True),
@@ -227,7 +225,7 @@ RECOMMENDED WORKFLOW for trip planning:
 8. get_safety_info("Japan") → safety, visa, health info
 9. calculate_budget(region, style, days, travelers, flight_cost, hotel_cost) → cost breakdown
 10. convert_currency("USD", "JPY", 1000) → exchange rates
-11. get_directions(origin, destination) → transit/driving directions
+11. compute_route(origin, destination) → directions, transit steps, multi-stop routes
 12. optimize_day_route(stops, start) → efficient stop ordering
 
 TIPS:
