@@ -4,12 +4,36 @@ import respx
 from httpx import Response
 
 from src.tools.flights_duffel import (
+    _parse_iso_duration,
     confirm_flight_price,
     get_cheapest_flight,
     search_cheapest_flight_in_month,
     search_flights,
     search_nearby_airports,
 )
+
+
+# ── Regression: ISO 8601 duration parsing ────────────────────────────────
+# A long-haul or multi-leg flight can exceed 24h, so Duffel returns a duration
+# with a DAY component like "P1DT9H30M".
+
+
+def test_parse_iso_duration_handles_day_component():
+    # The exact shape that crashed the live New York -> Tokyo search.
+    assert _parse_iso_duration("P1DT9H30M") == ("33h 30m", 2010)
+    assert _parse_iso_duration("P2DT3H") == ("51h", 3060)
+
+
+def test_parse_iso_duration_common_cases_unchanged():
+    assert _parse_iso_duration("PT7H30M") == ("7h 30m", 450)
+    assert _parse_iso_duration("PT45M") == ("45m", 45)
+    assert _parse_iso_duration("PT1H") == ("1h", 60)
+
+
+def test_parse_iso_duration_degrades_safely():
+    # Never raise on missing/odd input — one bad offer must not crash the search.
+    assert _parse_iso_duration(None) == ("N/A", 0)
+    assert _parse_iso_duration("garbage") == ("0m", 0)
 
 
 # ── Mock Responses ───────────────────────────────────────────────────────

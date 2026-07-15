@@ -82,20 +82,42 @@ def _parse_duffel_error(response: httpx.Response) -> str:
 
 
 def _parse_iso_duration(duration: str | None) -> tuple[str, int]:
-    """Parse ISO 8601 duration (e.g., PT7H30M) to readable string and minutes."""
+    """Parse an ISO 8601 duration into a readable string and total minutes.
+
+    Handles a day component: long-haul or multi-leg flights can exceed 24h, and
+    Duffel then returns e.g. ``P1DT9H30M`` (1 day, 9h30m), not just ``PT7H30M``.
+    Parsing is defensive — an unexpected token degrades to a partial result
+    instead of raising, so one odd offer can't crash the whole flight search.
+    """
     if not duration:
         return "N/A", 0
-    dur_str = duration.replace("PT", "").replace("H", "h ").replace("M", "m").strip()
-    dur_mins = 0
-    dur_clean = duration.replace("PT", "")
-    if "H" in dur_clean:
-        parts = dur_clean.split("H")
-        dur_mins += int(parts[0]) * 60
-        dur_clean = parts[1]
-    if "M" in dur_clean:
-        m_val = dur_clean.replace("M", "").strip()
-        dur_mins += int(m_val) if m_val else 0
-    return dur_str, dur_mins
+
+    body = duration.strip().lstrip("P")  # drop leading 'P'
+    days = hours = minutes = 0
+
+    if "D" in body:
+        day_part, _, body = body.partition("D")
+        days = int(day_part) if day_part.isdigit() else 0
+
+    body = body.lstrip("T")  # drop the date/time separator 'T'
+
+    if "H" in body:
+        hour_part, _, body = body.partition("H")
+        hours = int(hour_part) if hour_part.isdigit() else 0
+    if "M" in body:
+        minute_part, _, body = body.partition("M")
+        minutes = int(minute_part) if minute_part.isdigit() else 0
+
+    total_hours = days * 24 + hours
+    total_mins = total_hours * 60 + minutes
+
+    if total_hours and minutes:
+        dur_str = f"{total_hours}h {minutes}m"
+    elif total_hours:
+        dur_str = f"{total_hours}h"
+    else:
+        dur_str = f"{minutes}m"
+    return dur_str, total_mins
 
 
 def _map_cabin_class(travel_class: str) -> str | None:
