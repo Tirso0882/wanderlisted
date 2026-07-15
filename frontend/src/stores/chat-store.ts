@@ -141,8 +141,13 @@ export const useChatStore = create<ChatState>()(
         const state = get();
         if (state.isStreaming) return;
 
-        // Detect which view to show based on user intent
+        // Detect which view to show based on user intent. When no specific
+        // intent is detected, fall back to the general conversation view so
+        // the chat stays visible (the home screen has no message list). If the
+        // user is already inside an agent view, keep them there.
         const detectedView = detectIntent(content);
+        const effectiveView: ViewMode =
+          detectedView ?? (state.activeView === "home" ? "full-plan" : state.activeView);
 
         // Add user message
         const userMsg: ChatMessage = {
@@ -157,7 +162,7 @@ export const useChatStore = create<ChatState>()(
           isStreaming: true,
           streamingContent: "",
           interruptData: null,
-          ...(detectedView ? { activeView: detectedView } : {}),
+          activeView: effectiveView,
         });
 
         // Start streaming
@@ -281,7 +286,7 @@ export const useChatStore = create<ChatState>()(
           itinerary: "ItineraryAgent",
         };
 
-        const currentView = detectedView ?? state.activeView;
+        const currentView = effectiveView;
         const targetAgent = viewToAgent[currentView];
 
         const controller = streamChat(
