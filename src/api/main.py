@@ -48,7 +48,9 @@ def _extract_text_content(content) -> str:
         texts = [
             block.get("text", "")
             for block in content
-            if isinstance(block, dict) and block.get("type") == "text"
+            if isinstance(block, dict)
+            and block.get("type") == "text"
+            and block.get("text")
         ]
         return " ".join(texts)
     return str(content or "")
