@@ -100,9 +100,11 @@ START → TRIAGE → shallow_reply (simple queries) → END
 ### Three-Tier LLM Pyramid
 | Tier | Model | TPM | Agents | Semaphore | Reasoning Effort |
 |------|-------|-----|--------|-----------|------------------|
-| `reasoning` | gpt-5.4 | 1M | Destination, Itinerary | 6 | medium |
-| `fast` | gpt-5.4-mini | 1M | Flights, Hotels, Restaurants, Activities, Transportation, Budget | 20 | low |
-| `utility` | gpt-5.4-nano | 1M | Supervisor, Triage, Rendering, Shallow replies | 20 | low |
+| `reasoning` | gpt-5.4 | 300K | Destination, Itinerary | 4 | medium |
+| `fast` | gpt-5.4-mini | 500K | Flights, Hotels, Restaurants, Activities, Transportation, Budget | 15 | low |
+| `utility` | gpt-5.4-nano | 200K | Supervisor, Triage, Rendering, Shallow replies | 15 | low |
+
+> **Source of truth (verify, do not trust this table blindly):** semaphore caps = `_SEMAPHORE_LIMITS` in `src/agent/concurrency.py`; reasoning effort = `_TIER_REASONING_EFFORT` in `src/agent/llm.py`; TPM reflects your Azure deployment quota. This table is a summary and drifts easily — the code wins.
 
 All gpt-5.4 family models are **reasoning models**. Key constraints:
 - Tool calling is NOT supported in Chat Completions with `reasoning: none` (the default)

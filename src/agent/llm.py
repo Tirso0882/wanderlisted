@@ -32,14 +32,15 @@ All gpt-5.4 family models are reasoning models.  Key constraints:
 
     Set *_FAST_* and *_UTILITY_* env vars to enable each tier.  When absent,
     each tier falls back to the next higher tier so the system works unchanged
-    on a single-deployment setup.
+    on a single-deployment setup.  Set LLM_EFFORT_<TIER> (REASONING/FAST/UTILITY)
+    to tune reasoning effort per tier — see _resolve_reasoning_effort below.
 
 Each provider reads its own env vars (see inline comments below).
 Pass **overrides to customise any parameter at call time.
 """
 
 import os
-from typing import Literal
+from typing import Literal, get_args
 
 from dotenv import load_dotenv
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -53,15 +54,55 @@ _SUPPORTED_EMBEDDINGS = ("azure_openai", "openai")
 
 ModelTier = Literal["reasoning", "fast", "utility"]
 
-# Per-tier reasoning effort for gpt-5.4 family (all are reasoning models).
-# reasoning: "medium" — complex multi-source synthesis benefits from deeper thinking
-# fast:      "low"    — worker agents need tool calling but favour speed
-# utility:   "low"    — routing/extraction still needs tool calling; keep it cheap
-_TIER_REASONING_EFFORT: dict[ModelTier, str] = {
+# The effort ladder the gpt-5.4 family accepts, ordered low -> high compute.
+# This Literal is the SINGLE source of truth for the effort vocabulary: the
+# validation set below is DERIVED from it (get_args), so the two can never drift.
+# (Responses API; "xhigh" is newest-model only, and some deployments reject "none".)
+ReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh"]
+_VALID_REASONING_EFFORTS = get_args(ReasoningEffort)
+
+# Tiers whose agents call tools. "reasoning: none" DISABLES tool calling on
+# gpt-5.4 (a previously shipped production bug), so these tiers may not use "none".
+_TOOL_CALLING_TIERS: tuple[ModelTier, ...] = ("fast", "utility")
+
+# DEFAULT reasoning effort per tier — NOT a ceiling. Override any tier at runtime
+# via the LLM_EFFORT_<TIER> env vars (resolved in _resolve_reasoning_effort).
+# Because the dict is typed dict[ModelTier, ReasoningEffort], a typo'd default
+# (e.g. "med") is caught by the type checker, not at an Azure 400 in production.
+#   reasoning -> medium : complex multi-source synthesis benefits from deeper thinking
+#   fast      -> low     : tool-calling workers need speed; "low" keeps tools working
+#   utility   -> low     : routing/extraction still tool-calls; keep it cheap
+_TIER_REASONING_EFFORT: dict[ModelTier, ReasoningEffort] = {
     "reasoning": "medium",
     "fast": "low",
     "utility": "low",
 }
+
+
+def _resolve_reasoning_effort(tier: ModelTier) -> str:
+    """Resolve the reasoning effort for a tier, allowing a per-tier env override.
+
+    Set ``LLM_EFFORT_REASONING`` / ``LLM_EFFORT_FAST`` / ``LLM_EFFORT_UTILITY``
+    to any of ``none | minimal | low | medium | high | xhigh`` to tune compute
+    per tier. Falls back to the per-tier default above.
+
+    Fails fast on an invalid value, and refuses ``none`` on the tool-calling
+    tiers (``fast`` / ``utility``): ``reasoning: none`` DISABLES tool calling on
+    gpt-5.4 — a previously shipped production bug — so ``low`` is the safe floor.
+    """
+    default = _TIER_REASONING_EFFORT.get(tier, "low")
+    effort = os.environ.get(f"LLM_EFFORT_{tier.upper()}", default).strip().lower()
+    if effort not in _VALID_REASONING_EFFORTS:
+        raise ValueError(
+            f"Invalid reasoning effort {effort!r} for tier {tier!r}. "
+            f"Valid levels: {_VALID_REASONING_EFFORTS}."
+        )
+    if effort == "none" and tier in _TOOL_CALLING_TIERS:
+        raise ValueError(
+            f"reasoning effort 'none' disables tool calling on gpt-5.4, but the "
+            f"{tier!r} tier runs tool-calling agents. Use 'low' or higher."
+        )
+    return effort
 
 
 def _resolve_deployment(tier: ModelTier, env_prefix: str) -> str:
@@ -131,7 +172,7 @@ def get_llm(tier: ModelTier = "reasoning", **overrides) -> BaseChatModel:
             # when reasoning effort is none (the default). We enable
             # Responses API and set a per-tier reasoning effort.
             use_responses_api=True,
-            reasoning_effort=_TIER_REASONING_EFFORT.get(tier, "low"),
+            reasoning_effort=_resolve_reasoning_effort(tier),
         )
         raw = AzureChatOpenAI(**(defaults | overrides))
 
@@ -145,7 +186,7 @@ def get_llm(tier: ModelTier = "reasoning", **overrides) -> BaseChatModel:
             api_key=os.environ.get("OPENAI_API_KEY"),
             # gpt-5.4 family: enable Responses API + reasoning effort
             use_responses_api=True,
-            reasoning_effort=_TIER_REASONING_EFFORT.get(tier, "low"),
+            reasoning_effort=_resolve_reasoning_effort(tier),
         )
         raw = ChatOpenAI(**(defaults | overrides))
 
