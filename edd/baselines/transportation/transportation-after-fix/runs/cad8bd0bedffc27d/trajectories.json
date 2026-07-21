@@ -1,0 +1,1004 @@
+{
+  "queries": [
+    "How do I get by public transport from Fiumicino Airport to Hotel Artemide in Rome?",
+    "Give me transit directions from Heathrow Airport to The Resident Soho in London.",
+    "What public transport should I take from Charles de Gaulle Airport to Hotel Le Six in Saint-Germain-des-Pres?",
+    "Find a transit route from Haneda Airport to Shibuya Crossing in Tokyo.",
+    "I need public transit directions from JFK Airport to Bryant Park in Midtown Manhattan.",
+    "How can I get by train or metro from Barcelona El Prat Airport to Sagrada Familia?",
+    "Give transit directions from Schiphol Airport to the Jordaan in Amsterdam.",
+    "What is the public transport route from Lisbon Airport to Alfama?",
+    "Plan the public transport trip from Venice Marco Polo Airport to Piazza San Marco.",
+    "How do I take public transport from Athens International Airport to the Acropolis Museum?",
+    "Give me walking directions from Hotel Artemide in Rome to the Colosseum.",
+    "Walk me from the Louvre Museum to Notre Dame Cathedral in Paris.",
+    "What is the walking route from Gion Corner to Kiyomizu dera in Kyoto?",
+    "Find a bike route from the Anne Frank House to the Rijksmuseum in Amsterdam.",
+    "Can you give me cycling directions from Nyhavn to The Little Mermaid in Copenhagen?",
+    "I am driving from Hotel Artemide in Rome to the Pompeii Archaeological Park. Route me there.",
+    "Give me driving directions from the Hollywood Roosevelt Hotel to Santa Monica Pier.",
+    "Please calculate a car route from Sukhumvit to the Grand Palace in Bangkok.",
+    "Find a scooter route from Hanoi Old Quarter to the Temple of Literature.",
+    "I will be on a motorbike. Route me from Canggu to Uluwatu Temple in Bali.",
+    "Compare public transport from Hotel Artemide in Rome to the Colosseum and to Vatican Museums.",
+    "Compare the transit trip from The Resident Soho to the British Museum and the Tower of London.",
+    "Plan a walking route from Hotel Artemide to Trastevere via Piazza Navona and the Pantheon.",
+    "Drive from Gare du Nord to the Eiffel Tower via the Louvre and Champs Elysees.",
+    "Create a bike route from Hotel Estherea to the Rijksmuseum via the Anne Frank House and Vondelpark.",
+    "Wie komme ich mit der U-Bahn vom Berliner Hauptbahnhof zum Brandenburger Tor?",
+    "Dame indicaciones a pie desde la Puerta del Sol hasta el Museo del Prado en Madrid.",
+    "Je veux un itineraire a velo de Montmartre au Canal Saint Martin a Paris.",
+    "Dammi il percorso in auto da Firenze Santa Maria Novella a Piazzale Michelangelo.",
+    "Walk from Hotel Artemide to the Louvre - sorry, I mean the Colosseum in Rome, not Paris.",
+    "Route me from Tokyo Station to Senso ji by taxi - correction, use public transit instead.",
+    "I need the Tube from Paddington to Tate Modern; actually start at King's Cross St Pancras, not Paddington.",
+    "Drive from Portland International Jetport in Maine, not Portland Oregon, to Old Port.",
+    "Use public transport from Juan Santamaria Airport to Hotel Grano de Oro in San Jose, Costa Rica, not California.",
+    "Give a walking route from Museum London in Ontario, Canada, not London England, to Victoria Park.",
+    "What public transport route gets me from Hotel Artemide in Rome back to Fiumicino Airport?",
+    "Give Metro directions from Gare du Nord to the Eiffel Tower in Paris.",
+    "Find public transit from Hotel Jazz Barcelona to Museu Picasso; I use a wheelchair, so include the route steps.",
+    "How do I get on public transport from Circular Quay to Bondi Beach in Sydney?",
+    "I have a rental car. Drive me from the V&A Waterfront to the Table Mountain Aerial Cableway in Cape Town."
+  ],
+  "schema_version": 1,
+  "trajectories": [
+    {
+      "error": null,
+      "final_text": "Take the **Leonardo Express train** from **Fiumicino Aeroporto** to **Roma Termini**. From Termini, walk to **Hotel Artemide, Via Nazionale 22**.\n\n- **Mode:** Public transport / heavy rail plus walking  \n- **Distance:** 32.6 km  \n- **Estimated duration:** About **44 minutes**  \n- **Train:** Fiumicino Aeroporto \u2192 Roma Termini, **2 stops**\n- **Walk from Termini:** Exit via **Via Cavour**, then continue through Piazza dei Cinquecento, Largo di Villa Peretti, Via del Viminale, V. Napoli, and onto Via Nazionale. The route steps total roughly **900 m** of walking.\n\nThe route result does not provide fares, departure schedules, or ticket details; check Trenitalia or the airport\u2019s official transport information for those.",
+      "query": "How do I get by public transport from Fiumicino Airport to Hotel Artemide in Rome?",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Hotel Artemide, Via Nazionale 22, Rome",
+            "include_steps": true,
+            "origin": "Fiumicino Airport, Rome",
+            "travel_mode": "TRANSIT",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Fiumicino Airport, Rome \u2192 Hotel Artemide, Via Nazionale 22, Rome\nDistance: 32.6 km\nDuration: 2667s\nMode: TRANSIT\n\nSteps:\n  1. [HEAVY_RAIL RV] Fiumicino Aeroporto \u2192 Roma Termini (2 stops) [1920s]\n  2. Prendi l'uscita Via Cavour (223 m, 223s)\n  3. Procedi in direzione nordovest su Piazza dei Cinquecento verso Via D'Azeglio (171 m, 134s)\n  4. Continua su Largo di Villa Peretti (53 m, 40s)\n  5. Continua su Via del Viminale (238 m, 185s)\n  6. Svolta a destra e prendi V. Napoli (178 m, 137s)\n  7. Svolta a sinistra e prendi Via Nazionale (36 m, 27s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "### Transit directions\n\n**Heathrow Airport \u2192 The Resident Soho**  \n- **Mode:** Transit  \n- **Distance:** 26.9 km  \n- **Duration:** Approximately **37 minutes**\n\n1. Take the **Elizabeth line** from **Heathrow Terminals 2 & 3** to **Tottenham Court Road** \u2014 **10 stops**, about 33 minutes.\n2. Exit via **Dean Street, Oxford Street**.\n3. Walk southeast along **Dean Street** toward Fareham Street.\n4. Turn right onto **Carlisle Street**. The Resident Soho will be on the left.\n\nThe route result does not include fares, schedules, waiting times, or service-disruption information.",
+      "query": "Give me transit directions from Heathrow Airport to The Resident Soho in London.",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "The Resident Soho, London",
+            "include_steps": true,
+            "origin": "Heathrow Airport, London",
+            "travel_mode": "TRANSIT",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Heathrow Airport, London \u2192 The Resident Soho, London\nDistance: 26.9 km\nDuration: 2222s\nMode: TRANSIT\n\nSteps:\n  1. [HEAVY_RAIL Elizabeth line] Heathrow Terminals 2 & 3 \u2192 Tottenham Court Road (10 stops) [1980s]\n  2. Take exit Dean Street, Oxford Street (115 m, 236s)\n  3. Head southeast on Dean St toward Fareham St (112 m, 88s)\n  4. Turn right onto Carlisle St Destination will be on the left (45 m, 38s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "Take **public transit via RER B**:\n\n1. At **A\u00e9roport Charles de Gaulle 1**, board **RER B** toward Paris.\n2. Get off at **Saint-Michel Notre-Dame** after **13 stops**.\n3. Exit via **Grands Augustins** and walk to **Hotel Le Six** via Quai des Grands Augustins, Rue G\u00eet-le-C\u0153ur, Rue Saint-Andr\u00e9 des Arts, Rue de Buci, Boulevard Saint-Germain, and Rue de Rennes.\n\n**Distance:** 31.9 km  \n**Estimated duration:** about **53 minutes**  \n\nThe route tool does not provide fare, ticket, timetable, disruption, or accessibility information; check the official \u00cele-de-France Mobilit\u00e9s/RATP sources for those details.",
+      "query": "What public transport should I take from Charles de Gaulle Airport to Hotel Le Six in Saint-Germain-des-Pres?",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Hotel Le Six, Saint-Germain-des-Pr\u00e9s, Paris",
+            "include_steps": true,
+            "origin": "Charles de Gaulle Airport",
+            "travel_mode": "TRANSIT",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Charles de Gaulle Airport \u2192 Hotel Le Six, Saint-Germain-des-Pr\u00e9s, Paris\nDistance: 31.9 km\nDuration: 3166s\nMode: TRANSIT\n\nSteps:\n  1. [COMMUTER_TRAIN B] A\u00e9roport Charles de Gaulle 1 \u2192 Saint-Michel Notre-Dame (13 stops) [2279s]\n  2. Prendre la sortie Grands Augustins (101 m, 78s)\n  3. Prendre la direction sud-est sur Quai des Grands Augustins (4 m, 4s)\n  4. Prendre \u00e0 gauche sur Rue G\u00eet-le-C\u0153ur (126 m, 103s)\n  5. Prendre \u00e0 droite sur Rue Saint-Andr\u00e9 des Arts (288 m, 237s)\n  6. Continuer sur Rue de Buci (220 m, 201s)\n  7. Prendre \u00e0 droite sur Bd Saint-Germain (188 m, 159s)\n  8. Prendre \u00e0 droite sur Pl. Saint-Germain des Pr\u00e9s (13 m, 10s)\n  9. Prendre \u00e0 gauche sur Rue de Rennes Votre destination se trouvera sur la gauche. (13 m, 31s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "No **transit route** was returned from **Haneda Airport** to **Shibuya Crossing** using the requested **TRANSIT** mode. I can\u2019t substitute another mode or endpoint without your approval.",
+      "query": "Find a transit route from Haneda Airport to Shibuya Crossing in Tokyo.",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Shibuya Crossing, Tokyo",
+            "include_steps": true,
+            "origin": "Haneda Airport, Tokyo",
+            "travel_mode": "TRANSIT",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "No route found."
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "### JFK Airport \u2192 Bryant Park by public transit\n\n- **Mode:** Transit\n- **Distance:** 27.3 km\n- **Duration:** Approximately **52 minutes**\n\n**Route:**\n1. Take the **Jamaica AirTrain** from **Terminal 8** to **Jamaica** \u2014 3 stops, about 8 minutes.\n2. Walk north on Sutphin Boulevard, then enter the **Sutphin Boulevard** station.\n3. Take the **E subway line** from **Sutphin Blvd\u2013Archer Av\u2013JFK Airport** to **42 St\u2013Port Authority Bus Terminal** \u2014 12 stops, about 32.5 minutes.\n4. Exit at **40 St & Broadway southwest**.\n5. Walk southeast on West 40th Street toward Broadway.\n6. Turn left onto **6th Avenue/Avenue of the Americas**, then turn right to reach Bryant Park.\n\nThe route result does not provide fare, departure schedule, waiting time, or service-disruption information.",
+      "query": "I need public transit directions from JFK Airport to Bryant Park in Midtown Manhattan.",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Bryant Park, Midtown Manhattan",
+            "include_steps": true,
+            "origin": "JFK Airport",
+            "travel_mode": "TRANSIT",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: JFK Airport \u2192 Bryant Park, Midtown Manhattan\nDistance: 27.3 km\nDuration: 3112s\nMode: TRANSIT\n\nSteps:\n  1. [TRAM Jamaica AirTrain] Terminal 8 \u2192 Jamaica (3 stops) [480s]\n  2. Head north on Sutphin Blvd Destination will be on the left (86 m, 70s)\n  3. Take entrance Sutphin Boulevard (46 m, 47s)\n  4. [SUBWAY E Line] Sutphin Blvd-Archer Av-JFK Airport \u2192 42 St-Port Authority Bus Terminal (12 stops) [1950s]\n  5. Take exit 40 St & Bway SW (394 m, 105s)\n  6. Head southeast on W 40th St toward Broadway (192 m, 158s)\n  7. Turn left onto 6th Ave/Ave of the Americas (79 m, 73s)\n  8. Turn right (6 m, 16s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "Take the **metro**:\n\n1. From **Aeroport T2**, board **Metro L9 Sud** toward **Collblanc** \u2014 13 stops.\n2. At **Collblanc**, change to **Metro L5** toward **Sagrada Fam\u00edlia** \u2014 9 stops.\n3. Exit at **Sagrada Fam\u00edlia**, using the **Sardenya exit**, then walk about **107 m** to the basilica.\n\n- **Total distance:** 21.0 km  \n- **Estimated duration:** about **45 minutes** (including the connection and walk)\n\nThe route data does not provide fares, ticket options, schedules, or service disruption information; check the official **TMB/Aerobus or Barcelona transport** sources for those details.",
+      "query": "How can I get by train or metro from Barcelona El Prat Airport to Sagrada Familia?",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Sagrada Familia, Barcelona",
+            "include_steps": true,
+            "origin": "Barcelona El Prat Airport",
+            "travel_mode": "TRANSIT",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Barcelona El Prat Airport \u2192 Sagrada Familia, Barcelona\nDistance: 21.0 km\nDuration: 2710s\nMode: TRANSIT\n\nSteps:\n  1. [SUBWAY L9S] Aeroport T2 \u2192 Collblanc (13 stops) [1445s]\n  2. [SUBWAY L5] Collblanc \u2192 Sagrada Familia (9 stops) [766s]\n  3. Preneu la sortida Sardenya (58 m, 84s)\n  4. Ves en direcci\u00f3 sud cap a Carrer de Sardenya/Pla\u00e7a de la Sagrada Fam\u00edlia (10 m, 8s)\n  5. Gira a l'esquerra per Carrer de Sardenya/Pla\u00e7a de la Sagrada Fam\u00edlia (39 m, 28s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "## Schiphol Airport \u2192 Jordaan, Amsterdam\n\n**Mode:** Transit  \n**Distance:** 13.8 km  \n**Duration:** approximately **40 minutes**\n\n1. Take the **Sprinter train** from **Schiphol Airport** to **Amsterdam Zuid** \u2014 2 stops.\n2. At Amsterdam Zuid, follow the route to the tram stop via the **Zuidplein** exit.\n3. Take **Tram 5** from **Station Zuid** to **Rozengracht** \u2014 10 stops.\n4. From Rozengracht, walk toward the Jordaan:\n   - Head north on Marnixstraat.\n   - Turn right toward Lijnbaansgracht.\n   - Turn left onto Lijnbaansgracht.\n   - Turn right onto Rozengracht.\n\nThe route includes stairs near **Strawinskylaan**. The routing result does not provide fares, ticket/pass information, schedules, or accessibility details; check the official NS/GVB sources for those.",
+      "query": "Give transit directions from Schiphol Airport to the Jordaan in Amsterdam.",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Jordaan, Amsterdam",
+            "include_steps": true,
+            "origin": "Schiphol Airport",
+            "travel_mode": "TRANSIT",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Schiphol Airport \u2192 Jordaan, Amsterdam\nDistance: 13.8 km\nDuration: 2408s\nMode: TRANSIT\n\nSteps:\n  1. [HEAVY_RAIL Sprinter] Schiphol Airport \u2192 Amsterdam Zuid (2 stops) [420s]\n  2. Take exit Zuidplein (188 m, 141s)\n  3. Head north toward Zuidplein (16 m, 13s)\n  4. Turn right onto Zuidplein (13 m, 11s)\n  5. Turn left to stay on Zuidplein (105 m, 83s)\n  6. Turn right toward Strawinskylaan Take the stairs (23 m, 27s)\n  7. Turn left toward Strawinskylaan (6 m, 7s)\n  8. Turn right onto Strawinskylaan (31 m, 26s)\n  9. [TRAM 5] Station Zuid \u2192 Rozengracht (10 stops) [1001s]\n  10. Head north on Marnixstraat (15 m, 12s)\n  11. Turn right toward Lijnbaansgracht (36 m, 27s)\n  12. Turn left onto Lijnbaansgracht (38 m, 34s)\n  13. Turn right onto Rozengracht (279 m, 224s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "## Lisbon Airport \u2192 Alfama by public transport\n\n- **Mode:** Transit\n- **Distance:** 8.6 km\n- **Duration:** approximately **48 minutes**\n\n### Route\n1. Take **Bus 722** from **Av. Berlim (Aeroporto)** to **Areeiro** \u2014 10 stops.\n2. From **Areeiro**, take the **Vd subway line** to **Rossio** \u2014 7 stops.\n3. Walk to **P\u00e7. Figueira** and take **Bus 737** to **Lg. Contador Mor** \u2014 5 stops.\n4. Walk via **Travessa de Santa Luzia**, **Largo de Santa Luzia**, **Largo Portas do Sol**, and **Rua de S\u00e3o Tom\u00e9** into Alfama.\n\nThe route result does not provide fares, schedules, frequency, or live disruption information; check the official Lisbon public-transport operator for those details.",
+      "query": "What is the public transport route from Lisbon Airport to Alfama?",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Alfama, Lisbon, Portugal",
+            "include_steps": true,
+            "origin": "Lisbon Airport, Lisbon, Portugal",
+            "travel_mode": "TRANSIT",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Lisbon Airport, Lisbon, Portugal \u2192 Alfama, Lisbon, Portugal\nDistance: 8.6 km\nDuration: 2872s\nMode: TRANSIT\n\nSteps:\n  1. Siga para sul (18 m, 14s)\n  2. Vire \u00e0 esquerda em dire\u00e7\u00e3o a Av. de Berlim (39 m, 28s)\n  3. Vire \u00e0 esquerda em dire\u00e7\u00e3o a Av. de Berlim (13 m, 10s)\n  4. Vire \u00e0 direita em dire\u00e7\u00e3o a Av. de Berlim O destino encontra-se \u00e0 esquerda (41 m, 30s)\n  5. [BUS 722] Av. Berlim (Aeroporto) \u2192 Areeiro (10 stops) [884s]\n  6. Siga para este em Av. Jo\u00e3o XXI (101 m, 83s)\n  7. Na rotunda, siga pela 1.\u00aa sa\u00edda para P\u00e7. Francisco S\u00e1 Carneiro O destino encontra-se \u00e0 esquerda (42 m, 44s)\n  8. Pegue a entrada Areeiro (66 m, 67s)\n  9. [SUBWAY Vd] Areeiro \u2192 Rossio (7 stops) [449s]\n  10. Pegue a sa\u00edda Rossio (30 m, 31s)\n  11. [BUS 737] P\u00e7. Figueira \u2192 Lg. Contador Mor (5 stops) [415s]\n  12. Siga para este em Tv. de Santa Luzia em dire\u00e7\u00e3o a Largo de Santa Luzia (41 m, 34s)\n  13. Vire \u00e0 esquerda em dire\u00e7\u00e3o a Largo de Santa Luzia (25 m, 18s)\n  14. Curvar ligeiramente \u00e0 esquerda em dire\u00e7\u00e3o a Largo Portas do Sol (68 m, 53s)\n  15. Curvar ligeiramente \u00e0 direita em dire\u00e7\u00e3o a R. S\u00e3o Tom\u00e9 (9 m, 7s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "## Public transport: Venice Marco Polo Airport \u2192 Piazza San Marco\n\n- **Mode:** Transit\n- **Distance:** 17.1 km\n- **Estimated duration:** 59 minutes 52 seconds\n\n### Route\n1. Take **BUS 5** from **Aeroporto Marco Polo** to **Venezia** \u2014 18 stops, approximately 24 minutes.\n2. Walk through **Piazzale Roma** and over **Ponte de la Costituzione** to **Fondamenta Santa Lucia** \u2014 approximately 4 minutes.\n3. Take **FERRY 1** from **Ferrovia \u201cE\u201d** to **Rialto** \u2014 7 stops, approximately 19 minutes.\n4. Walk from Rialto via **Per S. Marco**, **Rio Terr\u00e0 de le Colonne**, and **Calle dei Fabbri** to **Piazza San Marco** \u2014 approximately 6 minutes.\n\nThe route includes stairs on parts of the walking sections. The routing result does not provide fares, ticket or pass information, schedules, or accessibility details; check the official Venice public transport operator for those.",
+      "query": "Plan the public transport trip from Venice Marco Polo Airport to Piazza San Marco.",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Piazza San Marco, Venice",
+            "include_steps": true,
+            "origin": "Venice Marco Polo Airport",
+            "travel_mode": "TRANSIT",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Venice Marco Polo Airport \u2192 Piazza San Marco, Venice\nDistance: 17.1 km\nDuration: 3592s\nMode: TRANSIT\n\nSteps:\n  1. [BUS 5] Aeroporto Marco Polo \u2192 Venezia (18 stops) [1440s]\n  2. Procedi verso sudest (7 m, 6s)\n  3. Svolta a sinistra verso Piazzale Roma (8 m, 7s)\n  4. Svolta tutto a sinistra e prendi Piazzale Roma (45 m, 37s)\n  5. Svolta a destra e prendi Ponte de la Constituzione Prendi le scale (114 m, 132s)\n  6. Continua su Fondamenta Santa Lucia Prendi le scale La tua destinazione \u00e8 sulla destra (103 m, 92s)\n  7. [FERRY 1] Ferrovia \"E\" \u2192 Rialto (7 stops) [1140s]\n  8. Procedi in direzione sudest verso Riva del Carbon (14 m, 11s)\n  9. Continua su Calle Bembo/Per S. Marco Continua su Per S. Marco Prendi le scale (253 m, 214s)\n  10. Svolta a sinistra e prendi Rio Terr\u00e0 de le Colonne (4 m, 3s)\n  11. Svolta a destra e prendi Calle dei Fabbri/Per S. Marco (76 m, 59s)\n  12. Svolta a sinistra e prendi Calle dei Fabbri (11 m, 9s)\n  13. Svolta a destra per rimanere su Calle dei Fabbri Prendi le scale (62 m, 49s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "Take public transport as follows:\n\n1. From **Athens International Airport**, follow the pedestrian directions to the metro.\n2. Take **Metro Line M3** from **\u0394\u03b9\u03b5\u03b8\u03bd\u03ae\u03c2 \u0391\u03b5\u03c1\u03bf\u03bb\u03b9\u03bc\u03ad\u03bd\u03b1\u03c2 \u0391\u03b8\u03b7\u03bd\u03ce\u03bd** to **\u03a3\u03cd\u03bd\u03c4\u03b1\u03b3\u03bc\u03b1** \u2014 **16 stops**, about **2,331 seconds**.\n3. At **\u03a3\u03cd\u03bd\u03c4\u03b1\u03b3\u03bc\u03b1**, change to **Metro Line M2** toward **\u0391\u03ba\u03c1\u03cc\u03c0\u03bf\u03bb\u03b7** \u2014 **2 stops**, about **74 seconds**.\n4. Follow the short walking directions to the **Acropolis Museum**.\n\n**Total returned route:** 31.4 km and approximately **2,812 seconds (46 minutes 52 seconds)** by transit. The route data does not include fares, ticket guidance, timetables, or waiting times.",
+      "query": "How do I take public transport from Athens International Airport to the Acropolis Museum?",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Acropolis Museum, Athens",
+            "include_steps": true,
+            "origin": "Athens International Airport",
+            "travel_mode": "TRANSIT",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Athens International Airport \u2192 Acropolis Museum, Athens\nDistance: 31.4 km\nDuration: 2812s\nMode: TRANSIT\n\nSteps:\n  1. \u03a0\u03c1\u03bf\u03c7\u03c9\u03c1\u03ae\u03c3\u03c4\u03b5 \u03b2\u03bf\u03c1\u03b5\u03b9\u03bf\u03b4\u03c5\u03c4\u03b9\u03ba\u03ac (17 m, 15s)\n  2. \u0391\u03bd\u03bf\u03b9\u03c7\u03c4\u03ae \u03c3\u03c4\u03c1\u03bf\u03c6\u03ae \u03b4\u03b5\u03be\u03b9\u03ac (42 m, 33s)\n  3. [SUBWAY M3] \u0394\u03b9\u03b5\u03b8\u03bd\u03ae\u03c2 \u0391\u03b5\u03c1\u03bf\u03bb\u03b9\u03bc\u03ad\u03bd\u03b1\u03c2 \u0391\u03b8\u03b7\u03bd\u03ce\u03bd \u2192 \u03a3\u03cd\u03bd\u03c4\u03b1\u03b3\u03bc\u03b1 (16 stops) [2331s]\n  4. [SUBWAY M2] \u03a3\u03cd\u03bd\u03c4\u03b1\u03b3\u03bc\u03b1 \u2192 \u0391\u03ba\u03c1\u03cc\u03c0\u03bf\u03bb\u03b7 (2 stops) [74s]"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "### Walking directions\n\n**Hotel Artemide \u2192 Colosseum**  \n- **Mode:** Walking  \n- **Distance:** 1.5 km  \n- **Estimated duration:** 19 minutes 36 seconds\n\n1. Head southwest on **Via Nazionale** toward Via Agostino Depretis \u2014 470 m  \n2. Turn left onto **Via dei Serpenti** \u2014 475 m  \n3. Continue onto **Via degli Annibaldi** \u2014 311 m  \n4. Turn right onto **Largo Gaetana Agnesi** \u2014 9 m  \n5. Turn left and **take the stairs** \u2014 84 m  \n6. Turn left \u2014 21 m  \n7. Turn right; the Colosseum will be on your left \u2014 88 m",
+      "query": "Give me walking directions from Hotel Artemide in Rome to the Colosseum.",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Colosseum, Rome",
+            "include_steps": true,
+            "origin": "Hotel Artemide, Rome",
+            "travel_mode": "WALK",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Hotel Artemide, Rome \u2192 Colosseum, Rome\nDistance: 1.5 km\nDuration: 1176s\nMode: WALK\n\nSteps:\n  1. Procedi in direzione sudovest su Via Nazionale verso Via Agostino Depretis (470 m, 357s)\n  2. Svolta a sinistra e prendi Via dei Serpenti (475 m, 360s)\n  3. Continua su Via degli Annibaldi (311 m, 273s)\n  4. Svolta a destra e prendi L.go Gaetana Agnesi (9 m, 6s)\n  5. Svolta a sinistra Prendi le scale (84 m, 92s)\n  6. Svolta a sinistra (21 m, 19s)\n  7. Svolta a destra La tua destinazione \u00e8 sulla sinistra (88 m, 69s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "## Walking route: Louvre Museum \u2192 Notre Dame Cathedral\n\n- **Distance:** 1.4 km  \n- **Duration:** about 18 minutes  \n- **Mode:** Walking\n\n### Directions\n1. Head east toward **Rue de l'Amiral de Coligny**.\n2. Turn right onto **Rue de l'Amiral de Coligny**.\n3. Turn left onto **Quai du Louvre**.\n4. Continue along **Quai de la M\u00e9gisserie**.\n5. Continue along **Quai de Gesvres**.\n6. Turn right onto **Pont d'Arcole**.\n7. Continue onto **Rue d'Arcole**. Notre Dame will be on your left.",
+      "query": "Walk me from the Louvre Museum to Notre Dame Cathedral in Paris.",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Notre Dame Cathedral, Paris",
+            "include_steps": true,
+            "origin": "Louvre Museum, Paris",
+            "travel_mode": "WALK",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Louvre Museum, Paris \u2192 Notre Dame Cathedral, Paris\nDistance: 1.4 km\nDuration: 1124s\nMode: WALK\n\nSteps:\n  1. Prendre la direction est vers Rue de l'Amiral de Coligny (42 m, 33s)\n  2. Prendre \u00e0 droite sur Rue de l'Amiral de Coligny (111 m, 90s)\n  3. Prendre \u00e0 gauche sur Quai du Louvre (212 m, 179s)\n  4. Continuer sur Quai de la M\u00e9gisserie (363 m, 291s)\n  5. Continuer sur Quai de Gesvres (291 m, 249s)\n  6. Prendre \u00e0 droite sur Pont d'Arcole (120 m, 97s)\n  7. Continuer sur Rue d'Arcole Votre destination se trouvera sur la gauche. (230 m, 185s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "## Walking route: Gion Corner \u2192 Kiyomizu-dera\n\n- **Distance:** 1.2 km  \n- **Duration:** about **19 minutes**  \n- **Mode:** Walking\n\n### Directions\n1. Head south toward **Yasui Kitamon-dori** (61 m).\n2. Turn left onto **Yasui Kitamon-dori** (15 m).\n3. Turn right (76 m).\n4. Turn left (26 m).\n5. Turn right (40 m).\n6. Turn left toward **Higashioji-dori / Prefectural Route 143** (167 m).\n7. Turn right onto **Higashioji-dori / Prefectural Route 143** (199 m).\n8. Turn left onto **Matsubara-dori / Kiyomizu-zaka** and continue toward the entrance, which will be on the left (603 m).",
+      "query": "What is the walking route from Gion Corner to Kiyomizu dera in Kyoto?",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Kiyomizu-dera, Kyoto, Japan",
+            "include_steps": true,
+            "origin": "Gion Corner, Kyoto, Japan",
+            "travel_mode": "WALK",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Gion Corner, Kyoto, Japan \u2192 Kiyomizu-dera, Kyoto, Japan\nDistance: 1.2 km\nDuration: 1163s\nMode: WALK\n\nSteps:\n  1. \u5357\u306b\u9032\u3093\u3067\u5b89\u4e95\u5317\u9580\u901a\u306b\u5411\u304b\u3046 \u4f7f\u7528\u304c\u5236\u9650\u3055\u308c\u3066\u3044\u308b\u9053\u8def (61 m, 51s)\n  2. \u5de6\u6298\u3057\u3066\u5b89\u4e95\u5317\u9580\u901a\u306b\u5165\u308b (15 m, 15s)\n  3. \u53f3\u6298\u3059\u308b (76 m, 62s)\n  4. \u5de6\u6298\u3059\u308b (26 m, 25s)\n  5. \u53f3\u6298\u3059\u308b (40 m, 34s)\n  6. \u5de6\u6298\u3057\u3066 \u6771\u5927\u8def\u901a/\u5e9c\u9053143\u53f7 \u306b\u5411\u304b\u3046 (167 m, 150s)\n  7. \u53f3\u6298\u3057\u3066\u6771\u5927\u8def\u901a/\u5e9c\u9053143\u53f7\u306b\u5165\u308b (199 m, 172s)\n  8. \u5de6\u6298\u3057\u3066\u677e\u539f\u901a/\u6e05\u6c34\u5742\u306b\u5165\u308b \u76ee\u7684\u5730\u306f\u524d\u65b9\u5de6\u5074\u3067\u3059 (603 m, 655s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "### Bike route: Anne Frank House \u2192 Rijksmuseum\n\n- **Distance:** 2.0 km  \n- **Duration:** approximately 7 minutes  \n- **Mode:** Bicycle  \n\n**Route steps:**\n1. Head northeast on Prinsengracht toward Leliegracht.\n2. Turn right onto Leliegracht.\n3. Turn right onto Keizersgracht.\n4. Turn right onto Nieuwe Spiegelstraat.\n5. Continue onto Brug 69/Spiegelgracht.\n6. Continue straight onto the bike path/Museumbrug, following Museumbrug.\n7. Turn right onto Stadhouderskade/S100; the Rijksmuseum will be on the left.",
+      "query": "Find a bike route from the Anne Frank House to the Rijksmuseum in Amsterdam.",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Rijksmuseum, Amsterdam",
+            "include_steps": true,
+            "origin": "Anne Frank House, Amsterdam",
+            "travel_mode": "BICYCLE",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Anne Frank House, Amsterdam \u2192 Rijksmuseum, Amsterdam\nDistance: 2.0 km\nDuration: 445s\nMode: BICYCLE\n\nSteps:\n  1. Head northeast on Prinsengracht toward Leliegracht (78 m, 16s)\n  2. Turn right onto Leliegracht (95 m, 19s)\n  3. Turn right onto Keizersgracht (1.4 km, 301s)\n  4. Turn right onto Nieuwe Spiegelstraat (161 m, 29s)\n  5. Continue onto Brug 69/Spiegelgracht (211 m, 37s)\n  6. Continue straight onto Fietspad/Museumbrug Continue to follow Museumbrug (86 m, 17s)\n  7. Turn right onto Stadhouderskade/S100 Destination will be on the left (3 m, 26s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "### Cycling directions\n\n**Nyhavn \u2192 The Little Mermaid, Copenhagen**  \n- **Mode:** Bicycle  \n- **Distance:** 1.5 km  \n- **Duration:** approximately 7 min 29 sec\n\n1. Head southeast on Nyhavn toward Nyhavnsbroen; **walk your bike** briefly.\n2. Turn right and follow Nyhavnsbroen.\n3. Turn right onto Nyhavn.\n4. Turn right onto Kongens Nytorv/O2.\n5. Turn left and continue on Kongens Nytorv.\n6. Continue onto Gothersgade.\n7. Turn left onto Rosenborggade.\n8. Turn right onto Tornebuskegade.\n9. Turn left onto N\u00f8rre Voldgade; **walk your bike** briefly. The destination is on the left.\n\nThese directions are based on the returned cycling route; the route data does not provide traffic or cycling-infrastructure conditions.",
+      "query": "Can you give me cycling directions from Nyhavn to The Little Mermaid in Copenhagen?",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "The Little Mermaid, Copenhagen",
+            "include_steps": true,
+            "origin": "Nyhavn, Copenhagen",
+            "travel_mode": "BICYCLE",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Nyhavn, Copenhagen \u2192 The Little Mermaid, Copenhagen\nDistance: 1.5 km\nDuration: 449s\nMode: BICYCLE\n\nSteps:\n  1. K\u00f8r mod syd\u00f8st p\u00e5 Nyhavn mod Nyhavnsbroen Tr\u00e6k cyklen (37 m, 33s)\n  2. Drej til h\u00f8jre, og f\u00f8lg Nyhavnsbroen (44 m, 23s)\n  3. Drej til h\u00f8jre, og f\u00f8lg Nyhavn (288 m, 53s)\n  4. Drej til h\u00f8jre, og f\u00f8lg Kongens Nytorv/O2 (40 m, 33s)\n  5. Drej til venstre, og f\u00f8lg Kongens Nytorv (144 m, 46s)\n  6. Forts\u00e6t ad Gothersgade (710 m, 154s)\n  7. Drej til venstre, og f\u00f8lg Rosenborggade (71 m, 13s)\n  8. Drej til h\u00f8jre, og f\u00f8lg Tornebuskegade (71 m, 13s)\n  9. Drej til venstre, og f\u00f8lg N\u00f8rre Voldgade Tr\u00e6k cyklen Destinationen ligger til venstre (73 m, 81s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "## Driving route\n\n**From:** Hotel Artemide, Rome  \n**To:** Pompeii Archaeological Park, Pompeii  \n**Mode:** Driving\n\n- **Distance:** 239.6 km\n- **Estimated duration:** 2 hours 31 minutes\n\nThe route begins by heading southwest from Via Nazionale, then continues via Via Agostino Depretis, Piazza dell\u2019Esquilino, Via Cavour, Via Liberiana, Via Carlo Alberto, Via Principe Eugenio, Via di Porta Maggiore, and Via Eleniana. The route data also indicates entry into and exit from a **toll zone** near Via Agostino Depretis/Piazza dell\u2019Esquilino.\n\nThe returned route steps are available in Italian and continue beyond the initial central-Rome streets.",
+      "query": "I am driving from Hotel Artemide in Rome to the Pompeii Archaeological Park. Route me there.",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Pompeii Archaeological Park, Pompeii",
+            "include_steps": true,
+            "origin": "Hotel Artemide, Rome",
+            "travel_mode": "DRIVE",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Hotel Artemide, Rome \u2192 Pompeii Archaeological Park, Pompeii\nDistance: 239.6 km\nDuration: 9052s\nMode: DRIVE\n\nSteps:\n  1. Procedi in direzione sudovest da Via Nazionale verso Via Agostino Depretis (45 m, 9s)\n  2. Svolta a sinistra e prendi Via Agostino Depretis Ingresso in zona a pedaggio (339 m, 101s)\n  3. Continua su P.za dell'Esquilino (83 m, 30s)\n  4. Svolta a destra e prendi Via Cavour/P.za dell'Esquilino Uscita da zona a pedaggio (18 m, 7s)\n  5. Svolta a sinistra e prendi P.za dell'Esquilino (75 m, 19s)\n  6. Continua su Via Liberiana (117 m, 31s)\n  7. Svolta a sinistra e prendi P.za di Santa Maria Maggiore (51 m, 12s)\n  8. Svolta a sinistra per rimanere su P.za di Santa Maria Maggiore (45 m, 10s)\n  9. Svolta a destra e prendi Via Carlo Alberto (340 m, 73s)\n  10. Svolta a destra e prendi P.zza Vitt\u00f2rio Emanuele II (363 m, 75s)\n  11. Svolta a sinistra per rimanere su P.zza Vitt\u00f2rio Emanuele II (145 m, 30s)\n  12. Svolta a destra e prendi Via Principe Eugenio (314 m, 78s)\n  13. Continua su Via di Porta Maggiore (391 m, 78s)\n  14. Svolta a destra e prendi Piazza di Porta Maggiore (62 m, 12s)\n  15. Continua su Via Eleniana (80 m, 15s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "### Driving directions: Hollywood Roosevelt Hotel \u2192 Santa Monica Pier\n\n- **Distance:** 24.4 km\n- **Duration:** 2,029 seconds (about **34 minutes**)\n- **Mode:** Driving\n\n1. Head west on Hollywood Blvd \u2014 317 m.\n2. Turn left onto N La Brea Ave \u2014 7.6 km.\n3. Merge onto I-10 W \u2014 13.9 km.\n4. Continue onto CA-1 N \u2014 1.5 km.\n5. Make a U-turn \u2014 921 m.\n6. Take the Ocean Ave exit.\n7. Continue straight; Santa Monica Pier will be on the right.",
+      "query": "Give me driving directions from the Hollywood Roosevelt Hotel to Santa Monica Pier.",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Santa Monica Pier",
+            "include_steps": true,
+            "origin": "Hollywood Roosevelt Hotel",
+            "travel_mode": "DRIVE",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Hollywood Roosevelt Hotel \u2192 Santa Monica Pier\nDistance: 24.4 km\nDuration: 2029s\nMode: DRIVE\n\nSteps:\n  1. Head west on Hollywood Blvd (317 m, 64s)\n  2. Turn left onto N La Brea Ave Pass by Burger King (on the left in 0.2 mi) (7.6 km, 1212s)\n  3. Turn right to merge onto I-10 W (13.9 km, 562s)\n  4. Continue onto CA-1 N (1.5 km, 77s)\n  5. Make a U-turn (921 m, 73s)\n  6. Take the Ocean Ave exit (11 m, 2s)\n  7. Continue straight Destination will be on the right (137 m, 38s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "## Car route: Sukhumvit \u2192 Grand Palace, Bangkok\n\n- **Mode:** Driving\n- **Distance:** 191.1 km\n- **Estimated duration:** approximately **2 hr 41 min**\n\n### Main route steps\n1. Head northeast on Route 3.\n2. Turn left, then follow directions toward Route 7.\n3. Continue on Route 7 Expressway toward Bangkok.\n4. Continue onto the Si Rat Expressway.\n5. Take the exit toward **Yommarat**.\n6. Follow the ramp toward **Lan Luang**.\n7. Continue via AH123 and Ratchadamnoen Klang Road.\n8. At the roundabout, take the **second exit**.\n\nThe route result includes a note that part of AH123 may be closed on certain days or at certain times. The routing result does not provide toll costs, parking availability, or traffic forecasts.",
+      "query": "Please calculate a car route from Sukhumvit to the Grand Palace in Bangkok.",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Grand Palace, Bangkok",
+            "include_steps": true,
+            "origin": "Sukhumvit, Bangkok",
+            "travel_mode": "DRIVE",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Sukhumvit, Bangkok \u2192 Grand Palace, Bangkok\nDistance: 191.1 km\nDuration: 9659s\nMode: DRIVE\n\nSteps:\n  1. \u0e21\u0e38\u0e48\u0e07\u0e44\u0e1b\u0e17\u0e32\u0e07\u0e17\u0e34\u0e28\u0e15\u0e30\u0e27\u0e31\u0e19\u0e2d\u0e2d\u0e01\u0e40\u0e09\u0e35\u0e22\u0e07\u0e40\u0e2b\u0e19\u0e37\u0e2d \u0e44\u0e1b\u0e15\u0e32\u0e21 \u0e16\u0e19\u0e19\u0e2b\u0e21\u0e32\u0e22\u0e40\u0e25\u0e02 3 \u0e40\u0e02\u0e49\u0e32\u0e2a\u0e39\u0e48 \u0e0b\u0e2d\u0e22 \u0e2a\u0e32\u0e23\u0e19\u0e32\u0e16 1 (382 m, 72s)\n  2. \u0e40\u0e25\u0e35\u0e49\u0e22\u0e27\u0e0b\u0e49\u0e32\u0e22 (70.4 km, 3558s)\n  3. \u0e40\u0e1a\u0e35\u0e48\u0e22\u0e07\u0e02\u0e27\u0e32\u0e40\u0e25\u0e47\u0e01\u0e19\u0e49\u0e2d\u0e22 (7.9 km, 374s)\n  4. \u0e40\u0e1a\u0e35\u0e48\u0e22\u0e07\u0e02\u0e27\u0e32\u0e40\u0e25\u0e47\u0e01\u0e19\u0e49\u0e2d\u0e22 (10.3 km, 511s)\n  5. \u0e0a\u0e34\u0e14\u0e0b\u0e49\u0e32\u0e22 (9.1 km, 577s)\n  6. \u0e40\u0e1a\u0e35\u0e48\u0e22\u0e07\u0e0b\u0e49\u0e32\u0e22\u0e40\u0e25\u0e47\u0e01\u0e19\u0e49\u0e2d\u0e22 \u0e40\u0e1e\u0e37\u0e48\u0e2d\u0e15\u0e31\u0e14\u0e40\u0e02\u0e49\u0e32\u0e2a\u0e39\u0e48 \u0e16\u0e19\u0e19\u0e2b\u0e21\u0e32\u0e22\u0e40\u0e25\u0e02 7 \u0e44\u0e1b\u0e22\u0e31\u0e07 \u0e01\u0e23\u0e38\u0e07\u0e40\u0e17\u0e1e \u0e17\u0e32\u0e07\u0e1e\u0e34\u0e40\u0e28\u0e29 (47.5 km, 1906s)\n  7. \u0e40\u0e1a\u0e35\u0e48\u0e22\u0e07\u0e02\u0e27\u0e32\u0e40\u0e25\u0e47\u0e01\u0e19\u0e49\u0e2d\u0e22 \u0e40\u0e1e\u0e37\u0e48\u0e2d\u0e27\u0e34\u0e48\u0e07\u0e1a\u0e19 \u0e16\u0e19\u0e19\u0e2b\u0e21\u0e32\u0e22\u0e40\u0e25\u0e02 7 \u0e17\u0e32\u0e07\u0e1e\u0e34\u0e40\u0e28\u0e29 (26.9 km, 1198s)\n  8. \u0e02\u0e31\u0e1a\u0e15\u0e48\u0e2d\u0e44\u0e1b\u0e22\u0e31\u0e07 AH123 (78 m, 4s)\n  9. \u0e02\u0e31\u0e1a\u0e15\u0e48\u0e2d\u0e44\u0e1b\u0e22\u0e31\u0e07 \u0e17\u0e32\u0e07\u0e1e\u0e34\u0e40\u0e28\u0e29\u0e28\u0e23\u0e35\u0e23\u0e31\u0e0a \u0e17\u0e32\u0e07\u0e1e\u0e34\u0e40\u0e28\u0e29 (12.7 km, 700s)\n  10. \u0e40\u0e25\u0e35\u0e49\u0e22\u0e27\u0e0b\u0e49\u0e32\u0e22\u0e40\u0e25\u0e47\u0e01\u0e19\u0e49\u0e2d\u0e22 \u0e40\u0e1e\u0e37\u0e48\u0e2d\u0e27\u0e34\u0e48\u0e07\u0e1a\u0e19 \u0e17\u0e32\u0e07\u0e1e\u0e34\u0e40\u0e28\u0e29\u0e28\u0e23\u0e35\u0e23\u0e31\u0e0a (\u0e1b\u0e49\u0e32\u0e22\u0e1a\u0e2d\u0e01\u0e17\u0e32\u0e07 \u0e1a\u0e32\u0e07\u0e42\u0e04\u0e25\u0e48-\u0e14\u0e32\u0e27\u0e04\u0e30\u0e19\u0e2d\u0e07/Bang Khlo Dao Khanong) \u0e17\u0e32\u0e07\u0e1e\u0e34\u0e40\u0e28\u0e29 (1.8 km, 91s)\n  11. \u0e43\u0e0a\u0e49\u0e17\u0e32\u0e07\u0e2d\u0e2d\u0e01\u0e40\u0e02\u0e49\u0e32\u0e2a\u0e39\u0e48 Yommarat (667 m, 62s)\n  12. \u0e43\u0e0a\u0e49\u0e17\u0e32\u0e07\u0e25\u0e32\u0e14\u0e44\u0e1b\u0e22\u0e31\u0e07 \u0e2b\u0e25\u0e32\u0e19\u0e2b\u0e25\u0e27\u0e07 (31 m, 10s)\n  13. \u0e15\u0e31\u0e14\u0e40\u0e02\u0e49\u0e32\u0e44\u0e1b\u0e22\u0e31\u0e07 AH123 \u0e16\u0e19\u0e19\u0e2a\u0e32\u0e22\u0e19\u0e35\u0e49\u0e1a\u0e32\u0e07\u0e0a\u0e48\u0e27\u0e07\u0e2d\u0e32\u0e08\u0e1b\u0e34\u0e14\u0e43\u0e19\u0e1a\u0e32\u0e07\u0e27\u0e31\u0e19\u0e2b\u0e23\u0e37\u0e2d\u0e1a\u0e32\u0e07\u0e40\u0e27\u0e25\u0e32 \u0e1c\u0e48\u0e32\u0e19 \u0e2b\u0e2d\u0e28\u0e34\u0e25\u0e1b\u0e4c\u0e23\u0e48\u0e27\u0e21\u0e2a\u0e21\u0e31\u0e22\u0e23\u0e32\u0e0a\u0e14\u0e33\u0e40\u0e19\u0e34\u0e19 (\u0e2d\u0e35\u0e01 1.9 \u0e01\u0e21. \u0e17\u0e32\u0e07\u0e0b\u0e49\u0e32\u0e22) (2.0 km, 396s)\n  14. \u0e40\u0e21\u0e37\u0e48\u0e2d\u0e16\u0e36\u0e07\u0e27\u0e07\u0e40\u0e27\u0e35\u0e22\u0e19 \u0e43\u0e0a\u0e49\u0e17\u0e32\u0e07\u0e2d\u0e2d\u0e01 \u0e17\u0e35\u0e48 2 \u0e41\u0e25\u0e30\u0e27\u0e34\u0e48\u0e07\u0e15\u0e48\u0e2d\u0e44\u0e1b\u0e1a\u0e19 AH123 (702 m, 116s)\n  15. \u0e40\u0e1a\u0e35\u0e48\u0e22\u0e07\u0e0b\u0e49\u0e32\u0e22\u0e40\u0e25\u0e47\u0e01\u0e19\u0e49\u0e2d\u0e22 \u0e40\u0e02\u0e49\u0e32\u0e2a\u0e39\u0e48 \u0e16\u0e19\u0e19 \u0e23\u0e32\u0e0a\u0e14\u0e33\u0e40\u0e19\u0e34\u0e19\u0e01\u0e25\u0e32\u0e07 (97 m, 20s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "### Scooter route\n\n**Hanoi Old Quarter \u2192 Temple of Literature**  \n- **Mode:** Scooter / two-wheeler  \n- **Distance:** 2.2 km  \n- **Duration:** approximately 9 minutes 45 seconds\n\nThe route proceeds west via H\u00e0ng B\u1ed3 and B\u00e1t \u0110\u00e0n, then continues through H\u00e0ng Da, H\u00e0ng B\u00f4ng, C\u1eeda Nam, and Nguy\u1ec5n Khuy\u1ebfn. Turn toward V\u0103n Mi\u1ebfu\u2013Qu\u1ed1c T\u1eed Gi\u00e1m, then right onto Qu\u1ed1c T\u1eed Gi\u00e1m; the destination is on the right.\n\nThe route includes 10 turn-by-turn steps. The routing result does not provide traffic forecasts, parking availability, or scooter-specific restrictions.",
+      "query": "Find a scooter route from Hanoi Old Quarter to the Temple of Literature.",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Temple of Literature",
+            "include_steps": true,
+            "origin": "Hanoi Old Quarter",
+            "travel_mode": "TWO_WHEELER",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Hanoi Old Quarter \u2192 Temple of Literature\nDistance: 2.2 km\nDuration: 585s\nMode: TWO_WHEELER\n\nSteps:\n  1. \u0110i v\u1ec1 h\u01b0\u1edbng T\u00e2y l\u00ean P. H\u00e0ng B\u1ed3 v\u1ec1 ph\u00eda P. L\u01b0\u01a1ng V\u0103n Can \u0110i qua Top & Top (\u1edf ph\u00eda b\u00ean tr\u00e1i) (281 m, 82s)\n  2. T\u1ea1i C\u1eeda H\u00e0ng Ngh\u0129a Thoa, ti\u1ebfp t\u1ee5c v\u00e0o P. B\u00e1t \u0110\u00e0n \u0110i qua Best banh mi (\u1edf ph\u00eda b\u00ean tr\u00e1i) (101 m, 28s)\n  3. R\u1ebd tr\u00e1i  t\u1ea1i Circle K B\u00e1t \u0110\u00e0n \u0110i qua BlackOut Room Tattoo \u2013 Tattoo & Piercing Studio (\u1edf ph\u00eda b\u00ean ph\u1ea3i) (202 m, 56s)\n  4. R\u1ebd tr\u00e1i sau Ph\u00fac Long (\u1edf b\u00ean ph\u1ea3i) \u0110i qua Trung T\u00e2m D\u1ecbch V\u1ee5 K\u1ef9 Thu\u1eadt (\u1edf ph\u00eda b\u00ean ph\u1ea3i) (29 m, 10s)\n  5. Ch\u1ebfch sang ph\u1ea3i t\u1ea1i HaNoi Home Stay v\u00e0o P. H\u00e0ng Da \u0110i qua Leath Homestay (\u1edf ph\u00eda b\u00ean tr\u00e1i) (190 m, 66s)\n  6. R\u1ebd ph\u1ea3i t\u1ea1i Veston B\u00ecnh Minh v\u00e0o P. H\u00e0ng B\u00f4ng \u0110i qua Souvernirs - Gift (\u1edf ph\u00eda b\u00ean ph\u1ea3i) (323 m, 92s)\n  7. \u0110i b\u00ean tr\u00e1i \u0111\u1ec3 \u0111i ti\u1ebfp P. C\u1eeda Nam \u0110i qua Donchicken Ho\u00e0n Ki\u1ebfm (\u1edf ph\u00eda b\u00ean ph\u1ea3i) (272 m, 85s)\n  8. T\u1ea1i C\u1eeda H\u00e0ng N\u01b0\u1edbc Hoa Charme 56, ti\u1ebfp t\u1ee5c v\u00e0o P. Nguy\u1ec5n Khuy\u1ebfn \u0110i qua Tr\u00e0 S\u1eefa ToCoToCo 10 Nguy\u1ec5n Khuy\u1ebfn (\u1edf ph\u00eda b\u00ean ph\u1ea3i) (543 m, 119s)\n  9. R\u1ebd tr\u00e1i sau L\u1ea9u B\u00f2 C\u01b0\u1eddng Nga(27B V\u0103n Mi\u1ebfu) (\u1edf b\u00ean ph\u1ea3i) \u0110i qua V\u0103n Mi\u00ea\u0301u \u2013 Qu\u00f4\u0301c T\u01b0\u0309 Gia\u0301m (\u1edf ph\u00eda b\u00ean ph\u1ea3i) (183 m, 34s)\n  10. R\u1ebd ph\u1ea3i t\u1ea1i Ch\u1ea3 C\u00e1 G\u00f3c v\u00e0o Qu\u1ed1c T\u1eed Gi\u00e1m \u0110i qua \u0110\u1ed3 c\u00f4ng ngh\u1ec7 ch\u00ednh h\u00e3ng (\u1edf ph\u00eda b\u00ean ph\u1ea3i) \u0110i\u1ec3m \u0111\u1ebfn s\u1ebd \u1edf b\u00ean ph\u1ea3i (51 m, 13s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "## Canggu \u2192 Uluwatu Temple\n\n- **Mode:** Motorbike / two-wheeler\n- **Distance:** 35.6 km\n- **Estimated duration:** 1 hr 19 min 17 sec\n\n### Route steps returned\n1. Head northeast on **Jl. Pantai Batu Bolong**.\n2. Turn right onto **Jl. Shortcut Teratai Batu Bolong**.\n3. Turn left onto **Jl. Kayu Tulang**.\n4. Continue onto **Jl. Raya Kayutulang**.\n5. Turn right onto **Jl. Raya Canggu**.\n6. Keep right on **Jl. Raya Canggu**.\n7. Keep left on **Jl. Raya Canggu**.\n8. Turn right after Warung Babi Guling Sarinadi.\n9. Continue onto **Jl. Raya Semer**.\n10. Turn right onto **Jl. Raya Kerobokan**.\n11. Turn left onto **Jl. Pengubengan Kauh / Jl. Sunset Road**.\n12. Turn right after Galleria Ken-Ken.\n13. Keep right onto **Jl. Gn. Tangkuban Perahu**.\n14. Turn left onto **Jl. Raya Kerobokan**, following signs for the airport/Nusa Dua.\n15. Turn left onto **Jl. Sunset Road**, following signs for Denpasar/GWK/Nusa Dua.\n\nThese are the route steps returned by the routing service; follow on-road signs and verify the final approach to the temple during the ride.",
+      "query": "I will be on a motorbike. Route me from Canggu to Uluwatu Temple in Bali.",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Uluwatu Temple, Bali",
+            "include_steps": true,
+            "origin": "Canggu, Bali",
+            "travel_mode": "TWO_WHEELER",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Canggu, Bali \u2192 Uluwatu Temple, Bali\nDistance: 35.6 km\nDuration: 4757s\nMode: TWO_WHEELER\n\nSteps:\n  1. Ke arah timur laut di Jl. Pantai Batu Bolong (769 m, 128s)\n  2. Belok kanan ke Jl. Shortcut Teratai Batu Bolong (122 m, 28s)\n  3. Belok kiri ke Jl. Kayu Tulang (116 m, 21s)\n  4. Teruskan ke Jl. Raya Kayutulang (839 m, 109s)\n  5. Belok kanan ke Jl. Raya Canggu (912 m, 142s)\n  6. Belok kanan untuk tetap di Jl. Raya Canggu (82 m, 18s)\n  7. Belok kiri untuk tetap di Jl. Raya Canggu (878 m, 159s)\n  8. Belok kanan setelah Warung babi guling sarinadi (di sebelah kanan) Lewati GUARDIAN - Bali Banjar Anyar (di kiri 350 m lagi) (428 m, 75s)\n  9. Teruskan ke Jl. Raya Semer Lewati WARUNG JAWA (di kiri 1,8 km lagi) (1.9 km, 319s)\n  10. Belok kanan ke Jl. Raya Kerobokan (rambu Kuta/Legian (32 m, 21s)\n  11. Belok kiri ke Jl. Pengubengan Kauh/Jl. Sunset Road Lanjutkan untuk mengikuti Jl. Pengubengan Kauh (1.4 km, 196s)\n  12. Belok kanan setelah Galleria Ken-Ken (di sebelah kanan) Lewati Warung Sate Madura Pak Ayex (di kanan) (90 m, 18s)\n  13. Terus kanan supaya tetap di Jl. Gn. Tangkuban Perahu (341 m, 77s)\n  14. Belok kiri ke Jl. Raya Kerobokan (rambu Bandara Ngurah Rai/Nusa Dua Lewati Legendary Ink Tattoo Bali | Best Bali Tattoo (di kanan 600 m lagi) (1.0 km, 132s)\n  15. Belok kiri ke Jl. Sunset Road (rambu Denpasar/GWK/Nusa Dua/Sentral/Parkir Kuta Lewati Pos Polisi (di kiri 2,5 km lagi) (5.1 km, 720s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "## Public transport comparison\n\n| Destination | Route | Distance | Duration |\n|---|---|---:|---:|\n| **Colosseum** | Bus 64, then walk | **1.7 km** | **18 min 28 sec** |\n| **Vatican Museums** | Metro A from Repubblica to Ottaviano, then walk | **4.6 km** | **23 min 8 sec** |\n\n### Hotel Artemide \u2192 Colosseum\n- Walk to **Nazionale/Quattro Fontane**.\n- Take **Bus 64** to **Nazionale/Quirinale** \u2014 3 stops.\n- Continue on foot via Via Nazionale, Largo Magnanapoli, Salita del Grillo, Via Tor de\u2019 Conti, Largo Corrado Ricci, and Via dei Fori Imperiali toward the Colosseum.\n- **Total:** 1.7 km, approximately 18 minutes 28 seconds.\n\n### Hotel Artemide \u2192 Vatican Museums\n- Walk to the **Repubblica** metro entrance.\n- Take **Metro A** from **Repubblica** to **Ottaviano** \u2014 5 stops.\n- Exit at Ottaviano and walk via Via Ottaviano, Via degli Scipioni, Via Leone IV, and Viale Vaticano.\n- **Total:** 4.6 km, approximately 23 minutes 8 seconds.\n\nThe Colosseum route is shorter, while the Vatican Museums route uses the metro and is only about five minutes longer according to the route results. The routing data does not provide fares, schedules, waiting times, or live disruption information.",
+      "query": "Compare public transport from Hotel Artemide in Rome to the Colosseum and to Vatican Museums.",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Colosseum, Piazza del Colosseo, Rome, Italy",
+            "include_steps": true,
+            "origin": "Hotel Artemide, Via Nazionale 22, Rome, Italy",
+            "travel_mode": "TRANSIT",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        },
+        {
+          "args": {
+            "destination": "Vatican Museums, Viale Vaticano, Rome, Italy",
+            "include_steps": true,
+            "origin": "Hotel Artemide, Via Nazionale 22, Rome, Italy",
+            "travel_mode": "TRANSIT",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Hotel Artemide, Via Nazionale 22, Rome, Italy \u2192 Colosseum, Piazza del Colosseo, Rome, Italy\nDistance: 1.7 km\nDuration: 1108s\nMode: TRANSIT\n\nSteps:\n  1. Procedi in direzione sudovest su Via Nazionale verso Via Agostino Depretis La tua destinazione \u00e8 sulla destra (131 m, 100s)\n  2. [BUS 64] Nazionale/Quattro Fontane \u2192 Nazionale/Quirinale (3 stops) [220s]\n  3. Procedi in direzione sudovest su Via Nazionale verso V. Ventiquattro Maggio (47 m, 40s)\n  4. Svolta a sinistra per rimanere su Via Nazionale (34 m, 24s)\n  5. A L.go Magnanapoli, prendi la 1\u00aa uscita (32 m, 27s)\n  6. Svolta leggermente a destra e prendi Largo Angelicum (14 m, 11s)\n  7. Continua su Salita del Grillo (124 m, 99s)\n  8. Continua su Piazza del Grillo (31 m, 24s)\n  9. Continua su Via Tor de' Conti (124 m, 92s)\n  10. Svolta a destra per rimanere su Via Tor de' Conti (61 m, 51s)\n  11. Svolta a destra e prendi Largo Corrado Ricci (76 m, 62s)\n  12. Svolta a sinistra e prendi Via dei Fori Imperiali (315 m, 257s)\n  13. Svolta a destra verso Via dei Verbiti (20 m, 16s)\n  14. Svolta a sinistra verso Via dei Verbiti (17 m, 14s)\n  15. Svolta a destra e prendi Via dei Verbiti (50 m, 39s)"
+        ],
+        [
+          "compute_route",
+          "Route: Hotel Artemide, Via Nazionale 22, Rome, Italy \u2192 Vatican Museums, Viale Vaticano, Rome, Italy\nDistance: 4.6 km\nDuration: 1388s\nMode: TRANSIT\n\nSteps:\n  1. Procedi in direzione nordest su Via Nazionale verso V. Napoli Alcuni tratti di questa strada potrebbero essere chiusi in determinati orari o giorni (230 m, 205s)\n  2. Prendi l'entrata Repubblica (79 m, 122s)\n  3. [SUBWAY A] Repubblica \u2192 Ottaviano (5 stops) [493s]\n  4. Prendi l'uscita Ottaviano (42 m, 93s)\n  5. Procedi in direzione sud su Via Ottaviano verso Via degli Scipioni (71 m, 57s)\n  6. Svolta a destra e prendi Via degli Scipioni (212 m, 179s)\n  7. Svolta a sinistra e prendi Via Leone IV (44 m, 36s)\n  8. Svolta a destra e prendi Viale Vaticano (196 m, 203s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "## Transit comparison from The Resident Soho\n\n| Destination | Distance | Duration | Main route |\n|---|---:|---:|---|\n| **British Museum** | **0.8 km** | **11 min 28 sec** | Walking route via Soho St, Hanway St, and Great Russell St |\n| **Tower of London** | **4.5 km** | **28 min 20 sec** | Walk to Dean Street/Oxford Street, **Central line from Tottenham Court Road to Bank (5 stops)**, then walk to the Tower |\n\n**British Museum:** Despite being requested as transit, the returned route consists entirely of walking directions and takes about **11\u00bd minutes**.\n\n**Tower of London:** Takes about **17 minutes longer** and is roughly **5.6 times farther**. The route includes the Central line to Bank, followed by walking through the City toward the Tower.\n\nThe routing result does not provide fares, departure schedules, waiting times, or disruption information.",
+      "query": "Compare the transit trip from The Resident Soho to the British Museum and the Tower of London.",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "British Museum, London",
+            "include_steps": true,
+            "origin": "The Resident Soho, London",
+            "travel_mode": "TRANSIT",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        },
+        {
+          "args": {
+            "destination": "Tower of London, London",
+            "include_steps": true,
+            "origin": "The Resident Soho, London",
+            "travel_mode": "TRANSIT",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: The Resident Soho, London \u2192 British Museum, London\nDistance: 0.8 km\nDuration: 688s\nMode: TRANSIT\n\nSteps:\n  1. Head east on Carlisle St toward Carlisle St (116 m, 98s)\n  2. Turn left toward Soho St (7 m, 6s)\n  3. Turn right toward Soho St (48 m, 38s)\n  4. Continue onto Soho St (71 m, 59s)\n  5. Turn right onto Oxford St/A40 (16 m, 23s)\n  6. Turn left onto Hanway St (47 m, 40s)\n  7. Slight right to stay on Hanway St (128 m, 103s)\n  8. Continue onto Great Russell St (232 m, 200s)\n  9. Turn right onto Bloomsbury St (2 m, 12s)\n  10. Turn left onto Great Russell St (137 m, 109s)"
+        ],
+        [
+          "compute_route",
+          "Route: The Resident Soho, London \u2192 Tower of London, London\nDistance: 4.5 km\nDuration: 1700s\nMode: TRANSIT\n\nSteps:\n  1. Head east on Carlisle St toward Carlisle St (45 m, 35s)\n  2. Turn left onto Dean St (112 m, 94s)\n  3. Take entrance Dean Street, Oxford Street (255 m, 376s)\n  4. [SUBWAY Central] Tottenham Court Road \u2192 Bank Station (5 stops) [385s]\n  5. Take exit London Bridge, King William (South) (343 m, 344s)\n  6. Head south on King William St/A3 toward Monument St (42 m, 30s)\n  7. Turn left onto Monument St (184 m, 138s)\n  8. Turn right to stay on Monument St (17 m, 11s)\n  9. Turn left onto Lower Thames St/A3211 (97 m, 78s)\n  10. Turn right onto St Dunstan's Hill (7 m, 15s)\n  11. Turn left onto Lower Thames St/A3211 (80 m, 75s)\n  12. Slight right onto Lower Thames St (271 m, 214s)\n  13. Turn left (54 m, 42s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "### Walking route\n\n**Hotel Artemide \u2192 Pantheon \u2192 Piazza Navona \u2192 Trastevere**\n\nThe route optimizer placed the stops in this order, rather than the requested Piazza Navona first.\n\n- **Mode:** Walking  \n- **Distance:** 3.9 km  \n- **Estimated duration:** 52 min 38 sec  \n\nThe returned directions begin via **Via Nazionale**, **Via delle Quattro Fontane**, **Via Rasella**, **Via del Traforo**, **Via in Arcione**, **Via del Lavatore**, **Piazza di Trevi**, **Via delle Muratte**, **Via del Corso**, **Via di Pietra**, **Vicolo de\u2019 Burr\u00f2**, **Piazza Sant\u2019Ignazio**, and **Via del Seminario**, reaching the **Pantheon**.",
+      "query": "Plan a walking route from Hotel Artemide to Trastevere via Piazza Navona and the Pantheon.",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Trastevere, Rome",
+            "include_steps": true,
+            "origin": "Hotel Artemide, Rome",
+            "travel_mode": "WALK",
+            "waypoints": [
+              "Piazza Navona, Rome",
+              "Pantheon, Rome"
+            ]
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Hotel Artemide, Rome \u2192 Trastevere, Rome\nDistance: 3.9 km\nDuration: 3158s\nMode: WALK\nOptimised stop order: Pantheon, Rome \u2192 Piazza Navona, Rome\n\nSteps:\n  1. Procedi in direzione sudovest su Via Nazionale verso Via Agostino Depretis (45 m, 33s)\n  2. Svolta a destra e prendi Via delle Quattro Fontane (393 m, 342s)\n  3. Svolta a sinistra e prendi Via Rasella (256 m, 186s)\n  4. Svolta a destra e prendi Via del Traforo (15 m, 14s)\n  5. Svolta a sinistra e prendi Via in Arcione (157 m, 120s)\n  6. Continua su Via del Lavatore (120 m, 92s)\n  7. Continua su Piazza di Trevi (42 m, 30s)\n  8. Continua su Via delle Muratte (204 m, 161s)\n  9. Svolta a sinistra e prendi V. del Corso (2 m, 4s)\n  10. Svolta a destra e prendi Via di Pietra (53 m, 41s)\n  11. Svolta a sinistra e prendi Vicolo de' Burr\u00f2 (65 m, 55s)\n  12. Svolta leggermente a destra e prendi Piazza S. Ignazio (36 m, 29s)\n  13. Svolta a sinistra per rimanere su Piazza S. Ignazio (22 m, 19s)\n  14. Svolta a destra e prendi Via del Seminario (194 m, 147s)\n  15. Prosegui dritto su Piazza della Rotonda La tua destinazione \u00e8 sulla sinistra (34 m, 27s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "### Driving route\n\n**Gare du Nord \u2192 Louvre Museum \u2192 Champs-\u00c9lys\u00e9es \u2192 Eiffel Tower**\n\n- **Mode:** Drive  \n- **Distance:** 11.9 km  \n- **Duration:** approximately **50 minutes 16 seconds**\n- **Stop order:** Louvre Museum, then Champs-\u00c9lys\u00e9es\n\nThe route begins via Rue de Dunkerque, Rue de Maubeuge, Rue Le Peletier, Boulevard des Italiens, Rue de Choiseul, Rue du 4 Septembre, Place de la Bourse, Rue de la Banque, Rue de la Vrilli\u00e8re, Rue Croix des Petits Champs, Rue Saint-Honor\u00e9, Rue de Marengo, Rue de Rivoli, and Place du Carrousel.\n\nThe route notes possible closures or turn restrictions on portions of Rue de Rivoli and Place du Carrousel at certain times.",
+      "query": "Drive from Gare du Nord to the Eiffel Tower via the Louvre and Champs Elysees.",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Eiffel Tower, Paris",
+            "include_steps": true,
+            "origin": "Gare du Nord, Paris",
+            "travel_mode": "DRIVE",
+            "waypoints": [
+              "Louvre Museum, Paris",
+              "Champs-\u00c9lys\u00e9es, Paris"
+            ]
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Gare du Nord, Paris \u2192 Eiffel Tower, Paris\nDistance: 11.9 km\nDuration: 3016s\nMode: DRIVE\nOptimised stop order: Louvre Museum, Paris \u2192 Champs-\u00c9lys\u00e9es, Paris\n\nSteps:\n  1. Prendre la direction ouest sur Rue de Dunkerque/Pl. Napol\u00e9on III vers Rue de Compi\u00e8gne Continuer de suivre Rue de Dunkerque (271 m, 106s)\n  2. Continuer sur Rue de Maubeuge (1.0 km, 253s)\n  3. Continuer sur Rue Le Peletier (517 m, 156s)\n  4. Prendre \u00e0 droite sur Bd des Italiens (162 m, 49s)\n  5. Prendre \u00e0 gauche sur Rue de Choiseul (176 m, 56s)\n  6. Prendre \u00e0 gauche sur Rue du 4 septembre (316 m, 82s)\n  7. Continuer sur Pl. de la Bourse (95 m, 24s)\n  8. Prendre \u00e0 droite sur Rue de la Banque (295 m, 62s)\n  9. Rue de la Banque tourne l\u00e9g\u00e8rement \u00e0 droite et devient Rue de la Vrilli\u00e8re (142 m, 26s)\n  10. Prendre \u00e0 droite sur Rue Croix des Petits Champs (333 m, 70s)\n  11. Prendre \u00e0 gauche sur Rue Saint-Honor\u00e9 (26 m, 8s)\n  12. Prendre \u00e0 droite sur Rue de Marengo (76 m, 26s)\n  13. Prendre \u00e0 droite sur Rue de Rivoli Fermeture possible de portions de cette route certains jours ou \u00e0 certaines heures. (313 m, 116s)\n  14. Prendre \u00e0 gauche sur Pl. du Carrousel Fermeture possible de portions de cette route certains jours ou \u00e0 certaines heures. Interdiction possible de tourner certains jours ou \u00e0 certaines heures. Votre destination se trouvera sur la gauche. (179 m, 48s)\n  15. Prendre la direction sud-ouest sur Pl. du Carrousel Fermeture possible certains jours ou \u00e0 certaines heures. (124 m, 31s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "### Bike route\n**Hotel Estherea \u2192 Anne Frank House \u2192 Vondelpark \u2192 Rijksmuseum**\n\n- **Distance:** 3.5 km  \n- **Duration:** approximately 11 minutes 29 seconds  \n- **Mode:** Bicycle  \n- **Stop order:** Anne Frank House, then Vondelpark\n\nKey streets include **Singel, Raadhuisstraat, Prinsengracht, Rozengracht, Marnixstraat, Leidseplein,** and **Stadhouderskade/S100**. The route finishes at the Rijksmuseum.",
+      "query": "Create a bike route from Hotel Estherea to the Rijksmuseum via the Anne Frank House and Vondelpark.",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Rijksmuseum, Amsterdam",
+            "include_steps": true,
+            "origin": "Hotel Estherea, Amsterdam",
+            "travel_mode": "BICYCLE",
+            "waypoints": [
+              "Anne Frank House, Amsterdam",
+              "Vondelpark, Amsterdam"
+            ]
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Hotel Estherea, Amsterdam \u2192 Rijksmuseum, Amsterdam\nDistance: 3.5 km\nDuration: 689s\nMode: BICYCLE\nOptimised stop order: Anne Frank House, Amsterdam \u2192 Vondelpark, Amsterdam\n\nSteps:\n  1. Head north on Singel toward Schoorsteenvegerssteeg (178 m, 32s)\n  2. Turn left onto Paleisstraat (20 m, 5s)\n  3. Continue onto Gasthuismolensteeg (80 m, 14s)\n  4. Turn right onto Herengracht (130 m, 80s)\n  5. Turn left onto Raadhuisstraat (187 m, 32s)\n  6. Continue onto Westermarkt (111 m, 19s)\n  7. Turn right onto Prinsengracht Destination will be on the right (127 m, 20s)\n  8. Head northeast on Prinsengracht toward Leliegracht (101 m, 20s)\n  9. Turn left onto Leliegracht (36 m, 7s)\n  10. Turn left onto Prinsengracht (261 m, 48s)\n  11. Turn right onto Rozengracht (522 m, 116s)\n  12. Turn left onto Marnixstraat (1.1 km, 184s)\n  13. Turn right onto Leidseplein (153 m, 25s)\n  14. Turn left onto Stadhouderskade/S100 (124 m, 22s)\n  15. Head southeast on Stadhouderskade/S100 toward Zandpad Destination will be on the right (367 m, 65s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "Mit der **U5**:\n\n- **Start:** Berlin Hauptbahnhof  \n- **Linie:** U5 Richtung **Brandenburger Tor**\n- **Fahrstrecke:** 3 Stationen\n- **Ausstieg:** Brandenburger Tor\n- Danach zu Fu\u00df \u00fcber **Unter den Linden** und den **Pariser Platz** zum Ziel.\n\n**Gesamt:** etwa **1,6 km** und **7 Minuten 40 Sekunden** laut Routenberechnung, einschlie\u00dflich der angegebenen Fu\u00dfwege.\n\nHinweis: Die Routenberechnung nennt keine aktuellen Abfahrtszeiten, Wartezeiten oder St\u00f6rungsmeldungen.",
+      "query": "Wie komme ich mit der U-Bahn vom Berliner Hauptbahnhof zum Brandenburger Tor?",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Brandenburger Tor, Berlin",
+            "include_steps": true,
+            "origin": "Berlin Hauptbahnhof, Berlin",
+            "travel_mode": "TRANSIT",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Berlin Hauptbahnhof, Berlin \u2192 Brandenburger Tor, Berlin\nDistance: 1.6 km\nDuration: 460s\nMode: TRANSIT\n\nSteps:\n  1. Hier einsteigen: Friedrich-List-Ufer (20 m, 71s)\n  2. [SUBWAY U5] Berlin Hauptbahnhof \u2192 Brandenburger Tor (3 stops) [180s]\n  3. Hier aussteigen: Welmilhstra\u00dfe (58 m, 61s)\n  4. Auf Unter den Linden nach Westen Richtung Pariser Platz (67 m, 53s)\n  5. Geradeaus auf Pariser Platz (86 m, 69s)\n  6. Nach rechts abbiegen, um auf Pariser Platz zu bleiben Das Ziel befindet sich auf der linken Seite. (12 m, 10s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "### A pie: Puerta del Sol \u2192 Museo del Prado\n\n- **Distancia:** 1,1 km  \n- **Duraci\u00f3n estimada:** 14 min 27 s\n\n**Indicaciones:**\n1. Dir\u00edgete al sur por Puerta del Sol.\n2. Gira a la izquierda para continuar por Puerta del Sol.\n3. Contin\u00faa por Carrera de San Jer\u00f3nimo.\n4. Gira ligeramente a la derecha y sigue por Carrera de San Jer\u00f3nimo.\n5. Contin\u00faa recto hacia la Plaza de las Cortes.\n6. Gira a la derecha hacia la Plaza de C\u00e1novas del Castillo.\n7. Gira a la izquierda hacia la Calle de Cervantes.\n8. Gira a la derecha hacia el Paseo del Prado.\n9. Gira a la izquierda.\n10. Gira a la izquierda.\n11. Gira a la derecha.\n12. Gira a la derecha; llegar\u00e1s al Museo del Prado.",
+      "query": "Dame indicaciones a pie desde la Puerta del Sol hasta el Museo del Prado en Madrid.",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Museo del Prado, Madrid",
+            "include_steps": true,
+            "origin": "Puerta del Sol, Madrid",
+            "travel_mode": "WALK",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Puerta del Sol, Madrid \u2192 Museo del Prado, Madrid\nDistance: 1.1 km\nDuration: 867s\nMode: WALK\n\nSteps:\n  1. Dir\u00edgete al sur por Prta del Sol (26 m, 20s)\n  2. Gira a la izquierda para continuar por Prta del Sol (97 m, 81s)\n  3. Contin\u00faa por Cra de S. Jer\u00f3nimo (306 m, 258s)\n  4. Gira ligeramente a la derecha para continuar por Cra de S. Jer\u00f3nimo (159 m, 114s)\n  5. Contin\u00faa recto hacia Pl. de las Cortes (190 m, 140s)\n  6. Gira a la derecha hacia Pl. Canovas del Castillo (61 m, 47s)\n  7. Gira a la izquierda hacia Calle de Cervantes (35 m, 29s)\n  8. Gira a la derecha hacia P.\u00ba del Prado (23 m, 17s)\n  9. Gira a la izquierda. (96 m, 97s)\n  10. Gira a la izquierda. (13 m, 12s)\n  11. Gira a la derecha (52 m, 42s)\n  12. Gira a la derecha (13 m, 10s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "### Itin\u00e9raire \u00e0 v\u00e9lo : Montmartre \u2192 Canal Saint-Martin\n\n- **Distance :** 3,5 km  \n- **Dur\u00e9e estim\u00e9e :** environ **13 min**  \n- **Mode :** v\u00e9lo\n\n#### Parcours\n1. Depuis la place Jean-Baptiste Cl\u00e9ment, prendre la direction de la rue Lepic.\n2. Rester sur la place Jean-Baptiste Cl\u00e9ment, puis prendre la rue Ravignan.\n3. Continuer par les rues Berthe, Androuet et des Trois Fr\u00e8res.\n4. Prendre la rue Tardieu, puis la rue de Steinkerque.\n5. Rejoindre le boulevard Marguerite de Rochechouart.\n6. Continuer sur le boulevard de Magenta pendant environ 936 m.\n7. Prendre la rue du Faubourg Saint-Denis, puis la rue du 8 Mai 1945.\n8. Au rond-point, prendre la 2\u1d49 sortie vers la rue du Faubourg Saint-Martin.\n9. Prendre l\u2019avenue de Verdun et rester l\u00e9g\u00e8rement \u00e0 gauche jusqu\u2019au Canal Saint-Martin.\n\nLa dur\u00e9e et le trac\u00e9 sont ceux retourn\u00e9s par l\u2019itin\u00e9raire v\u00e9lo ; l\u2019outil ne fournit pas d\u2019informations sur les pistes cyclables, la circulation en temps r\u00e9el ou les \u00e9ventuelles perturbations.",
+      "query": "Je veux un itineraire a velo de Montmartre au Canal Saint Martin a Paris.",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Canal Saint-Martin, Paris, France",
+            "include_steps": true,
+            "origin": "Montmartre, Paris, France",
+            "travel_mode": "BICYCLE",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Montmartre, Paris, France \u2192 Canal Saint-Martin, Paris, France\nDistance: 3.5 km\nDuration: 777s\nMode: BICYCLE\n\nSteps:\n  1. Prendre la direction ouest sur Pl. Jean-Baptiste Cl\u00e9ment vers Rue Lepic (22 m, 3s)\n  2. Tourner \u00e0 gauche pour rester sur Pl. Jean-Baptiste Cl\u00e9ment (56 m, 10s)\n  3. Prendre \u00e0 droite sur Rue Ravignan (73 m, 14s)\n  4. Prendre \u00e0 gauche sur Rue Berthe (51 m, 12s)\n  5. Prendre \u00e0 droite sur Rue Androuet (48 m, 7s)\n  6. Prendre \u00e0 gauche sur Rue des Trois Fr\u00e8res (288 m, 34s)\n  7. Prendre \u00e0 gauche sur Rue Tardieu (143 m, 19s)\n  8. Prendre \u00e0 droite sur Rue de Steinkerque (190 m, 80s)\n  9. Prendre \u00e0 gauche sur Blvd Marguerite de Rochechouart (416 m, 131s)\n  10. Prendre \u00e0 droite sur Bd de Magenta (936 m, 183s)\n  11. Prendre \u00e0 gauche sur Rue du Faubourg Saint-Denis (34 m, 48s)\n  12. Prendre \u00e0 droite sur Rue du 8 Mai 1945 (299 m, 46s)\n  13. Au rond-point, prendre la 2e sortie sur Rue du Faubourg Saint-Martin (56 m, 35s)\n  14. Prendre \u00e0 droite sur Av. de Verdun (32 m, 5s)\n  15. Tourner l\u00e9g\u00e8rement \u00e0 gauche pour rester sur Av. de Verdun (104 m, 18s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "### In auto: Firenze Santa Maria Novella \u2192 Piazzale Michelangelo\n\n- **Distanza:** 5,9 km  \n- **Durata stimata:** 15 minuti e 42 secondi  \n- **Modalit\u00e0:** auto\n\nPercorso indicato:\n\n1. Procedi da Piazza della Stazione verso Via Santa Caterina da Siena.\n2. Svolta a destra in Via della Scala.\n3. Svolta a sinistra in Via Bernardo Rucellai, poi ancora a sinistra in Via Il Prato.\n4. Alla rotonda prendi la 1\u00aa uscita per Via Curtatone.\n5. Prosegui su Lungarno Amerigo Vespucci/SS67.\n6. Attraversa Ponte Amerigo Vespucci.\n7. Continua su Lungarno Soderini, Via Lungo le Mura di Santa Rosa e Viale Ludovico Ariosto.\n8. Prosegui su Viale Vasco Pratolini e Viale Francesco Petrarca.\n9. Alla rotonda prendi la 2\u00aa uscita per Viale del Poggio Imperiale.\n10. Svolta a sinistra in Viale Evangelista Torricelli, verso Piazzale Michelangelo.\n\nIl percorso attraversa tratti indicati come **zona a pedaggio** all\u2019ingresso e all\u2019uscita; il calcolo non fornisce dettagli su eventuali costi o limitazioni ulteriori.",
+      "query": "Dammi il percorso in auto da Firenze Santa Maria Novella a Piazzale Michelangelo.",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Piazzale Michelangelo, Firenze",
+            "include_steps": true,
+            "origin": "Firenze Santa Maria Novella",
+            "travel_mode": "DRIVE",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Firenze Santa Maria Novella \u2192 Piazzale Michelangelo, Firenze\nDistance: 5.9 km\nDuration: 942s\nMode: DRIVE\n\nSteps:\n  1. Procedi in direzione ovest da Piazza della Stazione verso Via Santa Caterina da Siena (49 m, 16s)\n  2. Piazza della Stazione svolta leggermente a sinistra e diventa Via Santa Caterina da Siena (71 m, 20s)\n  3. Svolta a destra e prendi Via della Scala (275 m, 65s)\n  4. Svolta a sinistra e prendi Via Bernardo Rucellai (215 m, 44s)\n  5. Svolta a sinistra e prendi Via Il Prato (102 m, 22s)\n  6. Alla rotonda prendi la 1\u00aa uscita e prendi Via Curtatone Uscita da zona a pedaggio Ingresso in zona a pedaggio (143 m, 29s)\n  7. Svolta a sinistra e prendi Lungarno Amerigo Vespucci/SS67 Continua su Lungarno Amerigo Vespucci (181 m, 41s)\n  8. Svolta a destra e prendi Ponte Amerigo Vespucci Uscita da zona a pedaggio (180 m, 43s)\n  9. Svolta a destra e prendi Lungarno Soderini (118 m, 27s)\n  10. Svolta a sinistra e prendi Via Lungo le Mura di Santa Rosa (198 m, 60s)\n  11. Entra in Viale Ludovico Ariosto (253 m, 57s)\n  12. Svolta a sinistra e prendi Viale Vasco Pratolini (181 m, 40s)\n  13. Continua su Viale Francesco Petrarca (726 m, 109s)\n  14. Alla rotonda prendi la 2\u00aa uscita e prendi Viale del Poggio Imperiale (902 m, 124s)\n  15. Svolta a sinistra e prendi Viale Evangelista Torricelli (430 m, 63s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "### Walking route: Hotel Artemide \u2192 Colosseum, Rome\n\n- **Distance:** 1.5 km  \n- **Duration:** approximately 19 minutes  \n- **Mode:** Walking\n\n**Steps:**\n1. Head southwest on Via Nazionale toward Via Agostino Depretis \u2014 470 m\n2. Turn left onto Via dei Serpenti \u2014 475 m\n3. Continue onto Via degli Annibaldi \u2014 311 m\n4. Turn right onto Largo Gaetana Agnesi \u2014 9 m\n5. Turn left and take the stairs \u2014 84 m\n6. Turn left \u2014 21 m\n7. Turn right; the destination will be on your left \u2014 88 m",
+      "query": "Walk from Hotel Artemide to the Louvre - sorry, I mean the Colosseum in Rome, not Paris.",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Colosseum, Rome",
+            "include_steps": true,
+            "origin": "Hotel Artemide, Rome",
+            "travel_mode": "WALK",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Hotel Artemide, Rome \u2192 Colosseum, Rome\nDistance: 1.5 km\nDuration: 1176s\nMode: WALK\n\nSteps:\n  1. Procedi in direzione sudovest su Via Nazionale verso Via Agostino Depretis (470 m, 357s)\n  2. Svolta a sinistra e prendi Via dei Serpenti (475 m, 360s)\n  3. Continua su Via degli Annibaldi (311 m, 273s)\n  4. Svolta a destra e prendi L.go Gaetana Agnesi (9 m, 6s)\n  5. Svolta a sinistra Prendi le scale (84 m, 92s)\n  6. Svolta a sinistra (21 m, 19s)\n  7. Svolta a destra La tua destinazione \u00e8 sulla sinistra (88 m, 69s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "I couldn\u2019t find a public-transit route from **Tokyo Station to Senso-ji** using the route service. No distance, duration, or transit steps were returned.",
+      "query": "Route me from Tokyo Station to Senso ji by taxi - correction, use public transit instead.",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Senso-ji",
+            "include_steps": true,
+            "origin": "Tokyo Station",
+            "travel_mode": "TRANSIT",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "No route found."
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "### King\u2019s Cross St Pancras \u2192 Tate Modern\n\n- **Mode:** Public transit\n- **Distance:** 3.9 km\n- **Duration:** 14 minutes\n\n**Route:**\n1. Walk to **St Pancras International Station**.\n2. Take **Thameslink** from **St Pancras International** to **Blackfriars** \u2014 4 stops.\n3. Exit toward **Tate Modern / Shakespeare\u2019s Globe**, then walk to Tate Modern.\n\nThe route returned a Thameslink rail service rather than a London Underground Tube service. The routing result does not include fares, schedules, or service frequency.",
+      "query": "I need the Tube from Paddington to Tate Modern; actually start at King's Cross St Pancras, not Paddington.",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Tate Modern",
+            "include_steps": true,
+            "origin": "King's Cross St Pancras",
+            "travel_mode": "TRANSIT",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: King's Cross St Pancras \u2192 Tate Modern\nDistance: 3.9 km\nDuration: 840s\nMode: TRANSIT\n\nSteps:\n  1. Head southwest toward Pancras Rd/A5202 (23 m, 17s)\n  2. Turn left onto Pancras Rd/A5202 Destination will be on the right (27 m, 31s)\n  3. Take entrance St Pancras International Station (Entrance) (179 m, 127s)\n  4. [HEAVY_RAIL Thameslink] St Pancras International \u2192 Blackfriars (4 stops) [540s]\n  5. Take exit Tate Modern, Shakespeare's Globe (149 m, 270s)\n  6. Head south on Thames Path toward Hopton St (37 m, 29s)\n  7. Turn left toward Hopton St (77 m, 62s)\n  8. Turn right onto Hopton St (12 m, 11s)\n  9. Slight left onto Holland St (44 m, 34s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "**Drive:** Portland International Jetport, Maine \u2192 Old Port, Portland, Maine\n\n- **Distance:** 8.3 km\n- **Duration:** approximately 14 minutes\n- **Route:** International Pkwy \u2192 Congress St \u2192 Fore River Pkwy \u2192 W Commercial St \u2192 Market St",
+      "query": "Drive from Portland International Jetport in Maine, not Portland Oregon, to Old Port.",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Old Port, Portland, Maine",
+            "include_steps": true,
+            "origin": "Portland International Jetport, Maine",
+            "travel_mode": "DRIVE",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Portland International Jetport, Maine \u2192 Old Port, Portland, Maine\nDistance: 8.3 km\nDuration: 882s\nMode: DRIVE\n\nSteps:\n  1. Head northwest on International Pkwy toward Jetport Blvd (597 m, 60s)\n  2. Turn right onto Congress St Pass by Dunkin' (on the right in 1.2 mi) (2.9 km, 295s)\n  3. Turn right onto Fore River Pkwy (1.6 km, 151s)\n  4. Turn left to stay on Fore River Pkwy (268 m, 32s)\n  5. Continue onto W Commercial St (2.8 km, 272s)\n  6. Turn left onto Market St (178 m, 72s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "## Public transport route\n\n**Juan Santamar\u00eda International Airport \u2192 Hotel Grano de Oro, San Jos\u00e9, Costa Rica**\n\n- **Mode:** Transit\n- **Distance:** 16.3 km\n- **Duration:** Approximately **42 minutes 42 seconds**\n\n### Steps\n1. Walk east toward **Salidas** \u2014 124 m.\n2. Take the bus **\u201cAlajuela por INVU Las Ca\u00f1as\u2013SJ\u201d** from **Parada Aeropuerto** to **Frente a Rest. Akchete** \u2014 19 stops, approximately 36 minutes 55 seconds.\n3. Walk west along **Carr. Interamericana Sur / Paseo Col\u00f3n / Carretera 2** \u2014 68 m.\n4. Turn left near **DHL Express Punto de Venta (Paseo Col\u00f3n)** toward **Calle 30 / Mario Sancho**, then continue to the hotel \u2014 185 m.\n\nThe route data does not provide fares, departure schedules, frequency, or live disruption information; check the official bus operator or airport information for those details.",
+      "query": "Use public transport from Juan Santamaria Airport to Hotel Grano de Oro in San Jose, Costa Rica, not California.",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Hotel Grano de Oro, San Jos\u00e9, Costa Rica",
+            "include_steps": true,
+            "origin": "Juan Santamaria International Airport, Alajuela, Costa Rica",
+            "travel_mode": "TRANSIT",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Juan Santamaria International Airport, Alajuela, Costa Rica \u2192 Hotel Grano de Oro, San Jos\u00e9, Costa Rica\nDistance: 16.3 km\nDuration: 2562s\nMode: TRANSIT\n\nSteps:\n  1. Dir\u00edgete al este hacia Salidas El destino est\u00e1 a la derecha. (124 m, 105s)\n  2. [BUS ALAJUELA POR INVU LAS CANAS -SJ] Parada Aeropuerto \u2192 Frente A Rest Akchete (19 stops) [2215s]\n  3. Dir\u00edgete al oeste por Carr. Interamericana Sur/P.\u00ba Col\u00f3n/Carretera 2 hacia Calle 30/Mario Sancho (68 m, 59s)\n  4. Gira a la izquierda en DHL Express Punto de Venta (PASEO COLON) hacia Calle 30/Mario Sancho Pasa por Charming, Urban Safe 630 Retreat near Downtown (a la izquierda a 56m) El destino est\u00e1 a la derecha. (185 m, 183s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "### Walking route\n\n**From:** Museum London, London, Ontario  \n**To:** Victoria Park, London, Ontario  \n**Distance:** 1.1 km  \n**Duration:** Approximately 16\u00bd minutes  \n**Mode:** Walking\n\n1. Head north toward Queens Ave W.\n2. Turn right onto Queens Ave W.\n3. Turn left onto Richmond St.\n4. Turn right onto Dufferin Ave.\n5. Bear slightly left.\n6. Turn right.\n7. Turn right.\n8. Turn left.\n9. Turn left.\n10. Turn right; Victoria Park will be on the left.",
+      "query": "Give a walking route from Museum London in Ontario, Canada, not London England, to Victoria Park.",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Victoria Park, London, Ontario, Canada",
+            "include_steps": true,
+            "origin": "Museum London, London, Ontario, Canada",
+            "travel_mode": "WALK",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Museum London, London, Ontario, Canada \u2192 Victoria Park, London, Ontario, Canada\nDistance: 1.1 km\nDuration: 993s\nMode: WALK\n\nSteps:\n  1. Head north toward Queens Ave W (21 m, 19s)\n  2. Turn right onto Queens Ave W (447 m, 401s)\n  3. Turn left onto Richmond St (145 m, 132s)\n  4. Turn right onto Dufferin Ave (165 m, 145s)\n  5. Slight left (90 m, 77s)\n  6. Turn right (116 m, 91s)\n  7. Turn right (3 m, 3s)\n  8. Turn left (11 m, 9s)\n  9. Turn left (6 m, 5s)\n  10. Turn right Destination will be on the left (142 m, 112s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "### Public transport route\n\n**Hotel Artemide, Via Nazionale 22 \u2192 Fiumicino Airport**  \n**Mode:** Transit  \n**Distance:** 32.6 km  \n**Estimated duration:** 45 minutes 24 seconds\n\n1. Walk northeast along Via Nazionale toward Via Napoli \u2014 36 m.\n2. Turn right onto Via Napoli \u2014 178 m.\n3. Turn left onto Via del Viminale \u2014 238 m.\n4. Continue along Largo di Villa Peretti \u2014 64 m.\n5. Turn slightly right onto Piazza dei Cinquecento \u2014 160 m.\n6. Enter via Via Cavour and proceed to **Roma Termini** \u2014 223 m.\n7. Take the **RV heavy-rail train from Roma Termini to Fiumicino Aeroporto**, traveling **2 stops**.\n\nThe route data does not provide fares, departure times, train frequency, or airport-terminal details; check the official railway/operator sources for those details.",
+      "query": "What public transport route gets me from Hotel Artemide in Rome back to Fiumicino Airport?",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Leonardo da Vinci\u2013Fiumicino Airport, Fiumicino, Italy",
+            "include_steps": true,
+            "origin": "Hotel Artemide, Via Nazionale 22, Rome, Italy",
+            "travel_mode": "TRANSIT",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Hotel Artemide, Via Nazionale 22, Rome, Italy \u2192 Leonardo da Vinci\u2013Fiumicino Airport, Fiumicino, Italy\nDistance: 32.6 km\nDuration: 2724s\nMode: TRANSIT\n\nSteps:\n  1. Procedi in direzione nordest su Via Nazionale verso V. Napoli (36 m, 31s)\n  2. Svolta a destra e prendi V. Napoli (178 m, 154s)\n  3. Svolta a sinistra e prendi Via del Viminale (238 m, 208s)\n  4. Continua su Largo di Villa Peretti (64 m, 56s)\n  5. Svolta leggermente a destra e prendi Piazza dei Cinquecento La tua destinazione \u00e8 sulla destra (160 m, 132s)\n  6. Prendi l'entrata Via Cavour (223 m, 223s)\n  7. [HEAVY_RAIL RV] Roma Termini \u2192 Fiumicino Aeroporto (2 stops) [1920s]"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "### Metro directions: Gare du Nord \u2192 Eiffel Tower\n\n- **Mode:** Metro/transit  \n- **Distance:** 7.9 km  \n- **Duration:** approximately **28 minutes**\n\n1. Take **Metro Line 4** from **Gare du Nord** to **Strasbourg\u2013Saint-Denis** \u2014 4 stops.\n2. Change to **Metro Line 8** and travel to **La Motte-Picquet\u2013Grenelle** \u2014 11 stops.\n3. Take **Exit 5, Avenue de Suffren**.\n4. Walk approximately **1.1 km** to the Eiffel Tower via Avenue de Suffren and Avenue Gustave Eiffel.\n\nThe routing result provides duration and route steps, but not fares, schedules, or service disruptions.",
+      "query": "Give Metro directions from Gare du Nord to the Eiffel Tower in Paris.",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Eiffel Tower, Paris",
+            "include_steps": true,
+            "origin": "Gare du Nord, Paris",
+            "travel_mode": "TRANSIT",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Gare du Nord, Paris \u2192 Eiffel Tower, Paris\nDistance: 7.9 km\nDuration: 1685s\nMode: TRANSIT\n\nSteps:\n  1. [SUBWAY 4] Gare du Nord \u2192 Strasbourg - Saint-Denis (4 stops) [213s]\n  2. [SUBWAY 8] Strasbourg - Saint-Denis \u2192 La Motte-Picquet \u2013 Grenelle (11 stops) [786s]\n  3. Prendre la sortie 5 av. de Suffren (170 m, 61s)\n  4. Prendre la direction nord-est sur Av. de la Motte-Picquet vers Av. de Suffren (85 m, 67s)\n  5. Prendre \u00e0 gauche sur Av. de Suffren (558 m, 464s)\n  6. Prendre \u00e0 droite sur Av. du Dr Brouardel (22 m, 28s)\n  7. Tourner \u00e0 gauche pour rester sur Av. du Dr Brouardel (118 m, 99s)\n  8. Prendre \u00e0 gauche sur All. Thomy-Thierry (191 m, 152s)\n  9. Prendre \u00e0 droite sur Av. Gustave Eiffel (3 m, 2s)\n  10. Prendre \u00e0 gauche sur All. des Refuzniks (7 m, 6s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "## Public transit route\n\n**Hotel Jazz Barcelona \u2192 Museu Picasso Barcelona**  \n**Mode:** Transit  \n**Distance:** 1.8 km  \n**Duration:** approximately **18 minutes 6 seconds**\n\n### Route steps\n1. Walk north on **C. de Gravina** toward Ronda de la Universitat \u2014 27 m  \n2. Turn right onto **Ronda de la Universitat** \u2014 60 m  \n3. Turn right onto **Carrer de Balmes** \u2014 67 m  \n4. Take **Bus 59** from **Balmes\u2013Pelai** to **Via Laietana\u2013Pl. Ramon Berenguer** \u2014 **4 stops**  \n5. Walk southeast along **Via Laietana** \u2014 46 m  \n6. Turn left onto **Carrer del Pare Gallifa** \u2014 52 m  \n7. Turn right onto **Carrer dels Mercaders** \u2014 80 m  \n8. Turn left onto **Pla\u00e7a de la Llana** \u2014 35 m  \n9. Turn right onto **Carrer d\u2019En Boquer** \u2014 98 m  \n10. Turn right onto **Carrer de Montcada** \u2014 71 m; the museum is along this street.\n\nThe route data does **not** provide wheelchair-accessibility information for the bus, stops, sidewalks, or museum entrance. Please verify step-free access and current accessibility conditions with **TMB** and **Museu Picasso Barcelona** before traveling.",
+      "query": "Find public transit from Hotel Jazz Barcelona to Museu Picasso; I use a wheelchair, so include the route steps.",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Museu Picasso Barcelona",
+            "include_steps": true,
+            "origin": "Hotel Jazz Barcelona",
+            "travel_mode": "TRANSIT",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Hotel Jazz Barcelona \u2192 Museu Picasso Barcelona\nDistance: 1.8 km\nDuration: 1086s\nMode: TRANSIT\n\nSteps:\n  1. Ves en direcci\u00f3 nord per C. de Gravina cap a Ronda de la Univ. (27 m, 22s)\n  2. Gira a la dreta per Ronda de la Univ. (60 m, 48s)\n  3. Gira a la dreta per Carrer de Balmes La destinaci\u00f3 quedar\u00e0 a m\u00e0 dreta (67 m, 51s)\n  4. [BUS 59] Balmes - Pelai \u2192 Via Laietana - Pl Ramon Berenguer (4 stops) [649s]\n  5. Ves en direcci\u00f3 sud-est per Via Laietana cap a Carrer del Pare Gallifa (46 m, 37s)\n  6. Gira a l'esquerra per Carrer del Pare Gallifa (52 m, 47s)\n  7. Gira a la dreta per Carrer dels Mercaders (80 m, 67s)\n  8. Gira a l'esquerra per Pla\u00e7a de la Llana (35 m, 28s)\n  9. Gira a la dreta per Carrer d'En Boquer (98 m, 75s)\n  10. Gira a la dreta per Carrer de Montcada (71 m, 61s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "Take public transport as follows:\n\n1. Walk to **Circular Quay, Alfred St, Stand B**.\n2. Take **bus 333** toward **Westfield Bondi Junction**. Ride **17 stops**.\n3. At **Westfield Bondi Junction, Oxford St, Stand B**, transfer to **bus 379**.\n4. Ride **7 stops** to **Glenayr Ave at Hall St**, then walk southwest along Glenayr Avenue toward Hall Street to Bondi Beach.\n\n**Total:** approximately **8.7 km** and **32 minutes** according to the route result. The route data does not include fares, departure times, service frequency, or live disruptions.",
+      "query": "How do I get on public transport from Circular Quay to Bondi Beach in Sydney?",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Bondi Beach, Sydney NSW, Australia",
+            "include_steps": true,
+            "origin": "Circular Quay, Sydney NSW, Australia",
+            "travel_mode": "TRANSIT",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: Circular Quay, Sydney NSW, Australia \u2192 Bondi Beach, Sydney NSW, Australia\nDistance: 8.7 km\nDuration: 1929s\nMode: TRANSIT\n\nSteps:\n  1. Head south (10 m, 9s)\n  2. Turn right toward Alfred St (45 m, 32s)\n  3. Turn left toward Alfred St (47 m, 40s)\n  4. Turn right onto Alfred St (9 m, 7s)\n  5. [BUS 333] Circular Quay, Alfred St, Stand B \u2192 Westfield Bondi Junction, Oxford St, Stand B (17 stops) [1200s]\n  6. Head southwest on Oxford St toward Waverley St (23 m, 17s)\n  7. [BUS 379] Westfield Bondi Junction, Oxford St \u2192 Glenayr Ave at Hall St (7 stops) [360s]\n  8. Head southwest on Glenayr Ave toward Hall St (46 m, 41s)"
+        ]
+      ]
+    },
+    {
+      "error": null,
+      "final_text": "### Driving route\n\n**From:** V&A Waterfront, Cape Town  \n**To:** Table Mountain Aerial Cableway, Cape Town  \n**Mode:** Rental car / driving\n\n- **Distance:** 6.2 km\n- **Duration:** 929 seconds (approximately **15 minutes**)\n\n**Route steps:**\n1. Continue east on Dock Road \u2014 318 m.\n2. Merge onto Walter Sisulu Avenue \u2014 97 m.\n3. Turn right onto Buitengracht Street/M62 and continue on M62 \u2014 4.2 km.\n4. Slightly left onto Tafelberg Road. The destination will be on the right \u2014 1.5 km.\n\nThe route result does not provide parking availability or live traffic information.",
+      "query": "I have a rental car. Drive me from the V&A Waterfront to the Table Mountain Aerial Cableway in Cape Town.",
+      "tool_calls": [
+        {
+          "args": {
+            "destination": "Table Mountain Aerial Cableway, Cape Town",
+            "include_steps": true,
+            "origin": "V&A Waterfront, Cape Town",
+            "travel_mode": "DRIVE",
+            "waypoints": null
+          },
+          "name": "compute_route"
+        }
+      ],
+      "tool_outputs": [
+        [
+          "compute_route",
+          "Route: V&A Waterfront, Cape Town \u2192 Table Mountain Aerial Cableway, Cape Town\nDistance: 6.2 km\nDuration: 929s\nMode: DRIVE\n\nSteps:\n  1. Hou oos aan op Dock Rd in die rigting van Dock Rd (318 m, 86s)\n  2. Gaan voort om aan te sluit by Walter Sisulu Ave (97 m, 30s)\n  3. Draai regs in Buitengracht St/M62 in Gaan aan met M62 (4.2 km, 599s)\n  4. Effens links in Tafelberg Rd in Bestemming sal aan die regterkant wees (1.5 km, 214s)"
+        ]
+      ]
+    }
+  ]
+}

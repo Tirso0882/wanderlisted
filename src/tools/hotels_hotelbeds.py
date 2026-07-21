@@ -60,6 +60,15 @@ def _base_url() -> str:
     return os.environ.get("HOTELBEDS_BASE_URL", _DEFAULT_BASE_URL).rstrip("/")
 
 
+def _http_error_detail(response: httpx.Response) -> str:
+    """Extract a short provider error without exposing request credentials."""
+    try:
+        detail = response.json().get("error", "")
+    except ValueError:
+        detail = response.text
+    return str(detail).strip()[:200]
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────
 
 
@@ -68,6 +77,8 @@ def _base_url() -> str:
 # codes. This maps known mismatches. If a code is not here, it's passed as-is.
 
 _IATA_TO_HOTELBEDS: dict[str, str] = {
+    # Europe — verified against Hotelbeds Content API destinations
+    "ROM": "ROE",  # Rome (Hotelbeds ROM is La Romana, Dominican Republic)
     # Japan — Hotelbeds uses airport/region codes, not IATA city codes
     "TYO": "NRT",  # Tokyo (IATA city=TYO, Hotelbeds=NRT)
     "OSA": "ITM",  # Osaka (IATA city=OSA, Hotelbeds=ITM)
@@ -341,7 +352,7 @@ async def search_hotels_hotelbeds(
     city_code: str,
     check_in_date: str,
     check_out_date: str,
-    adults: int = 2,
+    adults: int,
     children: int = 0,
     children_ages: str = "",
     min_category: int | None = None,
@@ -360,7 +371,7 @@ async def search_hotels_hotelbeds(
         city_code: IATA city code (e.g., "TYO" for Tokyo, "PAR" for Paris)
         check_in_date: Check-in date in YYYY-MM-DD format
         check_out_date: Check-out date in YYYY-MM-DD format
-        adults: Number of adult guests (default 2)
+        adults: Number of adult guests (required — infer from the request, do not assume)
         children: Number of children (default 0)
         children_ages: Comma-separated ages of children (e.g., "4,8"). Required when children > 0
         min_category: Minimum star rating 1-5 (e.g., 3 for 3+ stars). Optional
@@ -397,7 +408,9 @@ async def search_hotels_hotelbeds(
             e.response.status_code,
             e.response.text[:300],
         )
-        return f"Hotelbeds API error (HTTP {e.response.status_code})."
+        detail = _http_error_detail(e.response)
+        suffix = f": {detail}" if detail else ""
+        return f"Hotelbeds API error (HTTP {e.response.status_code}){suffix}."
     except httpx.RequestError as e:
         logger.error("Hotelbeds request error: %s", e)
         return f"Could not reach Hotelbeds API: {e}"
@@ -471,7 +484,9 @@ async def check_hotel_rate_hotelbeds(
             e.response.status_code,
             e.response.text[:300],
         )
-        return f"Hotelbeds CheckRate error (HTTP {e.response.status_code})."
+        detail = _http_error_detail(e.response)
+        suffix = f": {detail}" if detail else ""
+        return f"Hotelbeds CheckRate error (HTTP {e.response.status_code}){suffix}."
     except httpx.RequestError as e:
         logger.error("Hotelbeds CheckRate request error: %s", e)
         return f"Could not reach Hotelbeds CheckRate API: {e}"

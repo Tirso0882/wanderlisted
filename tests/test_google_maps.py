@@ -11,7 +11,6 @@ from src.tools.google_maps import (
     search_places_text,
     compute_route,
     optimize_day_route,
-    get_timezone,
     _format_place,
     _looks_like_latlng,
     _geocode,
@@ -312,13 +311,32 @@ class TestComputeRoute:
             {
                 "origin": "Alicante",
                 "destination": "Malaga",
-                "waypoints": "Murcia, Granada, Almeria",
+                "waypoints": ["Murcia", "Granada", "Almeria"],
             }
         )
         body = json.loads(route_mock.calls[0].request.content)
         assert len(body["intermediates"]) == 3
         assert body["optimizeWaypointOrder"] is True
         assert "Optimised stop order" in result
+
+    @respx.mock
+    async def test_transit_waypoints_require_consecutive_leg_calls(self, monkeypatch):
+        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
+        route_mock = respx.post(
+            "https://routes.googleapis.com/directions/v2:computeRoutes"
+        )
+
+        result = await compute_route.ainvoke(
+            {
+                "origin": "A",
+                "destination": "D",
+                "travel_mode": "TRANSIT",
+                "waypoints": ["B", "C"],
+            }
+        )
+
+        assert "once per consecutive requested leg" in result
+        assert not route_mock.called
 
     @respx.mock
     async def test_no_routes_found(self, monkeypatch):
@@ -400,7 +418,11 @@ class TestOptimizeDayRoute:
         )
         result = await optimize_day_route.ainvoke(
             {
-                "stops": "Playa Postiguet, Castle of Santa Barbara, Mercado Central",
+                "stops": [
+                    "Playa Postiguet",
+                    "Castle of Santa Barbara",
+                    "Mercado Central",
+                ],
                 "start_location": "Hotel Alicante",
             }
         )
@@ -431,7 +453,7 @@ class TestOptimizeDayRoute:
         ).mock(return_value=Response(200, json=two_stop_response))
         await optimize_day_route.ainvoke(
             {
-                "stops": "A, B",
+                "stops": ["A", "B"],
                 "start_location": "Hotel",
             }
         )
@@ -446,7 +468,7 @@ class TestOptimizeDayRoute:
         )
         result = await optimize_day_route.ainvoke(
             {
-                "stops": "A, B",
+                "stops": ["A", "B"],
                 "start_location": "Hotel",
             }
         )
@@ -460,7 +482,7 @@ class TestOptimizeDayRoute:
         )
         result = await optimize_day_route.ainvoke(
             {
-                "stops": "A, B",
+                "stops": ["A", "B"],
                 "start_location": "Hotel",
             }
         )
@@ -474,7 +496,7 @@ class TestOptimizeDayRoute:
         ).mock(return_value=Response(200, json=_MOCK_ROUTES_RESPONSE))
         await optimize_day_route.ainvoke(
             {
-                "stops": "A, B, C",
+                "stops": ["A", "B", "C"],
                 "start_location": "Hotel",
             }
         )
@@ -489,13 +511,15 @@ class TestOptimizeDayRoute:
         ).mock(return_value=Response(200, json=_MOCK_ROUTES_RESPONSE))
         result = await optimize_day_route.ainvoke(
             {
-                "stops": "Senso-ji Temple, Tokyo Tower, Meiji Shrine",
+                "stops": ["Senso-ji Temple", "Tokyo Tower", "Meiji Shrine"],
                 "start_location": "Hotel Tokyo",
                 "travel_mode": "TRANSIT",
             }
         )
         body = json.loads(route_mock.calls[0].request.content)
         assert body["travelMode"] == "TRANSIT"
+        assert "intermediates" not in body
+        assert "optimizeWaypointOrder" not in body
         assert "mode=TRANSIT" in result
 
     @respx.mock
@@ -506,7 +530,7 @@ class TestOptimizeDayRoute:
         ).mock(return_value=Response(200, json=_MOCK_ROUTES_RESPONSE))
         result = await optimize_day_route.ainvoke(
             {
-                "stops": "A, B, C",
+                "stops": ["A", "B", "C"],
                 "start_location": "Hotel",
                 "travel_mode": "WALK",
             }
@@ -515,16 +539,26 @@ class TestOptimizeDayRoute:
         assert body["travelMode"] == "WALK"
         assert "mode=WALK" in result
 
+    @respx.mock
+    async def test_address_with_comma_remains_one_stop(self, monkeypatch):
+        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
+        route_mock = respx.post(
+            "https://routes.googleapis.com/directions/v2:computeRoutes"
+        ).mock(return_value=Response(200, json=_MOCK_ROUTES_RESPONSE))
+
+        await optimize_day_route.ainvoke(
+            {
+                "stops": ["Calle Mayor 1, Madrid", "Prado Museum, Madrid"],
+                "start_location": "Hotel Central, Madrid",
+            }
+        )
+
+        body = json.loads(route_mock.calls[0].request.content)
+        assert len(body["intermediates"]) == 2
+        assert body["intermediates"][0]["address"] == "Calle Mayor 1, Madrid"
+
 
 # ── places_photo_url ─────────────────────────────────────────────────────
-
-_MOCK_TIMEZONE_RESPONSE = {
-    "status": "OK",
-    "timeZoneId": "Asia/Tokyo",
-    "timeZoneName": "Japan Standard Time",
-    "rawOffset": 32400,
-    "dstOffset": 0,
-}
 
 
 class TestPlacesPhotoUrl:
@@ -629,78 +663,6 @@ class TestLookupPlacePhoto:
         assert result is None
 
 
-# ── get_timezone ─────────────────────────────────────────────────────────
-
-
-class TestGetTimezone:
-    @respx.mock
-    async def test_returns_timezone(self, monkeypatch):
-        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
-        respx.get("https://maps.googleapis.com/maps/api/timezone/json").mock(
-            return_value=Response(200, json=_MOCK_TIMEZONE_RESPONSE)
-        )
-        result = await get_timezone.ainvoke(
-            {"location": "35.6762,139.6503", "timestamp": 1700000000}
-        )
-        assert "Japan Standard Time" in result
-        assert "Asia/Tokyo" in result
-        assert "+9.0h" in result
-
-    @respx.mock
-    async def test_geocodes_text_location(self, monkeypatch):
-        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
-        respx.get("https://maps.googleapis.com/maps/api/geocode/json").mock(
-            return_value=Response(200, json=_MOCK_GEOCODE_RESPONSE)
-        )
-        respx.get("https://maps.googleapis.com/maps/api/timezone/json").mock(
-            return_value=Response(200, json=_MOCK_TIMEZONE_RESPONSE)
-        )
-        result = await get_timezone.ainvoke({"location": "Tokyo, Japan"})
-        assert "Japan Standard Time" in result
-
-    @respx.mock
-    async def test_geocode_fails_returns_message(self, monkeypatch):
-        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
-        respx.get("https://maps.googleapis.com/maps/api/geocode/json").mock(
-            return_value=Response(200, json={"status": "ZERO_RESULTS", "results": []})
-        )
-        result = await get_timezone.ainvoke({"location": "Nonexistent"})
-        assert "Could not geocode" in result
-
-    @respx.mock
-    async def test_api_status_error(self, monkeypatch):
-        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
-        respx.get("https://maps.googleapis.com/maps/api/timezone/json").mock(
-            return_value=Response(200, json={"status": "INVALID_REQUEST"})
-        )
-        result = await get_timezone.ainvoke(
-            {"location": "35.6762,139.6503", "timestamp": 1700000000}
-        )
-        assert "INVALID_REQUEST" in result
-
-    @respx.mock
-    async def test_http_error_returns_message(self, monkeypatch):
-        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
-        respx.get("https://maps.googleapis.com/maps/api/timezone/json").mock(
-            return_value=Response(500, text="Server Error")
-        )
-        result = await get_timezone.ainvoke(
-            {"location": "35.6762,139.6503", "timestamp": 1700000000}
-        )
-        assert "error" in result.lower()
-        assert "500" in result
-
-    @respx.mock
-    async def test_default_timestamp(self, monkeypatch):
-        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
-        route = respx.get("https://maps.googleapis.com/maps/api/timezone/json").mock(
-            return_value=Response(200, json=_MOCK_TIMEZONE_RESPONSE)
-        )
-        await get_timezone.ainvoke({"location": "35.6762,139.6503"})
-        # Should have been called with a timestamp param
-        assert "timestamp" in str(route.calls[0].request.url)
-
-
 # ── _format_place extended fields ────────────────────────────────────────
 
 
@@ -785,23 +747,12 @@ class TestRequestErrors:
         assert "could not reach" in result.lower()
 
     @respx.mock
-    async def test_timezone_request_error(self, monkeypatch):
-        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
-        respx.get("https://maps.googleapis.com/maps/api/timezone/json").mock(
-            side_effect=httpx.ConnectError("Connection refused")
-        )
-        result = await get_timezone.ainvoke(
-            {"location": "35.6762,139.6503", "timestamp": 1700000000}
-        )
-        assert "could not reach" in result.lower()
-
-    @respx.mock
     async def test_optimize_route_request_error(self, monkeypatch):
         monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
         respx.post("https://routes.googleapis.com/directions/v2:computeRoutes").mock(
             side_effect=httpx.ConnectError("Connection refused")
         )
         result = await optimize_day_route.ainvoke(
-            {"stops": "A, B", "start_location": "Hotel"}
+            {"stops": ["A", "B"], "start_location": "Hotel"}
         )
         assert "could not reach" in result.lower()

@@ -6,6 +6,7 @@ from src.tools.flights_duffel import (
     confirm_flight_price,
     get_cheapest_flight,
     search_cheapest_flight_in_month,
+    search_cheapest_round_trip_in_window,
     search_flights,
     search_nearby_airports,
 )
@@ -29,6 +30,7 @@ class FlightsAgent(SpecializedAgent):
             lookup_iata_code,
             search_flights,
             get_cheapest_flight,
+            search_cheapest_round_trip_in_window,
             search_cheapest_flight_in_month,
             confirm_flight_price,
             search_nearby_airports,

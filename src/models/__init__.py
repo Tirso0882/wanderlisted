@@ -81,16 +81,46 @@ from src.models.enums import (  # noqa: E402
     TravelStyle,
 )
 from src.models.itinerary import (  # noqa: E402
+    DayRoute,
     DayPlan,
     DayWeather,
+    DraftDay,
+    DraftItinerary,
     FlightOption,
     FlightSegment,
     HotelOption,
     PackingItem,
     PlaceCard,
+    PlaceRef,
+    RouteLeg,
+    RoutePlan,
     SafetyInfo,
     CultureGuide,
     TimeBlock,
     TransitStep,
     TripHandbook,
+)
+from src.models.component_result import (  # noqa: E402
+    ComponentResult,
+    ComponentStatus,
+    ErrorCategory,
+)
+from src.models.trip_request import (  # noqa: E402
+    DateWindow,
+    DateWindowPatch,
+    RequestScope,
+    RequestedCapability,
+    TravelerParty,
+    TravelerPartyPatch,
+    TripRequest,
+    TripRequestPatch,
+    merge_trip_request,
+)
+from src.models.trip_skeleton import (  # noqa: E402
+    CityStay,
+    FlightWindowOption,
+    FlightWindowSearchResult,
+    TripSkeleton,
+    allocate_city_stays,
+    build_trip_skeleton,
 )

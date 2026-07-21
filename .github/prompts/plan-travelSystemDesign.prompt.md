@@ -1294,14 +1294,14 @@ Every field in the Jinja2 template maps to a specific agent and tool:
 | Day cards — restaurants | RestaurantsAgent | `search_places_nearby`, `search_places_text` (Google Places) | `PlaceCard` (with dietary compatibility flags) |
 | Day cards — weather | DestinationAgent | `get_weather` (OpenWeatherMap) | `DayWeather` |
 | Day cards — transit | TransportationAgent | `compute_route` (Google Routes) | `TransitStep` |
-| Day cards — route order | ItineraryAgent | `optimize_day_route` (Google Routes) | `DayPlan.optimised_stop_order` |
-| Day cards — proximity | ItineraryAgent | `optimize_day_route` (Google Routes) | Distance values injected into `PlaceCard` or `TransitStep` |
+| Day cards — route order | Transportation stage | `RoutePlan` from Google Routes | `DayRoute.ordered_stops` |
+| Day cards — proximity | Transportation stage | `RoutePlan` from Google Routes | `RouteLeg.distance_meters` |
 | Day cards — cultural tip | DestinationAgent | `search_destination_guides` (Pinecone RAG) | `DayPlan.cultural_tip` |
 | Day cards — daily cost | BudgetAgent | `calculate_budget` | `DayPlan.daily_cost_usd` |
 | Flights tab | FlightsAgent | `search_flights` (Duffel) | `FlightOption` + `FlightSegment` |
 | Hotels tab | HotelsAgent | `search_hotels_hotelbeds` (Hotelbeds) | `HotelOption` |
 | Budget tab | BudgetAgent | `calculate_budget`, `convert_currency` | `BudgetBreakdown` + exchange rate |
-| Maps tab | ItineraryAgent + TransportationAgent | `compute_route`, `optimize_day_route` (Google Routes) | lat/lng from all `PlaceCard` + `HotelOption` |
+| Maps tab | Transportation stage | `compute_route`, typed route planner (Google Routes) | `DraftItinerary` place refs + `RoutePlan` |
 | Safety tab | DestinationAgent | `get_safety_info`, RAG | `SafetyInfo` |
 | Culture tab | DestinationAgent | RAG (`search_destination_guides`) | `CultureGuide` |
 | Packing tab | ItineraryAssemblerAgent (derived) | Weather + activities + safety data | `PackingItem[]` |

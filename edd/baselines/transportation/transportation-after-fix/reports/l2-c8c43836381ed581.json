@@ -1,0 +1,626 @@
+{
+  "baseline_name": "transportation-after-fix",
+  "component": "transportation",
+  "context": {
+    "dataset_case_count": 40,
+    "dataset_version": "1.0.0",
+    "judge_config": {
+      "effort": "tier_default",
+      "tier": "reasoning"
+    },
+    "model_configs": {
+      "terra": {
+        "azure_deployment": "gpt-5.6-terra",
+        "tier": "fast"
+      }
+    },
+    "report_sources": [
+      {
+        "path": "edd/transportation/l2_judge_run.py",
+        "sha256": "8cc3c6a66cedce13f8b173d44f1341496e7bcf67a0815fcd9dc63956c016380b"
+      },
+      {
+        "path": "edd/transportation/l2_judge.py",
+        "sha256": "bf14e5b3281c51ad832a735d1d1bf73bf8f737e55f3e3fc365fe0b80e7be7701"
+      },
+      {
+        "path": "edd/rubrics.py",
+        "sha256": "7c5533b9c6489df4bb0896e481f977a4599bfacd16eb774a4a8f0f9624412a22"
+      }
+    ]
+  },
+  "created_at": "2026-07-21T14:14:52.511850+00:00",
+  "git": {
+    "branch": "main",
+    "commit": "07dc9ffc349dcf297d4bf1007d759c240385e84b",
+    "dirty": true
+  },
+  "kind": "edd-metrics-report",
+  "layer": "l2",
+  "metrics": {
+    "case_results": [
+      {
+        "name": "rome-fco-to-hotel-transit",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "All core route claims are supported: the RV heavy-rail segment runs from Fiumicino Aeroporto to Roma Termini in 1920s (32 minutes) with 2 stops, followed by the Via Cavour exit and the listed walking streets. The stated total of 32.6 km and about 44 minutes accurately reflects 2667s (44 minutes 27 seconds), and the answer correctly notes that schedule and fare details were not returned.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer clearly provides a usable public-transport route, including the rail service, transfer/exit, walking streets, total distance, and duration, while appropriately flagging unavailable fare and timetable details. A minor ambiguity is the label \u201cRV heavy-rail service,\u201d since naming the specific train/operator would make the route easier to identify, but the Roma Termini destination and steps make it actionable.",
+            "score": 3
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "london-heathrow-to-soho-transit",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "All core claims are supported: 26.9 km, about 37 minutes (2222 seconds), transit via the Elizabeth line from Heathrow Terminals 2 & 3 to Tottenham Court Road for 10 stops, followed by the stated exit and walking directions. The note that departure times, fares, and disruptions are absent accurately reflects the results.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer clearly gives the requested transit route, including mode, distance, estimated duration, station-to-station instructions, and the final walk, so the traveler could act on it immediately. It also appropriately flags that live times, fares, and disruptions are not included rather than inventing them.",
+            "score": 3
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "paris-cdg-to-saint-germain-transit",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "All core route claims are supported: RER/commuter train B runs from A\u00e9roport Charles de Gaulle 1 to Port Royal for 15 stops, followed by the listed walking directions to Rue Stanislas. The stated 33.5 km and about 56 minutes accurately reflect 3386 seconds, and the answer correctly notes that fares, frequency, and live departures were not returned.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer clearly identifies a usable public-transport route, with the train, stop count, destination station, walking directions, total distance, and duration, plus an appropriate note about unavailable fare and live-service details. A minor ambiguity is that CDG Terminal 2 passengers would need to use A\u00e9roport Charles de Gaulle 2 TGV rather than the stated CDG 1 station, but the route is otherwise actionable.",
+            "score": 3
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "tokyo-haneda-to-shibuya-transit",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "The answer accurately states that no transit route was returned and does not invent any route data; its suggestion to check official planners is advice rather than an unsupported route claim.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer does not provide any usable route, distance, duration, or transit steps, despite this being a common journey for which actionable options could be surfaced. It only redirects the traveler to another planner, so it fails to address the core request.",
+            "score": 0
+          }
+        },
+        "task_outcome": "no_route"
+      },
+      {
+        "name": "new-york-jfk-to-midtown-transit",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "All core route facts are supported: 27.3 km and 3232 seconds (53:52), Jamaica AirTrain Terminal 8\u2192Jamaica with 3 stops, and E line to 42 St\u2013Port Authority with 12 stops. The stated final walk of about 670 m accurately rounds the listed 394+192+79+6 m segments.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer directly provides a usable public-transit route with distance, total duration, line names, stops, segment timing, and the final walking directions. A minor practical caveat is that it assumes departure from Terminal 8, but overall the traveler can act on it and the limitations on fares, schedules, and accessibility are clearly disclosed.",
+            "score": 3
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "barcelona-airport-to-sagrada-transit",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "All core route claims are supported: R2N from Aeroport to Barcelona-Sants with 4 stops, the indicated connection, L5 from Sants Estaci\u00f3 to Sagrada Fam\u00edlia with 6 stops, the Sardenya exit and short walk, plus 18.5 km and 2,205 seconds (accurately rounded to 37 minutes). The statement that schedules, fares, and ticket validity were not provided is also faithful to the results.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer gives a clear, followable train-plus-metro route and includes the requested mode, total distance, duration, stops, transfer, and destination exit. It also appropriately flags unavailable schedule and fare information rather than inventing it, so a traveler could act on it now.",
+            "score": 3
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "amsterdam-schiphol-to-jordaan-transit",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "All core route claims are supported: Bus 397 runs from Schiphol Airport/Plaza to Elandsgracht for 12 stops, 2340 seconds accurately rounds to 39 minutes, the walking steps and distances match, and the total 16.6 km and 2863 seconds accurately round to 48 minutes.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer gives a clear, actionable transit route with the bus number, boarding and alighting stops, stop count, walking steps, total distance, and duration. A traveler could follow it immediately; while the Jordaan is an area rather than a single point, the route appropriately reaches its edge via Elandsgracht.",
+            "score": 3
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "lisbon-airport-to-alfama-transit",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "judge error: ",
+            "score": null
+          },
+          "helpfulness": {
+            "comment": "The answer clearly provides a followable public-transport route with the modes, total distance, estimated duration, stops, transfer point, and final walk, while also flagging stairs and unavailable fare/timetable/accessibility data. A traveler could act on it immediately, though the exact destination within Alfama may affect the final walk.",
+            "score": 3
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "venice-airport-to-san-marco-transit",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "The overall 17.2 km, approximately 52-minute transit trip, Bus 5 (18 stops, 24 minutes), Ferry 2/ (3 stops, 15 minutes), and stair references are supported. The only minor slip is describing the post-Rialto walk as roughly 6 minutes when the listed walking steps total 294 seconds, about 5 minutes.",
+            "score": 2
+          },
+          "helpfulness": {
+            "comment": "The answer clearly provides a usable public-transport route with the mode, total distance, estimated duration, stops, transfer points, and walking legs. It also appropriately flags missing schedules, fares, ticket validity, and accessibility information rather than inventing details, though naming the operators would have made the next check slightly easier.",
+            "score": 3
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "athens-airport-to-acropolis-transit",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "All core route claims are supported: M3 from Athens Airport to Syntagma (16 stops), transfer to M2 to Akropoli (2 stops), 31.4 km, and about 47 minutes accurately reflects 2812 seconds. The final walk to the museum is also consistent with the listed walking steps and route endpoint, while the answer appropriately avoids asserting unreturned fares or schedules.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer clearly provides the requested public-transport route, including the metro lines, transfer station, destination stop, distance, duration, and a sensible note to verify current fares and departures. A traveler could follow it immediately, though the final walk could be slightly more specific.",
+            "score": 3
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "rome-hotel-to-colosseum-walk",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "Every core route fact is supported: walking mode, 1.5 km distance, 1176 seconds correctly converted to 19 min 36 sec, and all seven directions and segment distances match the results. \u201cLargo\u201d is a faithful expansion of \u201cL.go,\u201d and the destination-on-left instruction is grounded.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer directly provides the requested walking route with clear turn-by-turn steps, total distance, and estimated duration. It is concise and actionable, including the stair segment and final arrival orientation.",
+            "score": 3
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "paris-louvre-to-notre-dame-walk",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "All core route facts are supported: the 1.4 km distance, walking mode, and directions match the listed steps. The stated 19 minutes accurately rounds 1124 seconds (about 18 minutes 44 seconds).",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer directly provides the walking mode, distance, estimated duration, and concise turn-by-turn directions with recognizable street and bridge names. A traveler could follow it immediately, and it does not bury the route in unnecessary detail.",
+            "score": 3
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "kyoto-gion-to-kiyomizu-walk",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "All core route facts are supported: walking mode, 1.2 km distance, and about 19 minutes accurately reflect WALK and 1163 seconds, while the summarized turns, road names, final 600 m segment, destination position, and restricted-use note match the listed steps.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer directly provides the requested walking route with distance, estimated duration, and followable street-level steps. It is concise and actionable, though the vague \u201cright, then left, then another right\u201d segment and unexplained restricted-use note slightly reduce clarity.",
+            "score": 3
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "amsterdam-anne-frank-to-rijksmuseum-bicycle",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "All core route facts are supported: the answer gives the 2.0 km bicycle route, accurately converts 445 seconds to 7 min 25 sec, and faithfully summarizes each listed street and turn, including the 1.4 km Keizersgracht segment and destination on the left.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer directly provides the requested bike route with distance, estimated duration, and concise turn-by-turn directions from the Anne Frank House to the Rijksmuseum. It is clear and immediately actionable, with no important requested detail omitted.",
+            "score": 3
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "copenhagen-nyhavn-to-little-mermaid-bicycle",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "All core route facts are supported: bicycle mode, 1.8 km distance, and 386 seconds correctly converted to 6 min 26 sec. The 12 directions, street names, distances, walk-bike instruction, and destination-on-right detail accurately restate the RESULTS.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer directly provides the requested cycling route with distance, estimated duration, and detailed sequential directions that a traveler can follow. Although the U-turn and plaza routing may look slightly awkward, no essential requested information is missing and the presentation is clear and actionable.",
+            "score": 3
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "rome-to-pompeii-drive",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "The 239.6 km distance, drive mode, and about 2 hr 31 min duration accurately match the results (9052 seconds \u2248 2:31). The Via Nazionale start and toll-zone entry/exit are also supported by the listed steps; the broad southeast description does not contradict the route.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer gives the mode, distance, and estimated duration, but it does not provide a usable route: beyond starting on Via Nazionale, it omits the motorways, exits, and final approach/entrance steps. Telling the traveler to use live navigation for the complete routing means they cannot act on the requested directions from this answer alone.",
+            "score": 1
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "los-angeles-to-santa-monica-drive",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "All core route facts are supported: 24.4 km, driving mode, and each listed road/turn matches the results. The stated 34 minutes is an accurate rounding of 2029 seconds (about 33 minutes 49 seconds).",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer gives a distance and duration, but the directions are not reliably followable: N La Brea Ave does not directly lead to an I-10 W merge without substantial intermediate routing, and the unexplained CA-1 U-turn/Ocean Ave exit sequence is confusing. A traveler would need live navigation or corrected turn-by-turn steps before acting on it.",
+            "score": 1
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "bangkok-sukhumvit-to-grand-palace-drive",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "The distance (191.1 km), driving mode, and summarized roads/steps are all supported by the results. Converting 9659 seconds gives about 2 hr 41 min, so the stated duration is accurate; the note about the unusually long route is commentary based on that grounded distance and does not introduce a contradictory core fact.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer flags that the geocoded origin is likely wrong, but it still presents an implausible 191.1 km / 2 hr 41 min route as the main result and gives only broad road names rather than followable driving steps. Asking for a specific Sukhumvit point is useful, yet the traveler cannot reliably act on this route now.",
+            "score": 1
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "hanoi-old-quarter-to-temple-two-wheeler",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "The 2.5 km distance and about 10-minute duration accurately reflect 2.5 km and 597 seconds, and the listed streets all occur in the supported route sequence (with some intermediate streets simply omitted). The destination being on the right on Qu\u1ed1c T\u1eed Gi\u00e1m is also explicitly supported by the final step.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer directly provides the requested scooter route with distance, estimated duration, and a clear street-by-street sequence ending with the destination-side detail. A traveler could follow it immediately, though live traffic and road restrictions could affect the exact route.",
+            "score": 3
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "bali-canggu-to-uluwatu-two-wheeler",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "The core facts are supported: 35.6 km, TWO_WHEELER/motorbike mode, and 4757 seconds accurately rounded to about 1 hr 19 min. The named roads and initial turns all appear in the returned steps, and the broader 'toward the Uluwatu area' wording does not invent a conflicting route step.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer gives the requested motorbike mode, distance, estimated duration, and useful initial roads, but it stops at Sunset Road and does not provide the remaining turn-by-turn steps to Uluwatu Temple. A traveler would still need navigation for a substantial final portion, so it is useful but not fully actionable.",
+            "score": 2
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "rome-hotel-attraction-comparison",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "All core route facts are supported: 955s and 1388s accurately round to 16 and 23 minutes; distances, bus 75 and Metro A, endpoints, and 7/5 stop counts match. The walking-time summaries and comparison (7 minutes faster, 2.4 km closer) are consistent with the listed steps and totals, and the caveat correctly avoids asserting unreturned live or fare details.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer directly compares both requested public-transport routes and clearly provides mode, distance, duration, and followable steps for each. The concise comparison highlights the practical tradeoff, and the caveat appropriately notes that live waits and disruptions are not included.",
+            "score": 3
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "london-hotel-attraction-comparison",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "All core route facts are supported: 815s is about 14 minutes, 1,795s about 30 minutes, and the 16-minute/3.2-km comparison is accurate. Bus 38 with 2 stops, the Central line with 5 stops, endpoints, stairs, and described walking segments all match the results; the answer also correctly notes that fares and related details were not provided.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer clearly compares both routes and provides the requested transit mode, distance, duration, and followable steps, then summarizes the time and distance difference. Minor oddities in station-exit wording do not materially prevent a traveler from acting on it.",
+            "score": 3
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "rome-walking-multi-stop",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "The 3.9 km distance, roughly 53-minute duration (3158s), walking mode, optimized Pantheon \u2192 Piazza Navona order, and listed streets through the Pantheon are supported. However, the claim to continue \u201cvia Piazza Navona to Trastevere\u201d is not backed by the provided steps, which end at the Pantheon, so it invents a core route step.",
+            "score": 1
+          },
+          "helpfulness": {
+            "comment": "The answer gives an overall distance and duration and a usable route to the Pantheon, but it does not honor the requested stop order (Piazza Navona before the Pantheon) and becomes vague after the Pantheon, with no followable streets, river crossing, or specific endpoint in Trastevere. It is useful as a partial outline but not a complete walking route the traveler could confidently follow.",
+            "score": 2
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "paris-driving-multi-stop",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "All core claims are supported: the route is DRIVE, the distance is 11.9 km, 3016 seconds converts exactly to 50 min 16 sec, and the optimized stop order is Louvre Museum then Champs-\u00c9lys\u00e9es. The listed streets and noted possible closures/turning restrictions also appear in the provided steps.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer provides the requested driving mode, stop order, total distance, and duration, but it only gives partial directions to the Louvre and no followable turn-by-turn steps from the Louvre via the Champs-\u00c9lys\u00e9es to the Eiffel Tower. It is useful as a summary but not complete enough for the traveler to follow the full route.",
+            "score": 2
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "amsterdam-cycling-multi-stop",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "The 3.5 km bicycle route and 11 min 29 sec duration exactly match the results, and the named streets and waypoint sequence are supported. The only issue is the phrase \u201cpreserves your requested stop order\u201d: the results label Anne Frank House \u2192 Vondelpark as the optimised stop order, though it happens to match the request, so this does not create a core route-data error.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer gives the requested stop order plus a distance and duration, but the route is not reliably actionable: several directions are vague or internally confusing (for example, \u201cPrinsengracht, then Leliegracht back toward Prinsengracht\u201d), it does not specify how to enter/ride through Vondelpark, and the 3.5 km/11-minute total appears implausibly short for this detour.",
+            "score": 1
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "berlin-german-ubahn-transit",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "Alle Kernangaben sind durch die Ergebnisse gest\u00fctzt: U5 vom Berliner Hauptbahnhof zum Brandenburger Tor, 3 Haltestellen, anschlie\u00dfender Fu\u00dfweg sowie insgesamt 1,6 km und gerundet etwa 8 Minuten (460 s).",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "Die Antwort ist knapp, nennt Verkehrsmittel, Strecke, Dauer sowie grunds\u00e4tzlich nachvollziehbare Schritte. Allerdings ist \u201eU5 Richtung Brandenburger Tor\u201c als Fahrtrichtung ungenau (korrekt w\u00e4re Richtung H\u00f6now), und von Hauptbahnhof bis Brandenburger Tor sind es nur zwei Zwischenhalte bzw. drei angefahrene Stationen inklusive Start/Ziel; dadurch ist die Routenangabe etwas missverst\u00e4ndlich.",
+            "score": 2
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "madrid-spanish-walking-route",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "La distancia de 1,0 km, la duraci\u00f3n de 14 minutos y el modo a pie coinciden con los resultados. Las calles y giros resumidos tambi\u00e9n est\u00e1n respaldados; la omisi\u00f3n del leve giro intermedio y el resumen de los giros finales no inventan ning\u00fan dato esencial.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "La respuesta aporta modo, distancia y duraci\u00f3n, y el inicio por la carrera de San Jer\u00f3nimo es \u00fatil, pero las indicaciones finales son confusas o err\u00f3neas: desde la plaza de las Cortes se llega hacia C\u00e1novas del Castillo sin el desv\u00edo por la calle de Cervantes, y \u00absiguiendo los \u00faltimos giros\u00bb no permite localizar claramente la entrada del Prado. El viajero necesitar\u00eda consultar otro mapa para completar la ruta con seguridad.",
+            "score": 1
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "paris-french-cycling-route",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "La distance de 3,5 km, la dur\u00e9e arrondie \u00e0 13 min (777 s = 12 min 57 s), le mode v\u00e9lo et toutes les rues/directions r\u00e9sum\u00e9es correspondent aux RESULTS. Aucun fait central sur l\u2019itin\u00e9raire n\u2019est invent\u00e9 ou contradictoire.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "L\u2019itin\u00e9raire r\u00e9pond directement en fran\u00e7ais avec le mode demand\u00e9, une distance, une dur\u00e9e et des \u00e9tapes de rue suffisamment structur\u00e9es pour \u00eatre suivies. Il pourrait pr\u00e9ciser les am\u00e9nagements cyclables ou le point exact d\u2019arriv\u00e9e sur le canal, mais ces limites mineures n\u2019emp\u00eachent pas le voyageur d\u2019agir.",
+            "score": 3
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "florence-italian-driving-route",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "La distanza di 5,9 km, la modalit\u00e0 in auto e la durata di 15 min 42 s corrispondono ai RESULTS (942 s). Anche le strade, il ponte, la seconda uscita alla rotonda e il passaggio in una zona a pedaggio sono tutti riportati nei passaggi forniti; non risultano fatti CORE inventati.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "La risposta fornisce chiaramente modalit\u00e0, distanza, durata e una sequenza di strade, ma il percorso sembra non arrivare davvero a Piazzale Michelangelo: da Viale Torricelli mancano passaggi essenziali (ad es. verso Viale Galileo/Viale Michelangiolo). Inoltre l\u2019indicazione generica di \u201czona a pedaggio\u201d \u00e8 poco utile e potenzialmente fuorviante rispetto alla pi\u00f9 pertinente verifica della ZTL.",
+            "score": 2
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "rome-destination-correction",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "All core route facts are supported: the answer correctly gives walking mode, 1.5 km, 1176 seconds as 19 min 36 sec, and faithfully summarizes each listed street and turn, including the stairs and destination on the left.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer correctly follows the traveler\u2019s correction to the Colosseum and clearly provides the requested walking mode, distance, estimated duration, and concise turn-by-turn directions, including the stairs. It is immediately actionable and does not add distracting detail.",
+            "score": 3
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "tokyo-mode-correction",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "The answer accurately reflects the result \u201cNo route found\u201d and appropriately avoids inventing any itinerary, duration, distance, lines, or stops. The suggestion to check official planners is not a route-data claim and does not affect grounding.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer acknowledges the corrected public-transit mode but provides no usable route, distance, duration, or steps, even though a straightforward Tokyo Station\u2013Sens\u014d-ji itinerary could be given. Directing the traveler to another planner does not let them act on the requested routing.",
+            "score": 0
+          }
+        },
+        "task_outcome": "no_route"
+      },
+      {
+        "name": "london-origin-correction",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "All core claims are supported: the route is 3.9 km, 875 seconds equals 14 min 35 sec, and it uses Thameslink heavy rail from St Pancras International to Blackfriars for 4 stops, followed by the listed exit and walking streets. The clarification that this is Thameslink rather than the Tube is also consistent with the results.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer correctly honors the revised King\u2019s Cross origin and gives a clear, actionable rail route with distance, total duration, stop count, and walking guidance. However, the traveler explicitly asked for the Tube, while the answer substitutes Thameslink without also surfacing a Tube option, so it has a notable mode-related gap.",
+            "score": 2
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "portland-maine-airport-disambiguation",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "The distance (8.3 km), drive duration (882 seconds = 14 min 42 sec), mode, and route steps are all supported by the results. The 5.2-mile conversion is accurate rounding, and \u201ckeep left\u201d reasonably paraphrases the listed left turn to stay on Fore River Pkwy.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer correctly disambiguates Portland, Maine, and provides the requested driving mode, distance, estimated duration, and concise turn-by-turn directions ending in Old Port. It is clear and actionable without unnecessary detail.",
+            "score": 3
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "san-jose-costa-rica-disambiguation",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "All core facts are supported: 16.3 km, 2562 seconds accurately rounded to about 43 minutes, transit mode, the named bus endpoints and 19 stops, plus the walking distances and rounded step durations. The note that fare and operational details were not returned is also faithful.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer directly identifies the correct Costa Rica airport-to-hotel transit route and provides the requested mode, total distance, estimated duration, bus line and stops, and walk-by-walk steps. It is concise and appropriately flags unavailable fare, schedule, luggage, and accessibility information with a practical next-check.",
+            "score": 3
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "london-ontario-disambiguation",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "The answer accurately reports the 1.1 km walking route and converts 993 seconds to 16 min 33 sec. Its named streets, turn sequence, 447 m segment, and destination-on-left instruction are all supported by the route steps; the compressed description of the remaining turns adds no unsupported core facts.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer identifies the correct Ontario locations and clearly provides the mode, distance, duration, and main streets. However, \u201chead north toward Queens Ave W\u201d and \u201cfollow the remaining path/turns\u201d omit key street/path details, so the route is not fully turn-by-turn actionable.",
+            "score": 2
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "rome-hotel-to-fco-transit",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "All core claims are supported: the walking steps sum to 899 m and 804 seconds (about 900 m and 13\u201314 minutes), the RV heavy-rail step runs Roma Termini to Fiumicino Aeroporto for 2 stops in 1920 seconds (32 minutes), and the stated total of 32.6 km and about 45 minutes matches the 2724-second route duration.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer clearly provides an actionable public-transport route with the walk to Termini, the train direction, distances, durations, and total journey time, plus an appropriate note about unavailable schedule and fare details. It would be slightly clearer to identify the airport train by its familiar name, Leonardo Express, but the provided instructions are still sufficient to act on.",
+            "score": 3
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "paris-gare-du-nord-to-eiffel-transit",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "All core claims are supported: Lines 4 and 8, their endpoints and 4/11 stop counts, exit 5, the 7.9 km total, and approximately 36 minutes accurately reflect the results. The stated 1.2 km walk is a reasonable rounding of the listed walking segments, which total about 1.15 km.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer gives a clear, usable Metro-and-walk itinerary with total distance and duration, but some operational details are inaccurate or incomplete: Gare du Nord to Strasbourg\u2013Saint-Denis is 3 stops, not 4; Strasbourg\u2013Saint-Denis to La Motte-Picquet\u2013Grenelle is about 8 stops, not 11; and Line 8 should be identified as toward Balard. These gaps could confuse a traveler, though the route itself is broadly valid.",
+            "score": 2
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "barcelona-accessible-transit-route",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "All core route facts are supported: the 1.8 km distance, approximately 18-minute duration (1086s = 18m 6s), bus 59 endpoints and 4-stop count, and every listed walking step and distance match the results. The answer also appropriately says wheelchair accessibility details cannot be verified rather than inventing them.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer clearly provides the requested public-transit route with mode, distance, duration, stops, and detailed walking steps. It also appropriately avoids unsupported accessibility guarantees and gives specific next checks for wheelchair access, so the traveler can act on it now.",
+            "score": 3
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "sydney-circular-quay-to-bondi-transit",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "All core route claims are supported: BUS 333, the stated boarding and alighting stops, 24 stops, 9.8 km, and about 37 minutes (2208 seconds = 36.8 minutes). The roughly 2-minute initial walk is also consistent with the first four walking steps totaling 88 seconds, and the post-bus walk along Campbell Parade and Hall Street appears in the results.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer clearly provides the requested public-transport route, including the bus number, boarding and alighting stops, step sequence, distance, and estimated duration, so the traveler can act on it immediately. The brief limitation about live times and fares is appropriate and does not obscure the route.",
+            "score": 3
+          }
+        },
+        "task_outcome": "completed"
+      },
+      {
+        "name": "cape-town-waterfront-to-table-mountain-drive",
+        "rubric_scores": {
+          "faithfulness": {
+            "comment": "All core route facts are supported: the 6.2 km distance, 15 min 29 sec duration (929 seconds), driving mode, and each listed road segment and distance match the results.",
+            "score": 3
+          },
+          "helpfulness": {
+            "comment": "The answer directly provides the requested driving route with clear start and destination points, distance, estimated duration, and concise turn-by-turn steps. A traveler could follow it immediately, and no requested detail is omitted.",
+            "score": 3
+          }
+        },
+        "task_outcome": "completed"
+      }
+    ],
+    "rubric_scores": {
+      "faithfulness": {
+        "mean": 2.923076923076923,
+        "score_sum": 114,
+        "scored": 39
+      },
+      "helpfulness": {
+        "mean": 2.4,
+        "score_sum": 96,
+        "scored": 40
+      }
+    },
+    "task_outcomes": {
+      "completed": 38,
+      "no_route": 2
+    }
+  },
+  "metrics_sha256": "84f1cda09896cce9d1b5b928d99f1728fcd1e83eabf7985b654b536718798f99",
+  "report_id": "c8c43836381ed581",
+  "run_refs": {
+    "terra": "0a7fcc23ef3caaa9"
+  },
+  "schema_version": 1
+}

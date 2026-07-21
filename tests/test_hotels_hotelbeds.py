@@ -13,6 +13,7 @@ from src.tools.hotels_hotelbeds import (
     _format_cancellation,
     _format_taxes,
     _build_occupancies,
+    _resolve_destination_code,
 )
 
 
@@ -185,6 +186,9 @@ _MOCK_CHECKRATE_RESPONSE = {
 
 
 class TestHelpers:
+    def test_resolve_rome_destination_code(self):
+        assert _resolve_destination_code("ROM") == "ROE"
+
     def test_parse_star_rating_3est(self):
         assert "★★★" in _parse_star_rating("3EST")
         assert "3 stars" in _parse_star_rating("3EST")
@@ -398,6 +402,7 @@ class TestSearchHotelsHotelbeds:
                 "city_code": "XYZ",
                 "check_in_date": "2026-06-15",
                 "check_out_date": "2026-06-20",
+                "adults": 2,
             }
         )
 
@@ -418,11 +423,13 @@ class TestSearchHotelsHotelbeds:
                 "city_code": "TYO",
                 "check_in_date": "2026-06-15",
                 "check_out_date": "2026-06-20",
+                "adults": 2,
             }
         )
 
         assert "error" in result.lower()
         assert "403" in result
+        assert "Quota exceeded" in result
 
     @respx.mock
     async def test_sends_correct_request_body(self, monkeypatch):
@@ -518,6 +525,7 @@ class TestSearchHotelsHotelbeds:
                 "city_code": "TYO",
                 "check_in_date": "2026-06-15",
                 "check_out_date": "2026-06-20",
+                "adults": 2,
             }
         )
 
@@ -534,6 +542,7 @@ class TestSearchHotelsHotelbeds:
                 "city_code": "TYO",
                 "check_in_date": "2026-06-15",
                 "check_out_date": "2026-06-20",
+                "adults": 2,
             }
         )
 
@@ -554,6 +563,7 @@ class TestSearchHotelsHotelbeds:
                 "city_code": "TYO",
                 "check_in_date": "2026-06-15",
                 "check_out_date": "2026-06-20",
+                "adults": 2,
             }
         )
 

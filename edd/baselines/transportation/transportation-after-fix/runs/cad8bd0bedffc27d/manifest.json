@@ -1,0 +1,62 @@
+{
+  "baseline_name": "transportation-after-fix",
+  "cache_file": "trajectories-cad8bd0bedffc27d.json",
+  "cache_sha256": "6b29aff0206b9f2a82d1322b355691bcd4e820c7d481a08f00f9865d93498ab7",
+  "component": "transportation",
+  "created_at": "2026-07-21T14:23:46.665901+00:00",
+  "dataset_case_count": 40,
+  "dataset_version": "1.0.0",
+  "git": {
+    "branch": "main",
+    "commit": "07dc9ffc349dcf297d4bf1007d759c240385e84b",
+    "dirty": true
+  },
+  "kind": "edd-component-run",
+  "model_config": {
+    "azure_deployment": "gpt-5.6-luna",
+    "tier": "utility"
+  },
+  "prompt_sha256": "f61dc719a8488846bd7b503a0b9287fb21eee79f3bde443abf09d42b09590dc3",
+  "provider": "azure_openai",
+  "run_id": "cad8bd0bedffc27d",
+  "schema_version": 1,
+  "sources": [
+    {
+      "path": "edd/baseline_store.py",
+      "sha256": "60f044ade12b6ad844dab2842fb51a1af673f113d0badd424a38187d80f42903"
+    },
+    {
+      "path": "edd/baseline_config.py",
+      "sha256": "c151a623e72ba676b6a5e4c34c109272b5409032825f3f670dc606757e9fecfe"
+    },
+    {
+      "path": "edd/transportation/run_utils.py",
+      "sha256": "424bc595dd78062d4c86c2bb53646a2a05cb49f3f5089fb4aea950e9a126ec8b"
+    },
+    {
+      "path": "edd/harness.py",
+      "sha256": "f3c1213be41b44831ea8f026f373c0236d51baf22cac959624cb9e0e11f76a2e"
+    },
+    {
+      "path": "edd/transportation/l1_dataset.py",
+      "sha256": "fc710b5c840dedcf0b185e0ee3d4bacdfd693bb148d1bd54a674ffae3088a214"
+    },
+    {
+      "path": "src/agent/llm.py",
+      "sha256": "43cc6a3ed00e857322778d76473bc25a32cbc537246629815bf9b8bd31c72fa4"
+    },
+    {
+      "path": "src/agent/prompts/agent_prompt.py",
+      "sha256": "f61dc719a8488846bd7b503a0b9287fb21eee79f3bde443abf09d42b09590dc3"
+    },
+    {
+      "path": "src/agent/agents/transportation_agent.py",
+      "sha256": "93dd23b19fa5d5d372e7ee5223d7a2887de4c8552a6894730d679b90b22b51e3"
+    },
+    {
+      "path": "src/tools/google_maps.py",
+      "sha256": "dc46eb4dcb4552d6d546545389607c43e8c94fc838244aa23fc6beadabeb5fea"
+    }
+  ],
+  "trajectories_sha256": "6b29aff0206b9f2a82d1322b355691bcd4e820c7d481a08f00f9865d93498ab7"
+}

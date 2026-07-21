@@ -1,0 +1,91 @@
+{
+  "baseline_name": "transportation-after-fix",
+  "component": "transportation",
+  "context": {
+    "dataset_case_count": 40,
+    "dataset_version": "1.0.0",
+    "judge": "sol",
+    "judge_config": {
+      "azure_deployment": "gpt-5.6-sol",
+      "tier": "reasoning"
+    },
+    "lineup": [
+      "terra",
+      "luna"
+    ],
+    "model_configs": {
+      "luna": {
+        "azure_deployment": "gpt-5.6-luna",
+        "tier": "utility"
+      },
+      "terra": {
+        "azure_deployment": "gpt-5.6-terra",
+        "tier": "fast"
+      }
+    },
+    "report_sources": [
+      {
+        "path": "edd/transportation/l3_pairwise_run.py",
+        "sha256": "d2bb0c160c0984c0369f448f1eb353b7d8c4492e366016c44111e7da2a792df6"
+      },
+      {
+        "path": "edd/transportation/l3_pairwise.py",
+        "sha256": "bc8d0e8c301b87d25a26199e13a788ab290f439226634bbbc8628fc320f2a3fd"
+      },
+      {
+        "path": "edd/rubrics.py",
+        "sha256": "7c5533b9c6489df4bb0896e481f977a4599bfacd16eb774a4a8f0f9624412a22"
+      }
+    ]
+  },
+  "created_at": "2026-07-21T14:26:22.567131+00:00",
+  "git": {
+    "branch": "main",
+    "commit": "07dc9ffc349dcf297d4bf1007d759c240385e84b",
+    "dirty": true
+  },
+  "kind": "edd-metrics-report",
+  "layer": "l3",
+  "metrics": {
+    "judge_stability": {
+      "decided": 39,
+      "order_sensitive": 9,
+      "order_sensitive_rate": 0.23076923076923078,
+      "skipped": 1,
+      "tie_boundary": 6,
+      "winner_reversals": 3
+    },
+    "leaderboard": {
+      "luna": {
+        "losses": 16,
+        "ties": 17,
+        "win_rate": 0.3717948717948718,
+        "wins": 6
+      },
+      "terra": {
+        "losses": 6,
+        "ties": 17,
+        "win_rate": 0.6282051282051282,
+        "wins": 16
+      }
+    },
+    "matchups": [
+      {
+        "model_a": "terra",
+        "model_b": "luna",
+        "order_sensitive": 9,
+        "skipped": 1,
+        "ties": 17,
+        "wins_a": 16,
+        "wins_b": 6
+      }
+    ]
+  },
+  "metrics_sha256": "e80b315d79c4ad8d9c26f1a65a0d7e1d8627ded7b58ad586bd36b3bcf56e8b39",
+  "report_id": "6ae14c3c3745c054",
+  "run_refs": {
+    "luna": "cad8bd0bedffc27d",
+    "terra": "0a7fcc23ef3caaa9"
+  },
+  "schema_version": 1
+}

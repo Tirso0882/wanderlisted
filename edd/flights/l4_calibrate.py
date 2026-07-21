@@ -59,7 +59,8 @@ load_dotenv()
 import truststore  # noqa: E402  (trust the OS store; never disable verification)
 
 truststore.inject_into_ssl()
-os.environ.setdefault("LANGSMITH_TRACING", "false")  # hermetic — just the metrics
+os.environ["LANGSMITH_TRACING"] = "false"  # hermetic — just the metrics
+os.environ["LANGCHAIN_TRACING_V2"] = "false"
 os.environ.setdefault("LANGSMITH_PROJECT", "wanderlisted-edd")
 
 sys.path.insert(
@@ -68,59 +69,13 @@ sys.path.insert(
 
 from langchain_core.tracers.langchain import wait_for_all_tracers  # noqa: E402
 
+from edd.calibration import kappa_band, quadratic_weighted_kappa  # noqa: E402
 from edd.flights.l2_judge import build_judge, judge_faithfulness  # noqa: E402
 from edd.flights.l2_judge_cases import JUDGE_CASES  # noqa: E402
 
-SCALE = (0, 1, 2, 3)  # the faithfulness rubric's ordinal categories
-
-
-def quadratic_weighted_kappa(
-    humans: list[int], judges: list[int], categories: tuple[int, ...] = SCALE
-) -> float | None:
-    """Cohen's κ with quadratic weights — chance-corrected agreement on an ORDINAL
-    scale, in pure Python (no numpy).
-
-    Quadratic weights make a 0-vs-3 disagreement count far more than a 2-vs-3 one,
-    which is what you want for graded scores. Returns None when κ is undefined
-    (every label or every judgment collapses into one category, so there is no
-    chance disagreement to correct for).
-    """
-    k = len(categories)
-    pos = {c: i for i, c in enumerate(categories)}
-    n = len(humans)
-    if n == 0:
-        return None
-    obs = [[0] * k for _ in range(k)]
-    for h, j in zip(humans, judges):
-        obs[pos[h]][pos[j]] += 1
-    row = [sum(obs[a]) for a in range(k)]  # human marginals
-    col = [sum(obs[a][b] for a in range(k)) for b in range(k)]  # judge marginals
-    # quadratic DISAGREEMENT weights: 0 on the diagonal, 1 at the extremes.
-    weight = [[((a - b) ** 2) / ((k - 1) ** 2) for b in range(k)] for a in range(k)]
-    observed = sum(weight[a][b] * obs[a][b] for a in range(k) for b in range(k))
-    expected = sum(
-        weight[a][b] * row[a] * col[b] / n for a in range(k) for b in range(k)
-    )
-    if expected == 0:  # no expected disagreement -> κ undefined
-        return None
-    return 1 - observed / expected
-
-
-def kappa_band(kappa: float | None) -> str:
-    """Landis–Koch strength-of-agreement label for a κ value."""
-    if kappa is None:
-        return "undefined — labels too degenerate (add more/spread cases)"
-    if kappa < 0:
-        return "worse than chance"
-    if kappa < 0.20:
-        return "slight"
-    if kappa < 0.40:
-        return "fair"
-    if kappa < 0.60:
-        return "moderate"
-    if kappa < 0.80:
-        return "substantial"
-    return "almost perfect"
+# The κ math + agreement bands are shared across every agent's Layer 4 — they
+# live in edd/calibration.py (imported above) so a fix lands once, not per agent.
+# (edd/hotels/l4_calibrate.py is a thin wrapper over the same run_calibration.)
 
 
 async def main() -> None:

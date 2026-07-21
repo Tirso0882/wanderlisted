@@ -14,8 +14,11 @@ The integration smoke test reproduces the historical hang (``use_responses_api``
 """
 
 import asyncio
+import importlib
+import os
 
 import pytest
+import dotenv
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.tools import tool
 
@@ -39,6 +42,31 @@ def fake_azure_env(monkeypatch):
 
 
 class TestLLMFactoryConfig:
+    def test_dotenv_does_not_override_process_configuration(self, monkeypatch):
+        import src.agent.llm as llm_module
+
+        loaded_with_override = []
+
+        def fake_load_dotenv(*args, override=False, **kwargs):
+            loaded_with_override.append(override)
+            for variable in ("LANGSMITH_TRACING", "LANGCHAIN_TRACING_V2"):
+                if override or variable not in os.environ:
+                    os.environ[variable] = "true"
+            return True
+
+        with monkeypatch.context() as context:
+            context.setattr(dotenv, "load_dotenv", fake_load_dotenv)
+            context.setenv("LANGSMITH_TRACING", "false")
+            context.setenv("LANGCHAIN_TRACING_V2", "false")
+
+            importlib.reload(llm_module)
+
+            assert loaded_with_override == [False]
+            assert os.environ["LANGSMITH_TRACING"] == "false"
+            assert os.environ["LANGCHAIN_TRACING_V2"] == "false"
+
+        importlib.reload(llm_module)
+
     @pytest.mark.parametrize("tier", ["reasoning", "fast", "utility"])
     def test_responses_api_enabled_for_every_tier(self, fake_azure_env, tier):
         # Critical bug-guard: disabling this breaks gpt-5.4 tool calling.

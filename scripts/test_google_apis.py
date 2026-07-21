@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Live integration test for all 5 enabled Google Maps Platform APIs.
+"""Live integration test for all 4 enabled Google Maps Platform APIs.
 
 Usage:
     .venv/bin/python scripts/test_google_apis.py
@@ -11,8 +11,7 @@ Enabled APIs tested:
   1. Geocoding API         -> _geocode()
   2. Places API (New)      -> search_places_nearby, search_places_text
   3. Routes API            -> compute_route, optimize_day_route
-  4. Time Zone API         -> get_timezone
-  5. Maps Embed API        -> URL generation (no HTTP call)
+  4. Maps Embed API        -> URL generation (no HTTP call)
 """
 
 import os
@@ -39,7 +38,6 @@ from src.tools.google_maps import (
     search_places_text,
     compute_route,
     optimize_day_route,
-    get_timezone,
     _geocode,
     _api_key,
 )
@@ -154,20 +152,7 @@ def test_optimize_route():
     return result
 
 
-# ─── 6. Time Zone API ────────────────────────────────────────────────
-
-
-def test_timezone():
-    result = get_timezone.invoke(
-        {
-            "location": TEST_LATLNG,
-        }
-    )
-    assert "Asia/Tokyo" in result or "Japan" in result, f"Unexpected: {result[:100]}"
-    return result
-
-
-# ─── 7. Maps Embed API (URL generation — no HTTP call) ───────────────
+# ─── 6. Maps Embed API (URL generation — no HTTP call) ───────────────
 
 
 def test_maps_embed():
@@ -194,9 +179,7 @@ def main():
     print(f"\n{BOLD}🗺  Wanderlisted — Google Maps API Test Suite{RESET}")
     print(f"   Key: {key[:8]}...{key[-4:]}")
     print(f"   Test location: {TEST_ADDRESS} ({TEST_LATLNG})")
-    print(
-        "   Enabled APIs: 5 (Geocoding, Places New, Routes, Time Zone, Maps Embed)"
-    )
+    print("   Enabled APIs: 4 (Geocoding, Places New, Routes, Maps Embed)")
 
     tests = [
         ("Geocoding API", "_geocode()", test_geocoding),
@@ -204,7 +187,6 @@ def main():
         ("Places API (New)", "search_places_text", test_places_text),
         ("Routes API", "compute_route", test_compute_route),
         ("Routes API", "optimize_day_route", test_optimize_route),
-        ("Time Zone API", "get_timezone", test_timezone),
         ("Maps Embed API", "(URL validation)", test_maps_embed),
     ]
 
@@ -236,7 +218,6 @@ def main():
     print(
         "  Routes           → TransportationAgent, ItineraryAgent (directions, transit steps, route optimisation)"
     )
-    print("  Time Zone        → DestinationAgent (local timezone info)")
     print("  Maps Embed       → Handbook HTML template (map iframes)\n")
 
     sys.exit(1 if failed else 0)

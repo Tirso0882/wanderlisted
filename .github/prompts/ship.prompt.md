@@ -39,7 +39,7 @@ Group files into categories. Each category becomes one commit:
 | `style` | Formatting-only changes (no logic) | `style: run ruff format` |
 | `perf` | Performance improvements | `perf(rag): batch embedding calls` |
 
-**Scope** = most relevant module: `agent`, `tools`, `rag`, `graph`, `prompts`, `api`, `frontend`, `k8s`, `eval`, `models`
+**Scope** = most relevant module: `agent`, `tools`, `rag`, `graph`, `prompts`, `api`, `frontend`, `eval`, `models`
 
 - If a file fits multiple categories, assign to the most impactful one.
 - If only 1–3 files total, a single commit is fine — don't over-split.

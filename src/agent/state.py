@@ -16,7 +16,7 @@ def _merge_components(existing: dict, update: dict) -> dict:
     return merged
 
 
-def _last_value(existing: str, new: str) -> str:
+def _last_value(existing: Any, new: Any) -> Any:
     """Reducer: accept the last written value (enables parallel writes)."""
     return new
 
@@ -29,6 +29,21 @@ class TravelAgentState(MessagesState):
     itinerary_components: Annotated[
         dict[str, Any], _merge_components
     ] = {}  # Accumulated results; merge reducer enables parallel Send() fan-out
+
+    # Canonical conversational request and workflow lifecycle.
+    trip_request: Annotated[dict[str, Any], _last_value] = {}
+    workflow_status: Annotated[str, _last_value] = "new"
+    pending_questions: Annotated[list[str], _last_value] = []
+    request_revision: Annotated[int, _last_value] = 0
+    start_date: Annotated[str, _last_value] = ""
+    end_date: Annotated[str, _last_value] = ""
+
+    # Machine-readable outcomes are separate from agent conversation transcripts.
+    component_results: Annotated[dict[str, Any], _merge_components] = {}
+
+    # Per-stay hotel fan-out uses unique keys, then aggregates into `hotels`.
+    hotel_search_results: Annotated[dict[str, Any], _merge_components] = {}
+    active_hotel_stay: Annotated[dict[str, Any], _last_value] = {}
 
     # Confirmed destination cities — used to scope RAG metadata filtering
     destinations: list[str] = []

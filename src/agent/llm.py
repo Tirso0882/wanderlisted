@@ -47,7 +47,8 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.embeddings import Embeddings
 from src.agent.concurrency import _SemaphoreLLM, _get_llm_semaphore
 
-load_dotenv(override=True)
+# Shells and entry points own runtime overrides such as EDD tracing policy.
+load_dotenv()
 
 _SUPPORTED_CHAT = ("azure_openai", "openai", "anthropic", "google", "ollama")
 _SUPPORTED_EMBEDDINGS = ("azure_openai", "openai")

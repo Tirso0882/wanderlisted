@@ -1,19 +1,23 @@
 """Stage 4: Multi-Agent Supervisor Graph using LangGraph.
 
 Parallel multi-agent architecture using Send() fan-out: the supervisor
-decides which specialist agents are needed and dispatches each one as an
+decides which discovery specialists are needed and dispatches each one as an
 independent graph node via Send().  This gives per-agent checkpointing,
 individual retry on failure, dedicated traces in LangGraph Studio, and
-native per-agent streaming.  Dependent agents (Budget, Itinerary) run
-sequentially afterward since they need the earlier results.
+native per-agent streaming. A typed draft selects exact places after fan-in;
+Transportation, Budget, and Itinerary then consume those artifacts sequentially.
 
-Flow (Send() fan-out → fan-in → sequential phase → HITL review → render):
-    START → triage → supervisor ──Send──┬── flights ────┐
-                                        ├── hotels ─────┤
+Flow (intake → Send() fan-out → completion gate → sequential phase):
+    START → triage → intake → supervisor ──Send──┬── flights ────┐
                                         ├── destination ┤
-                                        ├── restaurants ─┤ → safety_review (HITL)
-                                        ├── activities ──┤   → budget → budget_review (HITL)
-                                        └── transportation┘     → itinerary → human_review (HITL)
+                                        ├── restaurants ┤ → component_gate
+                                        └── activities ─┘   → safety_review (HITL)
+                                                               → trip_skeleton
+                                                               → hotel_stay Send fan-out
+                                                               → hotel_gate → draft_itinerary
+                                                               → transportation
+                                                                 → budget → budget_review (HITL)
+                                                                 → itinerary → human_review (HITL)
                                                                      → render_handbook → END
 
 HITL gates:
@@ -34,6 +38,7 @@ Usage:
 """
 
 import asyncio
+import json
 import os
 import re
 from typing import Any
@@ -48,18 +53,34 @@ from langsmith import traceable
 
 from custom_logging import AppLogger
 from src.agent.llm import get_llm
+from src.agent.nodes import component_gate_node, intake_node, trip_skeleton_node
+from src.agent.policies import classify_component_result, requested_agents
 from src.agent.state import TravelAgentState
 from src.agent.prompts import (
+    DRAFT_ITINERARY_SYSTEM_PROMPT,
     SYNTHESIZE_SYSTEM_PROMPT,
     TRIAGE_SYSTEM_PROMPT,
 )
-from src.models import BudgetBreakdown
+from src.models import (
+    BudgetBreakdown,
+    CityStay,
+    ComponentResult,
+    ComponentStatus,
+    ErrorCategory,
+    TripRequest,
+    TripSkeleton,
+)
 from src.models.itinerary import (
     CultureGuide,
+    DayRoute,
     DayPlan,
+    DraftItinerary,
     FlightOption,
     HotelOption,
     PackingItem,
+    PlaceRef,
+    RouteLeg,
+    RoutePlan,
     SafetyInfo,
     TripHandbook,
 )
@@ -75,26 +96,35 @@ from src.agent.agents import (
     TransportationAgent,
     ItineraryAgent,
 )
+from src.tools.google_maps import compute_day_route_data
+from src.tools.iata import resolve_iata_code
 
 import config as app_config
 
 # ── Routing lists from config (with sensible defaults) ────────────────────
 _routing_cfg = app_config.get("routing") or {}
 
-PARALLEL_AGENTS = _routing_cfg.get(
-    "parallel_agents",
-    [
-        "FlightsAgent",
-        "HotelsAgent",
-        "DestinationAgent",
-        "RestaurantsAgent",
-        "ActivitiesAgent",
-        "TransportationAgent",
-    ],
-)
+DEPENDENT_TRANSPORTATION_AGENT = "TransportationAgent"
+
+PARALLEL_AGENTS = [
+    agent
+    for agent in _routing_cfg.get(
+        "parallel_agents",
+        [
+            "FlightsAgent",
+            "HotelsAgent",
+            "DestinationAgent",
+            "RestaurantsAgent",
+            "ActivitiesAgent",
+        ],
+    )
+    if agent not in {DEPENDENT_TRANSPORTATION_AGENT, "HotelsAgent"}
+]
 SEQUENTIAL_AGENTS = _routing_cfg.get(
     "sequential_agents",
     [
+        "HotelsAgent",
+        DEPENDENT_TRANSPORTATION_AGENT,
         "BudgetAgent",
         "ItineraryAgent",
     ],
@@ -155,6 +185,18 @@ def build_user_profile_context(state: TravelAgentState) -> str:
     return "USER PROFILE:\n" + "\n".join(parts)
 
 
+def build_trip_request_context(state: TravelAgentState) -> str:
+    """Serialize canonical request fields so specialists do not re-parse history."""
+    request_data = state.get("trip_request", {})
+    if not request_data:
+        return ""
+    request = TripRequest.model_validate(request_data)
+    return (
+        "CANONICAL TRIP REQUEST (authoritative; do not invent missing values):\n"
+        + json.dumps(request.model_dump(mode="json"), ensure_ascii=False)
+    )
+
+
 def build_context_messages(state: TravelAgentState) -> list:
     """Build message list enriched with results from prior agents and user profile.
 
@@ -170,6 +212,8 @@ def build_context_messages(state: TravelAgentState) -> list:
         "budget": "Budget results",
         "restaurants": "Restaurants results",
         "activities": "Activities results",
+        "trip_skeleton": "Exact trip dates and city stays",
+        "draft_itinerary": "Selected draft itinerary",
         "transportation": "Transportation results",
         "itinerary": "Itinerary results",
     }
@@ -187,6 +231,10 @@ def build_context_messages(state: TravelAgentState) -> list:
                 parts.append(f"[{label}]\n{summary}")
 
     msgs = list(state["messages"])
+
+    request_context = build_trip_request_context(state)
+    if request_context:
+        msgs.insert(0, SystemMessage(content=request_context))
 
     # Inject user profile
     profile = build_user_profile_context(state)
@@ -663,7 +711,11 @@ async def supervisor_node(state: TravelAgentState, *, supervisor_agent) -> dict:
         "itinerary": "ItineraryAgent: assembled itinerary",
     }
     for key, desc in label_map.items():
-        if key in components:
+        outcome = state.get("component_results", {}).get(key, {})
+        status = outcome.get("status")
+        if status == ComponentStatus.COMPLETED or (
+            status is None and key in components
+        ):
             data_parts.append(f"- {desc} already collected")
 
     existing_summary = ""
@@ -690,10 +742,26 @@ async def supervisor_node(state: TravelAgentState, *, supervisor_agent) -> dict:
         }
 
     last_message = state["messages"][-1]
+    latest_text = _extract_text_content(last_message.content)
+    canonical_data = state.get("trip_request", {})
+    canonical_request = TripRequest.model_validate(canonical_data)
+    routing_query = latest_text
+    if canonical_data:
+        routing_query = (
+            f"Latest user message: {latest_text}\n\n"
+            "Canonical trip request accumulated across turns:\n"
+            f"{json.dumps(canonical_request.model_dump(mode='json'), ensure_ascii=False)}"
+        )
     decision = await supervisor_agent.aget_routing_decision(
-        _extract_text_content(last_message.content),
+        routing_query,
         existing_summary,
     )
+
+    # Product capabilities extracted by intake are authoritative. The supervisor
+    # still supplies reasoning/user-facing text, but cannot forget earlier turns.
+    authoritative_agents = requested_agents(canonical_request)
+    if authoritative_agents:
+        decision.agents = authoritative_agents
 
     # Ensure ItineraryAgent is always included when BudgetAgent is routed
     # (budget → itinerary → render_handbook is the required pipeline)
@@ -725,11 +793,11 @@ async def supervisor_node(state: TravelAgentState, *, supervisor_agent) -> dict:
     }
 
 
-# ── Individual parallel worker nodes (Send() fan-out) ────────────────────
+# ── Specialist execution nodes ───────────────────────────────────────────
 #
-# Each function is an independent LangGraph node.  The supervisor fans out
-# to them via [Send("node_name", state), ...] from route_after_supervisor.
-# LangGraph automatically fans-in (waits for all) before safety_review runs.
+# Discovery specialists are independent LangGraph nodes dispatched through
+# Send(). LangGraph fans them in before the completion gate; transportation
+# later uses the validated merged results as a dependent specialist.
 # Only writing the agent's own key to itinerary_components (not the full
 # dict) is intentional: the _merge_components reducer in TravelAgentState
 # accumulates each worker's partial write without overwriting the others.
@@ -743,7 +811,7 @@ async def _run_parallel_agent(
     executor,
     agent_name: str,
 ) -> dict:
-    """Execute a parallel agent with error handling.
+    """Execute a specialist agent with error handling.
 
     If the agent fails (e.g. external API down), log the error and return a
     graceful degradation message instead of crashing the whole graph.
@@ -752,10 +820,14 @@ async def _run_parallel_agent(
     try:
         result = await executor.ainvoke({"messages": enriched})
         new_msgs = result["messages"][len(enriched) :]
+        outcome = classify_component_result(agent_name, new_msgs)
         return {
             "messages": new_msgs,
             "current_agent": agent_name,
             "itinerary_components": {agent_name: result},
+            "component_results": {
+                agent_name: outcome.model_dump(mode="json"),
+            },
         }
     except Exception as exc:
         _log.warning(
@@ -768,13 +840,17 @@ async def _run_parallel_agent(
             content=(
                 f"[{agent_name.title()} Agent] I was unable to gather "
                 f"{agent_name} data due to a temporary service issue. "
-                f"The rest of your itinerary will still be generated."
+                "Planning has paused so incomplete data is not presented as final."
             ),
         )
+        outcome = classify_component_result(agent_name, [], error=exc)
         return {
             "messages": [error_msg],
             "current_agent": agent_name,
-            "itinerary_components": {agent_name: {"error": str(exc)}},
+            "itinerary_components": {agent_name: {"error": type(exc).__name__}},
+            "component_results": {
+                agent_name: outcome.model_dump(mode="json"),
+            },
         }
 
 
@@ -788,6 +864,157 @@ async def flights_node(state: TravelAgentState, *, executor) -> dict:
 async def hotels_node(state: TravelAgentState, *, executor) -> dict:
     """Fan-out worker: run HotelsAgent as an independent graph node."""
     return await _run_parallel_agent(state, executor=executor, agent_name="hotels")
+
+
+@traceable(
+    run_type="chain",
+    name="hotel_stay_node",
+    tags=["wanderlisted", "hotels", "city-stay"],
+)
+async def hotel_stay_node(state: TravelAgentState, *, executor) -> dict:
+    """Search Hotelbeds for one exact CityStay selected by TripSkeleton."""
+    stay = CityStay.model_validate(state.get("active_hotel_stay", {}))
+    request = TripRequest.model_validate(state.get("trip_request", {}))
+    city_code = resolve_iata_code(stay.city)
+    stay_key = f"stay-{stay.sequence}"
+
+    if city_code is None:
+        message = AIMessage(
+            content=f"No IATA/Hotelbeds city code found for {stay.city}."
+        )
+        outcome = ComponentResult(
+            component="hotels",
+            status=ComponentStatus.FAILED,
+            message=_extract_text_content(message.content),
+            error_category=ErrorCategory.VALIDATION,
+            error_detail=f"Could not resolve city code for {stay.city}",
+        )
+        return {
+            "messages": [message],
+            "current_agent": f"hotels:{stay.city}:failed",
+            "hotel_search_results": {
+                stay_key: {
+                    "stay": stay.model_dump(mode="json"),
+                    "city_code": "",
+                    "messages": [message],
+                    "outcome": outcome.model_dump(mode="json"),
+                }
+            },
+        }
+
+    travelers = request.travelers
+    children_ages = ",".join(str(age) for age in travelers.child_ages)
+    instruction = SystemMessage(
+        content=(
+            "MANDATORY HOTEL STAY SEARCH. Call search_hotels_hotelbeds for exactly "
+            f"this stay before responding: city={stay.city!r}, city_code={city_code}, "
+            f"check_in_date={stay.check_in.isoformat()}, "
+            f"check_out_date={stay.check_out.isoformat()}, "
+            f"adults={travelers.adults}, children={travelers.children}, "
+            f"children_ages={children_ages!r}. Do not search another city or change "
+            "the dates. Apply the user's travel style when choosing filters. Verify "
+            "every RECHECK rate before recommending it."
+        )
+    )
+    input_messages = [instruction, *build_context_messages(state)]
+    try:
+        result = await executor.ainvoke({"messages": input_messages})
+        new_msgs = result["messages"][len(input_messages) :]
+        outcome = classify_component_result("hotels", new_msgs)
+    except Exception as exc:
+        _log.warning("Hotel search failed for %s: %s", stay.city, exc)
+        message = AIMessage(
+            content=f"Hotel search for {stay.city} failed due to a provider error."
+        )
+        new_msgs = [message]
+        outcome = classify_component_result("hotels", [], error=exc)
+
+    return {
+        "messages": new_msgs,
+        "current_agent": f"hotels:{stay.city}",
+        "hotel_search_results": {
+            stay_key: {
+                "stay": stay.model_dump(mode="json"),
+                "city_code": city_code,
+                "messages": new_msgs,
+                "outcome": outcome.model_dump(mode="json"),
+            }
+        },
+    }
+
+
+@traceable(
+    run_type="chain",
+    name="hotel_fan_in_node",
+    tags=["wanderlisted", "hotels", "fan-in"],
+)
+async def hotel_fan_in_node(state: TravelAgentState) -> dict:
+    """Aggregate all exact city-stay searches into one hotels component."""
+    searches = sorted(
+        state.get("hotel_search_results", {}).values(),
+        key=lambda item: item.get("stay", {}).get("sequence", 0),
+    )
+    all_messages = [
+        message for search in searches for message in search.get("messages", [])
+    ]
+    statuses = [
+        search.get("outcome", {}).get("status", ComponentStatus.FAILED)
+        for search in searches
+    ]
+    if searches and all(status == ComponentStatus.COMPLETED for status in statuses):
+        status = ComponentStatus.COMPLETED
+    else:
+        status = next(
+            (
+                candidate
+                for candidate in (
+                    ComponentStatus.NEEDS_USER_INPUT,
+                    ComponentStatus.BLOCKED_EXTERNAL,
+                    ComponentStatus.NO_INVENTORY,
+                    ComponentStatus.FAILED,
+                )
+                if candidate in statuses
+            ),
+            ComponentStatus.FAILED,
+        )
+
+    summary = "; ".join(
+        f"{search.get('stay', {}).get('city', '?')}: "
+        f"{search.get('outcome', {}).get('status', 'failed')}"
+        for search in searches
+    )
+    outcome = ComponentResult(
+        component="hotels",
+        status=status,
+        data={
+            "stays": [
+                {
+                    "stay": search.get("stay", {}),
+                    "city_code": search.get("city_code", ""),
+                    "status": search.get("outcome", {}).get("status", "failed"),
+                }
+                for search in searches
+            ]
+        },
+        message=summary,
+        tools_called=[
+            tool
+            for search in searches
+            for tool in search.get("outcome", {}).get("tools_called", [])
+        ],
+        evidence_count=sum(
+            search.get("outcome", {}).get("evidence_count", 0) for search in searches
+        ),
+    )
+    components = state.get("itinerary_components", {})
+    return {
+        "current_agent": f"hotels:{status}",
+        "itinerary_components": {
+            **components,
+            "hotels": {"messages": all_messages},
+        },
+        "component_results": {"hotels": outcome.model_dump(mode="json")},
+    }
 
 
 @traceable(
@@ -820,10 +1047,156 @@ async def activities_node(state: TravelAgentState, *, executor) -> dict:
     tags=["wanderlisted", "transportation"],
 )
 async def transportation_node(state: TravelAgentState, *, executor) -> dict:
-    """Fan-out worker: run TransportationAgent as an independent graph node."""
-    return await _run_parallel_agent(
-        state, executor=executor, agent_name="transportation"
+    """Build a typed route plan, or answer a narrow standalone route query."""
+    components = state.get("itinerary_components", {})
+    draft_data = components.get("draft_itinerary_structured")
+    if not draft_data:
+        return await _run_parallel_agent(
+            state, executor=executor, agent_name="transportation"
+        )
+
+    try:
+        draft = DraftItinerary.model_validate(draft_data)
+    except Exception as exc:
+        _log.warning(
+            "Invalid draft itinerary; using standalone transport agent: %s", exc
+        )
+        return await _run_parallel_agent(
+            state, executor=executor, agent_name="transportation"
+        )
+
+    async def _route_day(day) -> DayRoute:
+        stop_locations = [stop.route_location() for stop in day.stops]
+        try:
+            result = await asyncio.to_thread(
+                compute_day_route_data,
+                stop_locations,
+                day.start_location.route_location(),
+                (day.end_location or day.start_location).route_location(),
+                str(day.preferred_mode),
+            )
+        except Exception as exc:
+            _log.warning("Route computation failed for day %s: %s", day.day_number, exc)
+            return DayRoute(
+                day_number=day.day_number,
+                mode=day.preferred_mode,
+                ordered_stops=day.stops,
+                warning=f"Route computation unavailable: {type(exc).__name__}",
+            )
+        refs_by_location: dict[str, list[PlaceRef]] = {}
+        for stop in day.stops:
+            refs_by_location.setdefault(stop.route_location(), []).append(stop)
+        ordered_refs = []
+        for location in result["ordered_stops"]:
+            matches = refs_by_location.get(location, [])
+            if matches:
+                ordered_refs.append(matches.pop(0))
+
+        names_by_location = {
+            day.start_location.route_location(): day.start_location.name,
+            (day.end_location or day.start_location).route_location(): (
+                day.end_location or day.start_location
+            ).name,
+            **{stop.route_location(): stop.name for stop in day.stops},
+        }
+        route_legs = [
+            RouteLeg(
+                from_place=names_by_location.get(
+                    leg["from_location"], leg["from_location"]
+                ),
+                to_place=names_by_location.get(leg["to_location"], leg["to_location"]),
+                mode=day.preferred_mode,
+                distance_meters=leg["distance_meters"],
+                duration_seconds=leg["duration_seconds"],
+                instructions=leg["instructions"],
+            )
+            for leg in result["legs"]
+        ]
+        return DayRoute(
+            day_number=day.day_number,
+            mode=day.preferred_mode,
+            ordered_stops=ordered_refs,
+            legs=route_legs,
+            total_distance_meters=result["total_distance_meters"],
+            total_duration_seconds=result["total_duration_seconds"],
+            warning=result["error"],
+        )
+
+    days = await asyncio.gather(*(_route_day(day) for day in draft.days))
+    route_plan = RoutePlan(
+        days=days,
+        mobility_notes=draft.mobility_notes,
+        warnings=[day.warning for day in days if day.warning],
     )
+    route_json = route_plan.model_dump_json(indent=2)
+    route_message = AIMessage(content=f"ROUTE_PLAN_JSON:\n{route_json}")
+    return (
+        await _run_parallel_agent(state, executor=executor, agent_name="transportation")
+        if not draft.days
+        else {
+            "messages": [route_message],
+            "current_agent": "transportation",
+            "itinerary_components": {
+                **components,
+                "transportation": {"messages": [route_message]},
+                "route_plan_structured": route_plan.model_dump(),
+                "completed_agents": components.get("completed_agents", [])
+                + ["TransportationAgent"],
+            },
+        }
+    )
+
+
+@traceable(
+    run_type="chain", name="draft_itinerary_node", tags=["wanderlisted", "draft"]
+)
+async def draft_itinerary_node(state: TravelAgentState, *, llm) -> dict:
+    """Select exact hotels and stops before Transportation computes routes."""
+    components = state.get("itinerary_components", {})
+
+    def _component_text(key: str) -> str:
+        return " ".join(
+            _extract_text_content(message.content)
+            for message in components.get(key, {}).get("messages", [])
+            if isinstance(message, (AIMessage, ToolMessage)) and message.content
+        )
+
+    evidence = "\n\n".join(
+        f"[{key.upper()}]\n{text}"
+        for key in ("hotels", "activities", "restaurants", "destination")
+        if (text := _component_text(key))
+    )
+    if not evidence:
+        draft = DraftItinerary(selection_notes=["No routable discovery data found."])
+    else:
+        structured_llm = llm.with_structured_output(
+            DraftItinerary, method="function_calling"
+        )
+        try:
+            draft = await structured_llm.ainvoke(
+                [
+                    SystemMessage(content=DRAFT_ITINERARY_SYSTEM_PROMPT),
+                    SystemMessage(content=build_user_profile_context(state)),
+                    HumanMessage(content=evidence),
+                ]
+            )
+        except Exception as exc:
+            _log.warning("Draft itinerary extraction failed: %s", exc)
+            draft = DraftItinerary(
+                selection_notes=["Draft selection failed; route planning unavailable."]
+            )
+
+    draft_json = draft.model_dump_json(indent=2)
+    draft_message = AIMessage(content=f"DRAFT_ITINERARY_JSON:\n{draft_json}")
+    return {
+        "messages": [draft_message],
+        "current_agent": "draft_itinerary",
+        "itinerary_components": {
+            **components,
+            "draft_itinerary": {"messages": [draft_message]},
+            "draft_itinerary_structured": draft.model_dump(),
+        },
+    }
 
 
 @traceable(run_type="chain", name="budget_node", tags=["wanderlisted", "budget"])
@@ -1427,17 +1800,33 @@ async def synthesize_node(state: TravelAgentState, *, llm) -> dict:
 
 
 def route_after_triage(state: TravelAgentState) -> str:
-    """Route after triage: shallow queries -> shallow_reply, deep -> supervisor.
+    """Route shallow queries directly and all planning turns through intake.
 
     When target_agent is set, always route to supervisor (which will
     short-circuit to only that one agent).
     """
     if state.get("target_agent"):
         return "supervisor"
+    if state.get("pending_questions"):
+        return "intake"
     agent = state.get("current_agent", "")
     if agent == "triage:shallow":
         return "shallow_reply"
-    return "supervisor"
+    return "intake"
+
+
+def route_after_intake(state: TravelAgentState) -> str:
+    """Stop for clarification or continue to specialist routing."""
+    if state.get("workflow_status") == "ready":
+        return "supervisor"
+    return END
+
+
+def route_after_component_gate(state: TravelAgentState) -> str:
+    """Continue only when requested discovery components actually completed."""
+    if state.get("workflow_status") == "planning":
+        return "safety_review"
+    return END
 
 
 def route_after_supervisor(state: TravelAgentState):
@@ -1458,13 +1847,17 @@ def route_after_supervisor(state: TravelAgentState):
             return "synthesize"
         return END
 
-    # Fan-out: one Send per requested parallel agent.  LangGraph runs them
+    # Fan-out: one Send per requested discovery agent. LangGraph runs them
     # concurrently and fans-in automatically before safety_review fires.
     parallel_requested = [a for a in routing if a in PARALLEL_AGENTS]
     if parallel_requested:
         return [Send(AGENT_TO_NODE[a], state) for a in parallel_requested]
 
-    # Only sequential agents requested (BudgetAgent or ItineraryAgent)
+    # Only dependent/sequential agents requested.
+    if "HotelsAgent" in routing:
+        return "trip_skeleton"
+    if DEPENDENT_TRANSPORTATION_AGENT in routing:
+        return "transportation"
     if "BudgetAgent" in routing:
         return "budget"
     if "ItineraryAgent" in routing:
@@ -1474,10 +1867,79 @@ def route_after_supervisor(state: TravelAgentState):
 
 
 def route_after_safety_review(state: TravelAgentState) -> str:
-    """Route after safety review: cancelled -> END, otherwise -> budget or itinerary."""
+    """Route after safety review: select exact dates/stays before inventory."""
     if state.get("hitl_action") == "rejected":
         return END
 
+    components = state.get("itinerary_components", {})
+    routing = components.get("routing", [])
+
+    if (
+        "HotelsAgent" in routing
+        or DEPENDENT_TRANSPORTATION_AGENT in routing
+        or "ItineraryAgent" in routing
+    ):
+        return "trip_skeleton"
+    if "BudgetAgent" in routing:
+        return "budget"
+    return END
+
+
+def route_after_trip_skeleton(state: TravelAgentState):
+    """Fan out exact city stays to Hotels or continue dependent planning."""
+    if state.get("workflow_status") != "skeleton_ready":
+        return END
+    components = state.get("itinerary_components", {})
+    routing = components.get("routing", [])
+    if "HotelsAgent" in routing:
+        skeleton = TripSkeleton.model_validate(
+            components.get("trip_skeleton_structured", {})
+        )
+        return [
+            Send(
+                "hotel_stay",
+                {
+                    **state,
+                    "active_hotel_stay": stay.model_dump(mode="json"),
+                },
+            )
+            for stay in skeleton.stays
+        ]
+    if DEPENDENT_TRANSPORTATION_AGENT in routing or "ItineraryAgent" in routing:
+        return "draft_itinerary"
+    if "BudgetAgent" in routing:
+        return "budget"
+    return END
+
+
+def route_after_hotel_gate(state: TravelAgentState) -> str:
+    """Continue only after every exact city stay produced hotel inventory."""
+    if state.get("workflow_status") != "planning":
+        return END
+    routing = state.get("itinerary_components", {}).get("routing", [])
+    if DEPENDENT_TRANSPORTATION_AGENT in routing or "ItineraryAgent" in routing:
+        return "draft_itinerary"
+    if "BudgetAgent" in routing:
+        return "budget"
+    return END
+
+
+def route_after_draft_itinerary(state: TravelAgentState) -> str:
+    """Route a selected draft through transportation, budget, or final assembly."""
+    components = state.get("itinerary_components", {})
+    routing = components.get("routing", [])
+
+    if DEPENDENT_TRANSPORTATION_AGENT in routing:
+        return "transportation"
+    if "BudgetAgent" in routing:
+        return "budget"
+    if "ItineraryAgent" in routing:
+        return "itinerary"
+    return END
+
+
+def route_after_transportation(state: TravelAgentState) -> str:
+    """Route after transportation: continue to budget or itinerary when requested."""
     components = state.get("itinerary_components", {})
     routing = components.get("routing", [])
 
@@ -1583,9 +2045,10 @@ def create_multiagent_travel_graph(checkpointer=None):
     # Nodes — thin wrappers that inject dependencies into module-level functions
     #
     # Utility tier (gpt-5.4-nano): triage, shallow_reply, supervisor, render_handbook, synthesize
-    # Fast tier (gpt-5.4-mini): Send() worker agents (flights/hotels/restaurants/activities/transport)
-    # Reasoning tier (gpt-5.4): destination worker + itinerary sequential node
+    # Fast tier (gpt-5.4-mini): discovery workers plus standalone transportation
+    # Reasoning tier (gpt-5.4): destination, draft selection, final itinerary
     builder.add_node("triage", functools.partial(triage_node, llm=llm_utility))
+    builder.add_node("intake", functools.partial(intake_node, llm=llm_utility))
     builder.add_node(
         "shallow_reply", functools.partial(shallow_reply_node, llm=llm_utility)
     )
@@ -1593,13 +2056,15 @@ def create_multiagent_travel_graph(checkpointer=None):
         "supervisor",
         functools.partial(supervisor_node, supervisor_agent=_supervisor_agent),
     )
-    # Send() fan-out worker nodes — each is an independent graph node
+    # Initial Send() discovery workers — Hotels runs later from TripSkeleton.
     builder.add_node(
         "flights", functools.partial(flights_node, executor=_executors["FlightsAgent"])
     )
     builder.add_node(
-        "hotels", functools.partial(hotels_node, executor=_executors["HotelsAgent"])
+        "hotel_stay",
+        functools.partial(hotel_stay_node, executor=_executors["HotelsAgent"]),
     )
+    builder.add_node("hotel_fan_in", hotel_fan_in_node)
     builder.add_node(
         "destination",
         functools.partial(destination_node, executor=_executors["DestinationAgent"]),
@@ -1620,6 +2085,30 @@ def create_multiagent_travel_graph(checkpointer=None):
     )
     builder.add_node("safety_review", safety_review_node)
     builder.add_node(
+        "component_gate",
+        functools.partial(
+            component_gate_node,
+            eligible_components={
+                "flights",
+                "destination",
+                "restaurants",
+                "activities",
+            },
+        ),
+    )
+    builder.add_node(
+        "hotel_gate",
+        functools.partial(
+            component_gate_node,
+            eligible_components={"hotels"},
+        ),
+    )
+    builder.add_node("trip_skeleton", trip_skeleton_node)
+    builder.add_node(
+        "draft_itinerary",
+        functools.partial(draft_itinerary_node, llm=llm),
+    )
+    builder.add_node(
         "budget",
         functools.partial(
             budget_node, llm=llm_utility, executor=_executors["BudgetAgent"]
@@ -1639,13 +2128,24 @@ def create_multiagent_travel_graph(checkpointer=None):
     # START -> triage
     builder.add_edge(START, "triage")
 
-    # triage -> shallow_reply | supervisor
+    # triage -> shallow_reply | intake | supervisor (developer target override)
     builder.add_conditional_edges(
         "triage",
         route_after_triage,
         {
             "shallow_reply": "shallow_reply",
+            "intake": "intake",
             "supervisor": "supervisor",
+        },
+    )
+
+    # intake -> supervisor when complete, otherwise end this conversational turn
+    builder.add_conditional_edges(
+        "intake",
+        route_after_intake,
+        {
+            "supervisor": "supervisor",
+            END: END,
         },
     )
 
@@ -1661,10 +2161,11 @@ def create_multiagent_travel_graph(checkpointer=None):
         route_after_supervisor,
         [
             "flights",
-            "hotels",
+            "hotel_stay",
             "destination",
             "restaurants",
             "activities",
+            "trip_skeleton",
             "transportation",
             "budget",
             "itinerary",
@@ -1673,22 +2174,76 @@ def create_multiagent_travel_graph(checkpointer=None):
         ],
     )
 
-    # Fan-in: every parallel worker → safety_review.
-    # LangGraph waits for ALL Send() instances to complete before firing safety_review.
+    # Fan-in: every discovery worker → component completion gate.
+    # LangGraph waits for ALL Send() instances before evaluating outcomes.
     for _worker in [
         "flights",
-        "hotels",
         "destination",
         "restaurants",
         "activities",
-        "transportation",
     ]:
-        builder.add_edge(_worker, "safety_review")
+        builder.add_edge(_worker, "component_gate")
 
-    # safety_review -> budget | itinerary | END
+    # Never draft or render a plan from clarification/error/no-inventory prose.
+    builder.add_conditional_edges(
+        "component_gate",
+        route_after_component_gate,
+        {
+            "safety_review": "safety_review",
+            END: END,
+        },
+    )
+
+    # safety_review -> exact trip skeleton | budget | END
     builder.add_conditional_edges(
         "safety_review",
         route_after_safety_review,
+        {
+            "trip_skeleton": "trip_skeleton",
+            "budget": "budget",
+            END: END,
+        },
+    )
+
+    # Exact dates/night allocation -> one Hotelbeds worker per city stay.
+    builder.add_conditional_edges(
+        "trip_skeleton",
+        route_after_trip_skeleton,
+        [
+            "hotel_stay",
+            "draft_itinerary",
+            "budget",
+            END,
+        ],
+    )
+    builder.add_edge("hotel_stay", "hotel_fan_in")
+    builder.add_edge("hotel_fan_in", "hotel_gate")
+    builder.add_conditional_edges(
+        "hotel_gate",
+        route_after_hotel_gate,
+        {
+            "draft_itinerary": "draft_itinerary",
+            "budget": "budget",
+            END: END,
+        },
+    )
+
+    # Draft selection fixes the exact hotel and stops before route computation.
+    builder.add_conditional_edges(
+        "draft_itinerary",
+        route_after_draft_itinerary,
+        {
+            "transportation": "transportation",
+            "budget": "budget",
+            "itinerary": "itinerary",
+            END: END,
+        },
+    )
+
+    # Transportation deterministically routes the selected draft once.
+    builder.add_conditional_edges(
+        "transportation",
+        route_after_transportation,
         {
             "budget": "budget",
             "itinerary": "itinerary",

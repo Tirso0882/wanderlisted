@@ -31,7 +31,8 @@ from custom_logging import AppLogger
 from src.rag.chunker import DocumentChunker
 from src.rag.embeddings import EmbeddingGenerator
 
-load_dotenv(override=True)
+# Shells and entry points own runtime overrides such as EDD tracing policy.
+load_dotenv()
 
 logger = AppLogger(logger_name="rag.indexer", level="DEBUG")
 

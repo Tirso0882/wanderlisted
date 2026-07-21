@@ -4,13 +4,19 @@ import pytest
 
 from src.models import (
     BudgetBreakdown,
+    DayRoute,
     DayPlan,
     DayWeather,
+    DraftDay,
+    DraftItinerary,
     FlightOption,
     FlightSegment,
     HotelOption,
     PackingItem,
     PlaceCard,
+    PlaceRef,
+    RouteLeg,
+    RoutePlan,
     SafetyInfo,
     TimeBlock,
     TransitStep,
@@ -27,6 +33,52 @@ from src.models.enums import (
     TravelStyle,
 )
 from src.agent.agents.supervisor_agent import RoutingDecision
+
+
+class TestPlanningArtifactModels:
+    def test_place_ref_prefers_coordinates_for_routing(self):
+        place = PlaceRef(
+            name="Museum",
+            address="1 Main Street",
+            latitude=48.1,
+            longitude=2.3,
+        )
+        assert place.route_location() == "48.1,2.3"
+
+    def test_draft_and_route_plan_roundtrip(self):
+        draft = DraftItinerary(
+            days=[
+                DraftDay(
+                    start_location=PlaceRef(name="Hotel"),
+                    stops=[PlaceRef(name="Museum")],
+                    preferred_mode="walking",
+                )
+            ],
+            mobility_notes=["Use step-free station entrances."],
+        )
+        route_plan = RoutePlan(
+            days=[
+                DayRoute(
+                    ordered_stops=draft.days[0].stops,
+                    mode="walking",
+                    legs=[
+                        RouteLeg(
+                            from_place="Hotel",
+                            to_place="Museum",
+                            mode="walking",
+                            distance_meters=750,
+                            duration_seconds=600,
+                        )
+                    ],
+                    total_distance_meters=750,
+                    total_duration_seconds=600,
+                )
+            ]
+        )
+
+        restored = RoutePlan.model_validate(route_plan.model_dump())
+        assert draft.days[0].preferred_mode == "walk"
+        assert restored.days[0].legs[0].distance_meters == 750
 
 
 class TestBudgetBreakdownModel:

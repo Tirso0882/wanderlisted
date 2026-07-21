@@ -46,184 +46,52 @@ sys.path.insert(
     0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 )
 
-from langchain_core.messages import HumanMessage, SystemMessage  # noqa: E402
-from pydantic import BaseModel, Field  # noqa: E402
-
 from edd.harness import Trajectory  # noqa: E402
-from src.agent.llm import get_llm  # noqa: E402
+from edd.rubrics import (  # noqa: E402
+    AGENT_SPECS,
+    build_judge,
+    faithfulness_rubric,
+    helpfulness_rubric,
+    score_faithfulness,
+    score_helpfulness,
+)
 
 
-# ── The judge's structured verdict ──────────────────────────────────────────
-# Forcing structured output is what makes an LLM's opinion MEASURABLE: instead
-# of a paragraph we get a number we can average and a reason we can audit.
-# `reasoning` is declared BEFORE `score` on purpose — the model fills fields in
-# order, so it must justify itself first and commit to a number second
-# (cheap chain-of-thought that makes the score more stable and inspectable).
-class Verdict(BaseModel):
-    """One judge's scored opinion of one dimension of one answer."""
+_SPEC = AGENT_SPECS["flights"]
 
-    reasoning: str = Field(
-        description="1–2 sentences justifying the score, citing the specific "
-        "claim(s) or gap(s) that drove it."
-    )
-    score: int = Field(ge=0, le=3, description="0–3, per the rubric in the prompt.")
+# In-context anchors (rubric-construction checklist item 7) — DISJOINT from
+# l2_judge_cases.py (the Layer-4 calibration set). Showing the judge the very
+# cases it is later scored on would inflate κ by memorization; these use
+# different routes/numbers on purpose. One anchor per boundary the judge must
+# hold: a clean 3, a NON-CORE-slip 2, and a CORE-error 1.
+_FAITH_EXAMPLES = """EXAMPLES (illustrative anchors — do NOT treat as evidence for the case you score):
+  • RESULTS: "LHR->JFK 2026-05-02: British Airways BA175 non-stop 8h05m ECONOMY $612".
+    ANSWER: "British Airways BA175 flies London Heathrow to New York JFK non-stop
+    in 8h05m for $612 in economy." -> score 3 (every CORE fact grounded).
+  • Same RESULTS. ANSWER: "BA175 is non-stop LHR->JFK for $612, and it includes a
+    free checked bag." -> score 2 (all flight data grounded; the free-bag claim is
+    an unsupported NON-CORE extra — a minor slip).
+  • Same RESULTS. ANSWER: "The cheapest is a non-stop Virgin Atlantic flight for
+    $540." -> score 1 (airline AND price contradict RESULTS — a materially
+    misleading CORE error)."""
 
-
-# A Rubric is a structured evaluation framework that breaks down a complex judgment
-# into a single dimension with an anchored 0–3 scale.
-# ── The rubrics (this is the heart of Layer 2 — 'rubric design') ────────────
-# An LLM-as-judge is only as good as its rubric. Good rubrics are:
-#   • single-dimension  — each judge scores ONE thing; never blend faithfulness
-#                         and helpfulness into a vague "quality" number.
-#   • anchored          — say what 0/1/2/3 concretely mean, so scores are
-#                         reproducible instead of a mood.
-#   • isolation-aware   — the agent was run ALONE on one query (no user profile,
-#                         no budget, no upstream agents). The rubric must forbid
-#                         punishing the agent for context it was never handed.
-
-FAITHFULNESS_RUBRIC = """You grade the FAITHFULNESS (groundedness) of a travel \
-assistant's answer.
-
-You will receive:
-  • REQUEST — what the traveler asked for (airline, price, times, stops, route, dates, party size, cabin).
-  • RESULTS — the raw output of the `search_flights` tool: the source of truth
-    for all FLIGHT DATA. Treat it as complete.
-  • ANSWER  — the assistant's prose summary, written for the traveler.
-
-Judge ONE thing: is every claim about FLIGHT DATA (airlines, flight numbers,
-prices, times, durations, number of stops, dates) supported by the RESULTS?
-
-Allowed — NOT fabrication: restating parameters from the REQUEST (e.g. "for 1
-adult", "economy", the travel date), even if they do not appear in RESULTS. The
-traveler supplied those; echoing them is context, not invention. Only NEW flight
-facts must come from RESULTS. Ignore style, tone, and helpfulness — grade ONLY
-grounding.
-
-CORE vs NON-CORE. The CORE flight facts are: airlines, flight numbers, prices,
-times, durations, number of stops, and dates. Everything a traveler would NOT
-book a wrong flight over — baggage, meals, seat, lounge, the CITY a stop is in —
-is NON-CORE. Grade the grounding of the CORE facts; an unsupported NON-CORE extra
-is at most a minor slip, never a fabrication.
-
-Score:
-  3 — every CORE flight fact is supported by RESULTS; nothing invented.
-      (Restating REQUEST parameters is fine and does NOT lower the score.)
-  2 — essentially grounded: at most one MINOR slip that would not change a
-      booking decision — a rounded price, a paraphrased time, or an unsupported
-      NON-CORE extra (e.g. a free-baggage or meal claim, or a made-up layover
-      city) not in RESULTS.
-  1 — one materially misleading error in a CORE fact: a price, airline, route,
-      or number of stops that is NOT in / contradicts RESULTS, or invented
-      per-person/total math the tool did not return.
-  0 — largely fabricated, or SEVERAL core facts wrong / directly contradicting
-      RESULTS.
-
-Give brief reasoning that names the specific claim you checked, then the score."""
-
-HELPFULNESS_RUBRIC = """You grade how HELPFUL a travel assistant's answer is for \
-the traveler's REQUEST.
-
-You will receive:
-  • REQUEST — what the traveler asked for.
-  • ANSWER  — the assistant's response.
-
-Judge ONE thing: does the ANSWER directly serve the REQUEST — surface the most
-relevant flight option(s), give the details a traveler needs to choose, and stay
-clear and concise?
-
-IMPORTANT (isolation): the agent was run in isolation on ONLY this request, with
-no access to the traveler's profile, budget, loyalty programs, or prior
-conversation. Judge only what is answerable from THIS request. Do NOT penalize
-the absence of information the agent was never given.
-
-Score:
-  3 — directly and clearly answers the request; a traveler could act on it now.
-  2 — useful but with a gap: buries the answer, omits one asked-for detail, or
-      is noticeably verbose.
-  1 — partially relevant but hard to use, or misses most of the request.
-  0 — does not address the request (empty, off-topic, or an error message).
-
-Give brief reasoning, then the score."""
+# Built once, from the scaffold. `build_judge` is re-exported (imported above) so
+# the runners and l4_calibrate.py keep importing it from here unchanged. The
+# Flights base wording is preserved from the calibrated (κ=0.95) rubric; the only
+# additions are the in-context anchors above and the scaffold's verbosity clause.
+FAITHFULNESS_RUBRIC = faithfulness_rubric(_SPEC, examples=_FAITH_EXAMPLES)
+HELPFULNESS_RUBRIC = helpfulness_rubric(_SPEC)
 
 
-# ── The judge handle ────────────────────────────────────────────────────────
-def build_judge(tier: str = "reasoning", effort: str | None = None):
-    """Build the grader: a strong LLM constrained to emit a `Verdict`.
-
-    WHICH MODEL JUDGES — a rule of thumb: the judge should be at least as
-    capable as the thing it grades. The Flights agent runs on the `fast` tier
-    (gpt-5.4-mini); we judge with the `reasoning` tier (gpt-5.4) so the grader
-    is stronger than the agent, and (bonus) is a *different* model than the one
-    under test, which reduces self-preference bias.
-
-    `method="function_calling"` is the codebase-standard way to get reliable
-    structured output from the gpt-5.4 reasoning models (see supervisor_agent
-    and renderer). The returned runnable takes messages and returns a `Verdict`.
-
-    `effort` overrides the tier's default reasoning effort
-    (none|minimal|low|medium|high|xhigh). The A/B experiment
-    (flights/l3_judge_ab.py) uses it to vary ONLY the judge's thinking depth.
-    """
-    overrides = {"reasoning_effort": effort} if effort else {}
-    return get_llm(tier=tier, **overrides).with_structured_output(
-        Verdict, method="function_calling"
-    )
-
-
-async def _run_judge(
-    judge, rubric: str, payload: str, *, timeout: float = 60.0
-) -> Verdict:
-    """One judge call, with a timeout. Kept tiny so both judges share it."""
-    return await asyncio.wait_for(
-        judge.ainvoke([SystemMessage(content=rubric), HumanMessage(content=payload)]),
-        timeout=timeout,
-    )
-
-
-def _format_evidence(traj: Trajectory, *, max_chars: int = 6000) -> str:
-    """The tool outputs = the evidence the answer must be faithful to."""
-    text = "\n\n".join(f"[{name}]\n{out}" for name, out in traj.tool_outputs)
-    return text[:max_chars]
-
-
-# ── Judge #1: faithfulness (answer vs the tool's own output) ────────────────
+# ── The two Flights judges — thin bindings over the scaffold's scorers ──────
 async def judge_faithfulness(judge, traj: Trajectory) -> dict:
-    """Score whether the final answer is grounded in the tool results.
-
-    SKIPs (score=None) when there is nothing to ground against — no tool output
-    or no answer. (Layer 1's `called_search_flights` already flags a missing
-    tool call; each layer checks its own thing.)
-    """
-    evidence = _format_evidence(traj)
-    if not evidence.strip() or not traj.final_text.strip():
-        return {
-            "key": "faithfulness",
-            "score": None,
-            "comment": "no tool output and/or no answer to check",
-        }
-    payload = (
-        f"REQUEST:\n{traj.query}\n\n"
-        f"RESULTS (source of truth for flight data):\n{evidence}\n\n"
-        f"ANSWER (judge this):\n{traj.final_text}"
-    )
-    try:
-        verdict = await _run_judge(judge, FAITHFULNESS_RUBRIC, payload)
-    except Exception as exc:  # noqa: BLE001 — a judge failure is data, not a crash
-        return {"key": "faithfulness", "score": None, "comment": f"judge error: {exc}"}
-    return {"key": "faithfulness", "score": verdict.score, "comment": verdict.reasoning}
+    """Score whether the final answer is grounded in the tool results."""
+    return await score_faithfulness(judge, traj, rubric=FAITHFULNESS_RUBRIC)
 
 
-# ── Judge #2: helpfulness (answer vs the request) ───────────────────────────
 async def judge_helpfulness(judge, traj: Trajectory) -> dict:
     """Score whether the final answer actually serves the traveler's request."""
-    if not traj.final_text.strip():
-        return {"key": "helpfulness", "score": 0, "comment": "no answer produced"}
-    payload = f"REQUEST:\n{traj.query}\n\nANSWER (judge this):\n{traj.final_text}"
-    try:
-        verdict = await _run_judge(judge, HELPFULNESS_RUBRIC, payload)
-    except Exception as exc:  # noqa: BLE001
-        return {"key": "helpfulness", "score": None, "comment": f"judge error: {exc}"}
-    return {"key": "helpfulness", "score": verdict.score, "comment": verdict.reasoning}
+    return await score_helpfulness(judge, traj, rubric=HELPFULNESS_RUBRIC)
 
 
 # A "judge suite" is just a list of these — same idea as Layer 1's EVALUATORS,
@@ -288,6 +156,7 @@ if __name__ == "__main__":
     import truststore  # trust the OS store; never disable verification
 
     truststore.inject_into_ssl()
-    os.environ.setdefault("LANGSMITH_TRACING", "false")  # fixture demo = hermetic
+    os.environ["LANGSMITH_TRACING"] = "false"  # fixture demo = hermetic
+    os.environ["LANGCHAIN_TRACING_V2"] = "false"
 
     asyncio.run(_demo())

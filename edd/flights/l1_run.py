@@ -1,4 +1,4 @@
-"""EDD Step 3 — run the evaluators against the LIVE agent, over a DATASET.
+"""EDD Step 3 — run evaluators against a live or cached agent DATASET.
 
 Step 2 scored a hardcoded trajectory. Here we remove the training wheels with
 the three changes we talked about:
@@ -16,6 +16,9 @@ Nothing we built gets thrown away — only where the trajectory comes from.
 
 Run it:
     .venv/bin/python edd/flights/l1_run.py
+
+Set EDD_REFRESH=1 to force a fresh LLM + Duffel capture. Otherwise this runner
+reuses the snapshot shared with Layers 2 and 3.
 """
 
 from __future__ import annotations
@@ -23,6 +26,8 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
+from collections import Counter
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -33,7 +38,8 @@ load_dotenv()
 import truststore  # noqa: E402
 
 truststore.inject_into_ssl()
-# Toggle: "false" = hermetic fast loop (just the score); "true" = trace this run.
+os.environ["LANGSMITH_TRACING"] = "false"
+os.environ["LANGCHAIN_TRACING_V2"] = "false"
 os.environ.setdefault("LANGSMITH_PROJECT", "wanderlisted-edd")
 
 sys.path.insert(
@@ -42,11 +48,15 @@ sys.path.insert(
 
 from langchain_core.tracers.langchain import wait_for_all_tracers  # noqa: E402
 
+from edd.baseline_store import record_component_report
 from edd.flights.l1_dataset import DATASET  # the golden dataset (its own file)
 from edd.flights.l1_evaluate import EVALUATORS  # the SAME evaluators from Step 2
-from edd.harness import run_agent  # shared "run + capture" machinery
+from edd.flights.run_utils import (
+    BASELINE_CONFIG,
+    classify_flight_outcome,
+    run_flight_dataset,
+)
 from edd.models import MODELS  # shared model registry (single source of truth)
-from src.agent.agents import FlightsAgent  # noqa: E402
 
 # Which model to evaluate — a key in edd/models.py. Swap in ONE word (no env edits).
 # L1 grades one config per run (one dataset per thing-under-test); flip to
@@ -68,24 +78,25 @@ async def main() -> None:
     )
     print("=" * 70)
 
-    # Each case is an independent live run on the chosen model — do them
-    # concurrently. MODELS[AGENT] is forwarded through run_agent to get_llm.
-    trajectories = await asyncio.gather(
-        *(run_agent(FlightsAgent, case["query"], **MODELS[AGENT]) for case in DATASET)
-    )
+    # Capture once per dataset/model/source fingerprint. Layer 2 and Layer 3
+    # reuse this exact snapshot, so every metric refers to the same agent run.
+    queries = [case["query"] for case in DATASET]
+    trajectories = await run_flight_dataset(queries, model_config=MODELS[AGENT])
 
     names = [ev.__name__ for ev in EVALUATORS]
     passed = dict.fromkeys(names, 0)
     scored = dict.fromkeys(names, 0)  # cases where the check applied (score not None)
     evaluated = 0  # examples that actually ran (no infra error)
     perfect = 0  # examples where EVERY applicable check passed (exact match)
+    outcomes = [classify_flight_outcome(trajectory) for trajectory in trajectories]
 
-    for case, trajectory in zip(DATASET, trajectories):
+    for case, trajectory, outcome in zip(DATASET, trajectories, outcomes):
         want = case["expected"]
-        if trajectory.error:
+        if outcome in {"blocked_external", "infra_error"}:
+            detail = f"   [ERROR: {trajectory.error}]" if trajectory.error else ""
             print(
                 f"\n{_fmt(want['origin'])}->{_fmt(want['destination'])}"
-                f"   [INFRA ERROR: {trajectory.error}]"
+                f"   [task_outcome={outcome}]   [NOT EVALUATED]{detail}"
             )
             continue
         evaluated += 1
@@ -95,6 +106,7 @@ async def main() -> None:
         print(
             f"\n{_fmt(want['origin'])}->{_fmt(want['destination'])}"
             f"   (agent chose {got.get('origin')}->{got.get('destination')})"
+            f"   [task_outcome={outcome}]"
         )
         for ev in EVALUATORS:
             out = ev(calls, want)
@@ -113,6 +125,10 @@ async def main() -> None:
         perfect += int(case_ok)
 
     print("\n" + "=" * 70)
+    print("TASK OUTCOMES — separate from decision correctness:")
+    for outcome, count in sorted(Counter(outcomes).items()):
+        print(f"  {outcome:18s} {count}/{len(outcomes)}")
+    print()
     print("AGGREGATE — this is your eval of the system:")
     print("\n  Per-check (which individual decisions were right):")
     for name in names:
@@ -127,6 +143,33 @@ async def main() -> None:
             f"\n  decision_accuracy (exact match): {perfect}/{evaluated}  "
             f"({perfect / evaluated * 100:.0f}%)"
         )
+    record_component_report(
+        BASELINE_CONFIG,
+        layer="l1",
+        metrics={
+            "task_outcomes": dict(sorted(Counter(outcomes).items())),
+            "evaluated_cases": evaluated,
+            "per_check": {
+                name: {
+                    "passed": passed[name],
+                    "scored": scored[name],
+                    "rate": passed[name] / scored[name] if scored[name] else None,
+                }
+                for name in names
+            },
+            "decision_accuracy": {
+                "passed": perfect,
+                "scored": evaluated,
+                "rate": perfect / evaluated if evaluated else None,
+            },
+        },
+        queries=queries,
+        model_configs={AGENT: MODELS[AGENT]},
+        report_source_files=(
+            Path(__file__),
+            Path(__file__).with_name("l1_evaluate.py"),
+        ),
+    )
     print()
 
     # If tracing is on, flush the background uploader before we exit — a short

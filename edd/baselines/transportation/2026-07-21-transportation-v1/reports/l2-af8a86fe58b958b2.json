@@ -1,0 +1,64 @@
+{
+  "baseline_name": "2026-07-21-transportation-v1",
+  "component": "transportation",
+  "context": {
+    "dataset_case_count": 40,
+    "dataset_version": "1.0.0",
+    "judge_config": {
+      "effort": "tier_default",
+      "tier": "reasoning"
+    },
+    "model_configs": {
+      "terra": {
+        "azure_deployment": "gpt-5.6-terra",
+        "tier": "fast"
+      }
+    },
+    "report_sources": [
+      {
+        "path": "edd/transportation/l2_judge_run.py",
+        "sha256": "a86e5a706a7d5cc320127f968ceacf303b3807a976526ccbb3115f704f199df7"
+      },
+      {
+        "path": "edd/transportation/l2_judge.py",
+        "sha256": "bf14e5b3281c51ad832a735d1d1bf73bf8f737e55f3e3fc365fe0b80e7be7701"
+      },
+      {
+        "path": "edd/rubrics.py",
+        "sha256": "7c5533b9c6489df4bb0896e481f977a4599bfacd16eb774a4a8f0f9624412a22"
+      }
+    ]
+  },
+  "created_at": "2026-07-21T11:25:36.957362+00:00",
+  "git": {
+    "branch": "main",
+    "commit": "07dc9ffc349dcf297d4bf1007d759c240385e84b",
+    "dirty": true
+  },
+  "kind": "edd-metrics-report",
+  "layer": "l2",
+  "metrics": {
+    "rubric_scores": {
+      "faithfulness": {
+        "mean": 1.425,
+        "score_sum": 57,
+        "scored": 40
+      },
+      "helpfulness": {
+        "mean": 2.5641025641025643,
+        "score_sum": 100,
+        "scored": 39
+      }
+    },
+    "task_outcomes": {
+      "completed": 38,
+      "no_route": 2
+    }
+  },
+  "metrics_sha256": "4a3f19c7704ba94e0f476f08cccd2be2e426b0683ba192c59cd56112e945137c",
+  "report_id": "af8a86fe58b958b2",
+  "run_refs": {
+    "terra": "6c39ec3cac5fecf5"
+  },
+  "schema_version": 1
+}

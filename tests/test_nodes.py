@@ -4,12 +4,14 @@ Tests each node function in isolation by injecting mock dependencies
 (LLM, executors, supervisor_agent) via keyword arguments.
 """
 
+from datetime import date
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langgraph.graph import END
 from langgraph.types import Send
 
+from src.models import DraftDay, DraftItinerary, PlaceRef, build_trip_skeleton
 from src.agent.stage4_graph import (
     # Helpers
     build_user_profile_context,
@@ -24,6 +26,7 @@ from src.agent.stage4_graph import (
     destination_node,
     restaurants_node,
     activities_node,
+    draft_itinerary_node,
     transportation_node,
     budget_node,
     itinerary_node,
@@ -34,8 +37,13 @@ from src.agent.stage4_graph import (
     budget_review_node,
     human_review_node,
     route_after_triage,
+    route_after_intake,
     route_after_supervisor,
     route_after_safety_review,
+    route_after_trip_skeleton,
+    route_after_hotel_gate,
+    route_after_draft_itinerary,
+    route_after_transportation,
     route_after_budget,
     route_after_budget_review,
     route_after_human_review,
@@ -351,6 +359,130 @@ class TestWorkerNodes:
         assert result["current_agent"] == "transportation"
         assert set(result["itinerary_components"].keys()) == {"transportation"}
 
+    async def test_transportation_receives_merged_hotel_and_activity_context(self):
+        mock_executor = AsyncMock()
+
+        async def invoke(payload):
+            return {
+                "messages": [
+                    *payload["messages"],
+                    AIMessage(content="Connected route plan"),
+                ],
+            }
+
+        mock_executor.ainvoke.side_effect = invoke
+        state = {
+            "messages": [HumanMessage(content="Plan my trip")],
+            "itinerary_components": {
+                "routing": [
+                    "HotelsAgent",
+                    "ActivitiesAgent",
+                    "TransportationAgent",
+                ],
+                "hotels": {"messages": [AIMessage(content="Hotel Central")]},
+                "activities": {"messages": [AIMessage(content="Museum and old town")]},
+            },
+        }
+
+        await transportation_node(state, executor=mock_executor)
+
+        payload = mock_executor.ainvoke.await_args.args[0]
+        system_context = "\n".join(
+            message.content
+            for message in payload["messages"]
+            if isinstance(message, SystemMessage)
+        )
+        assert "Hotel Central" in system_context
+        assert "Museum and old town" in system_context
+
+    @patch("src.agent.stage4_graph.compute_day_route_data")
+    async def test_transportation_routes_exact_selected_places(self, mock_route):
+        mock_route.return_value = {
+            "ordered_stops": ["48.86,2.33", "5 Rue de Thorigny, Paris"],
+            "legs": [
+                {
+                    "from_location": "1 Rue de Rivoli, Paris",
+                    "to_location": "48.86,2.33",
+                    "distance_meters": 900,
+                    "duration_seconds": 600,
+                    "instructions": ["Take metro line 1"],
+                },
+                {
+                    "from_location": "48.86,2.33",
+                    "to_location": "5 Rue de Thorigny, Paris",
+                    "distance_meters": 1300,
+                    "duration_seconds": 780,
+                    "instructions": [],
+                },
+            ],
+            "total_distance_meters": 2200,
+            "total_duration_seconds": 1380,
+            "error": "",
+        }
+        draft = DraftItinerary(
+            days=[
+                DraftDay(
+                    day_number=1,
+                    start_location=PlaceRef(
+                        name="Hotel Central", address="1 Rue de Rivoli, Paris"
+                    ),
+                    stops=[
+                        PlaceRef(name="Louvre", latitude=48.86, longitude=2.33),
+                        PlaceRef(
+                            name="Picasso Museum",
+                            address="5 Rue de Thorigny, Paris",
+                        ),
+                    ],
+                    preferred_mode="transit",
+                )
+            ]
+        )
+        state = {
+            "messages": [HumanMessage(content="Plan Paris")],
+            "itinerary_components": {
+                "routing": ["TransportationAgent", "ItineraryAgent"],
+                "draft_itinerary_structured": draft.model_dump(),
+            },
+        }
+
+        result = await transportation_node(state, executor=AsyncMock())
+
+        args = mock_route.call_args.args
+        assert args[0] == ["48.86,2.33", "5 Rue de Thorigny, Paris"]
+        assert args[1] == "1 Rue de Rivoli, Paris"
+        route_plan = result["itinerary_components"]["route_plan_structured"]
+        assert route_plan["days"][0]["ordered_stops"][0]["name"] == "Louvre"
+        assert route_plan["days"][0]["legs"][0]["duration_seconds"] == 600
+
+    @patch(
+        "src.agent.stage4_graph.compute_day_route_data",
+        side_effect=RuntimeError("maps unavailable"),
+    )
+    async def test_transportation_degrades_failed_day_route(self, _mock_route):
+        draft = DraftItinerary(
+            days=[
+                DraftDay(
+                    day_number=2,
+                    start_location=PlaceRef(name="Hotel"),
+                    stops=[PlaceRef(name="Museum")],
+                )
+            ]
+        )
+        state = {
+            "messages": [HumanMessage(content="Plan it")],
+            "itinerary_components": {
+                "routing": ["TransportationAgent"],
+                "draft_itinerary_structured": draft.model_dump(),
+            },
+        }
+
+        result = await transportation_node(state, executor=AsyncMock())
+
+        day = result["itinerary_components"]["route_plan_structured"]["days"][0]
+        assert day["day_number"] == 2
+        assert day["ordered_stops"][0]["name"] == "Museum"
+        assert "unavailable" in day["warning"].lower()
+
     async def test_worker_strips_enriched_messages(self):
         """New messages are only the agent's own output, not the enriched context."""
         mock_executor = AsyncMock()
@@ -368,6 +500,48 @@ class TestWorkerNodes:
         # Only the agent output, not the enriched input message
         assert len(result["messages"]) == 1
         assert result["messages"][0].content == "hotel result"
+
+
+class TestDraftItineraryNode:
+    async def test_selects_structured_draft_from_discovery_evidence(self):
+        mock_llm = MagicMock()
+        structured_llm = AsyncMock()
+        structured_llm.ainvoke.return_value = DraftItinerary(
+            days=[
+                DraftDay(
+                    start_location=PlaceRef(
+                        name="Hotel Central", address="1 Main Street"
+                    ),
+                    stops=[PlaceRef(name="City Museum", address="2 Museum Road")],
+                    preferred_mode="walk",
+                )
+            ],
+            mobility_notes=["Use the city travel card."],
+        )
+        mock_llm.with_structured_output.return_value = structured_llm
+        state = {
+            "messages": [HumanMessage(content="Plan a day")],
+            "destinations": ["test-city"],
+            "itinerary_components": {
+                "routing": ["TransportationAgent", "ItineraryAgent"],
+                "hotels": {"messages": [AIMessage(content="Hotel Central")]},
+                "activities": {"messages": [AIMessage(content="City Museum")]},
+                "destination": {
+                    "messages": [AIMessage(content="Use the city travel card.")]
+                },
+            },
+        }
+
+        result = await draft_itinerary_node(state, llm=mock_llm)
+
+        draft = result["itinerary_components"]["draft_itinerary_structured"]
+        assert draft["days"][0]["start_location"]["name"] == "Hotel Central"
+        assert draft["days"][0]["stops"][0]["name"] == "City Museum"
+        prompt_text = "\n".join(
+            message.content for message in structured_llm.ainvoke.await_args.args[0]
+        )
+        assert "Hotel Central" in prompt_text
+        assert "City Museum" in prompt_text
 
 
 # ── Budget node tests ────────────────────────────────────────────────────────
@@ -412,6 +586,47 @@ class TestItineraryNode:
         assert result["current_agent"] == "itinerary"
         assert "itinerary" in result["itinerary_components"]
         assert "ItineraryAgent" in result["itinerary_components"]["completed_agents"]
+
+    async def test_receives_selected_draft_and_route_plan(self):
+        mock_executor = AsyncMock()
+
+        async def invoke(payload):
+            return {
+                "messages": [
+                    *payload["messages"],
+                    AIMessage(content="Final assembled itinerary"),
+                ]
+            }
+
+        mock_executor.ainvoke.side_effect = invoke
+        state = {
+            "messages": [HumanMessage(content="Build the final itinerary")],
+            "itinerary_components": {
+                "completed_agents": ["TransportationAgent"],
+                "draft_itinerary": {
+                    "messages": [
+                        AIMessage(content='DRAFT_ITINERARY_JSON: {"hotel":"Central"}')
+                    ]
+                },
+                "transportation": {
+                    "messages": [
+                        AIMessage(content='ROUTE_PLAN_JSON: {"duration_seconds":600}')
+                    ]
+                },
+            },
+        }
+
+        result = await itinerary_node(state, executor=mock_executor)
+
+        payload = mock_executor.ainvoke.await_args.args[0]
+        system_context = "\n".join(
+            message.content
+            for message in payload["messages"]
+            if isinstance(message, SystemMessage)
+        )
+        assert "DRAFT_ITINERARY_JSON" in system_context
+        assert "ROUTE_PLAN_JSON" in system_context
+        assert result["messages"][0].content == "Final assembled itinerary"
 
 
 # ── Synthesize node tests ───────────────────────────────────────────────────
@@ -562,13 +777,32 @@ class TestRouteAfterTriage:
         state = {"current_agent": "triage:shallow"}
         assert route_after_triage(state) == "shallow_reply"
 
-    def test_deep_routes_to_supervisor(self):
+    def test_deep_routes_to_intake(self):
         state = {"current_agent": "triage:deep"}
+        assert route_after_triage(state) == "intake"
+
+    def test_missing_agent_routes_to_intake(self):
+        state = {}
+        assert route_after_triage(state) == "intake"
+
+    def test_pending_clarification_overrides_shallow_classification(self):
+        state = {
+            "current_agent": "triage:shallow",
+            "pending_questions": ["origin_city"],
+        }
+        assert route_after_triage(state) == "intake"
+
+    def test_target_agent_bypasses_intake_for_developer_isolation(self):
+        state = {"current_agent": "triage:deep", "target_agent": "FlightsAgent"}
         assert route_after_triage(state) == "supervisor"
 
-    def test_missing_agent_routes_to_supervisor(self):
-        state = {}
-        assert route_after_triage(state) == "supervisor"
+
+class TestRouteAfterIntake:
+    def test_ready_routes_to_supervisor(self):
+        assert route_after_intake({"workflow_status": "ready"}) == "supervisor"
+
+    def test_missing_input_ends_turn(self):
+        assert route_after_intake({"workflow_status": "needs_user_input"}) == END
 
 
 class TestRouteAfterSupervisor:
@@ -588,11 +822,11 @@ class TestRouteAfterSupervisor:
         }
         result = route_after_supervisor(state)
         assert isinstance(result, list)
-        assert len(result) == 2
+        assert len(result) == 1
         assert all(isinstance(s, Send) for s in result)
-        # Send targets should be the node names, not agent class names
+        # Hotels waits until TripSkeleton allocates exact city stays.
         targets = {s.node for s in result}
-        assert targets == {"flights", "hotels"}
+        assert targets == {"flights"}
 
     def test_single_parallel_agent_returns_one_send(self):
         state = {
@@ -603,6 +837,29 @@ class TestRouteAfterSupervisor:
         assert isinstance(result, list)
         assert len(result) == 1
         assert result[0].node == "destination"
+
+    def test_transportation_waits_for_discovery_fanout(self):
+        state = {
+            "messages": [HumanMessage(content="plan my trip")],
+            "itinerary_components": {
+                "routing": [
+                    "HotelsAgent",
+                    "ActivitiesAgent",
+                    "TransportationAgent",
+                ]
+            },
+        }
+        result = route_after_supervisor(state)
+        assert isinstance(result, list)
+        assert {send.node for send in result} == {"activities"}
+
+    def test_hotels_only_routes_to_trip_skeleton(self):
+        state = {"itinerary_components": {"routing": ["HotelsAgent"]}}
+        assert route_after_supervisor(state) == "trip_skeleton"
+
+    def test_transportation_only_routes_directly(self):
+        state = {"itinerary_components": {"routing": ["TransportationAgent"]}}
+        assert route_after_supervisor(state) == "transportation"
 
     def test_budget_only_routes_to_budget(self):
         state = {"itinerary_components": {"routing": ["BudgetAgent"]}}
@@ -625,12 +882,19 @@ class TestRouteAfterSafetyReview:
         }
         assert route_after_safety_review(state) == "budget"
 
+    def test_draft_selection_runs_before_transportation(self):
+        state = {
+            "hitl_action": "approved",
+            "itinerary_components": {"routing": ["TransportationAgent", "BudgetAgent"]},
+        }
+        assert route_after_safety_review(state) == "trip_skeleton"
+
     def test_approved_with_itinerary_goes_to_itinerary(self):
         state = {
             "hitl_action": "approved",
             "itinerary_components": {"routing": ["ItineraryAgent"]},
         }
-        assert route_after_safety_review(state) == "itinerary"
+        assert route_after_safety_review(state) == "trip_skeleton"
 
     def test_approved_no_sequential_ends(self):
         state = {
@@ -638,6 +902,99 @@ class TestRouteAfterSafetyReview:
             "itinerary_components": {"routing": ["FlightsAgent"]},
         }
         assert route_after_safety_review(state) == END
+
+
+class TestRouteAfterTripSkeleton:
+    def test_hotels_fan_out_one_worker_per_exact_city_stay(self):
+        skeleton = build_trip_skeleton(
+            cities=["warszawa", "krakow"],
+            start_date=date(2026, 8, 20),
+            duration_days=9,
+        )
+        state = {
+            "workflow_status": "skeleton_ready",
+            "messages": [HumanMessage(content="plan")],
+            "itinerary_components": {
+                "routing": ["HotelsAgent", "ItineraryAgent"],
+                "trip_skeleton_structured": skeleton.model_dump(mode="json"),
+            },
+        }
+
+        result = route_after_trip_skeleton(state)
+
+        assert isinstance(result, list)
+        assert len(result) == 2
+        assert all(send.node == "hotel_stay" for send in result)
+        stays = [send.arg["active_hotel_stay"] for send in result]
+        assert [stay["city"] for stay in stays] == ["warszawa", "krakow"]
+        assert stays[0]["check_in"] == "2026-08-20"
+        assert stays[-1]["check_out"] == "2026-08-28"
+
+    def test_without_hotels_continues_to_draft(self):
+        state = {
+            "workflow_status": "skeleton_ready",
+            "itinerary_components": {
+                "routing": ["TransportationAgent", "ItineraryAgent"]
+            },
+        }
+        assert route_after_trip_skeleton(state) == "draft_itinerary"
+
+    def test_failed_skeleton_ends(self):
+        assert route_after_trip_skeleton({"workflow_status": "failed"}) == END
+
+
+class TestRouteAfterHotelGate:
+    def test_completed_hotels_continue_to_draft(self):
+        state = {
+            "workflow_status": "planning",
+            "itinerary_components": {
+                "routing": ["HotelsAgent", "TransportationAgent", "ItineraryAgent"]
+            },
+        }
+        assert route_after_hotel_gate(state) == "draft_itinerary"
+
+    def test_incomplete_hotels_end(self):
+        state = {
+            "workflow_status": "no_inventory",
+            "itinerary_components": {"routing": ["HotelsAgent"]},
+        }
+        assert route_after_hotel_gate(state) == END
+
+
+class TestRouteAfterDraftItinerary:
+    def test_transportation_runs_before_budget(self):
+        state = {
+            "itinerary_components": {"routing": ["TransportationAgent", "BudgetAgent"]}
+        }
+        assert route_after_draft_itinerary(state) == "transportation"
+
+    def test_without_transportation_routes_to_budget(self):
+        state = {"itinerary_components": {"routing": ["BudgetAgent", "ItineraryAgent"]}}
+        assert route_after_draft_itinerary(state) == "budget"
+
+    def test_itinerary_only_routes_to_final_assembly(self):
+        state = {"itinerary_components": {"routing": ["ItineraryAgent"]}}
+        assert route_after_draft_itinerary(state) == "itinerary"
+
+
+class TestRouteAfterTransportation:
+    def test_with_budget_routes_to_budget(self):
+        state = {
+            "itinerary_components": {"routing": ["TransportationAgent", "BudgetAgent"]}
+        }
+        assert route_after_transportation(state) == "budget"
+
+    def test_with_itinerary_routes_to_itinerary(self):
+        state = {
+            "itinerary_components": {
+                "routing": ["TransportationAgent", "ItineraryAgent"]
+            }
+        }
+        assert route_after_transportation(state) == "itinerary"
+
+    def test_transportation_only_ends(self):
+        state = {"itinerary_components": {"routing": ["TransportationAgent"]}}
+        assert route_after_transportation(state) == END
 
 
 class TestRouteAfterBudget:

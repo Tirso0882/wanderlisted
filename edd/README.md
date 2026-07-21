@@ -6,8 +6,230 @@
 > If you're building an agent and don't know how to prove it works, start here
 > and follow the steps in order. Every step maps to a real file in this folder.
 
-_Status: Layers 1–4 complete — the full component-level rigor stack. Last
-updated: 2026-07-13._
+_Status: Layers 1–4 complete for **Flights** (the worked example), **Hotels**,
+**Restaurants**, **Activities**, and **Transportation**.
+The rubrics and the calibration math are now shared, parameterized modules
+([`rubrics.py`](./rubrics.py), [`calibration.py`](./calibration.py)) covering all
+8 agents' specs, so a new agent's judge stack is a ~20-line binding rather than a
+copied rubric. Last updated: 2026-07-20._
+
+### Flights: complete execution loop
+
+```bash
+# L1: deterministic fixture, then fresh live decision baseline (40 cases)
+.venv/bin/python edd/flights/l1_evaluate.py
+EDD_REFRESH=1 .venv/bin/python edd/flights/l1_run.py
+
+# L2 reuses the same cached trajectories; it does not consume Duffel again
+.venv/bin/python edd/flights/l2_judge_run.py
+
+# L3 fixed control, then cached/fresh Terra-vs-Luna tournament
+.venv/bin/python edd/flights/l3_pairwise.py
+.venv/bin/python edd/flights/l3_pairwise_run.py
+
+# L4: faithfulness-judge calibration against human labels
+.venv/bin/python edd/flights/l4_calibrate.py
+```
+
+Flight trajectories are cached under ignored `edd/flights/.cache/`, keyed by
+the dataset, model configuration, prompt, Flights/IATA tools and data, LLM
+factory, cache implementation, and harness sources. L1, L2, and L3 therefore
+score the same pinned model run. Set `EDD_REFRESH=1` for a fresh capture.
+Configured Duffel credentials are redacted before persistence; provider-blocked
+and infrastructure-error batches are not cached or counted as model quality.
+
+### Hotels: complete execution loop
+
+```bash
+# L1: deterministic fixture, then live decision/policy baseline (14 cases)
+.venv/bin/python edd/hotels/l1_evaluate.py
+EDD_REFRESH=1 .venv/bin/python edd/hotels/l1_run.py
+
+# L2 reuses the same cached trajectories; it does not consume Hotelbeds again
+.venv/bin/python edd/hotels/l2_judge_run.py
+
+# L3 fixed control, then Terra-vs-Luna live tournament (when provider is healthy)
+.venv/bin/python edd/hotels/l3_pairwise.py
+.venv/bin/python edd/hotels/l3_pairwise_run.py
+
+# L4: judge calibration over 25 balanced human-labeled cases
+.venv/bin/python edd/hotels/l4_calibrate.py
+```
+
+Hotel trajectories are cached under ignored `edd/hotels/.cache/`, keyed by the
+dataset, model configuration, prompt, tools, and harness sources. Set
+`EDD_REFRESH=1` whenever a fresh live snapshot is required. Provider quota/auth/
+network failures are categorized as `blocked_external`, never cached, and
+excluded from L2/L3 quality denominators rather than being misreported as model
+quality failures.
+
+### Restaurants: complete execution loop
+
+```bash
+# L1: deterministic fixture, then live decision baseline (50 cases)
+.venv/bin/python edd/restaurants/l1_evaluate.py
+EDD_REFRESH=1 .venv/bin/python edd/restaurants/l1_run.py
+
+# L2: groundedness + helpfulness over the same cached trajectories
+.venv/bin/python edd/restaurants/l2_judge_run.py
+
+# L3: fixed control, then Terra-vs-Luna live tournament
+.venv/bin/python edd/restaurants/l3_pairwise.py
+.venv/bin/python edd/restaurants/l3_pairwise_run.py
+
+# L4: judge calibration over 50 balanced human-labeled cases
+.venv/bin/python edd/restaurants/l4_calibrate.py
+```
+
+Restaurant trajectories are cached under ignored `edd/restaurants/.cache/` and
+invalidated by the dataset, model configuration, prompt, Google Places tools,
+LLM factory, cache implementation, or harness source changing. Sensitive query
+parameters and configured Google Maps keys are redacted before persistence.
+Missing credentials, quota/auth failures, and network failures are
+`blocked_external`: they are not cached or counted as model quality failures.
+
+### Activities: complete execution loop
+
+```bash
+# L1: deterministic fixture, then live Places decision baseline (40 cases)
+.venv/bin/python edd/activities/l1_evaluate.py
+EDD_REFRESH=1 .venv/bin/python edd/activities/l1_run.py
+
+# L2 reuses the same cached trajectories; it does not consume Google Places again
+.venv/bin/python edd/activities/l2_judge_run.py
+
+# L3 fixed control, then Terra-vs-Luna live tournament
+.venv/bin/python edd/activities/l3_pairwise.py
+.venv/bin/python edd/activities/l3_pairwise_run.py
+
+# L4: faithfulness-judge calibration against 24 balanced human-labeled cases
+.venv/bin/python edd/activities/l4_calibrate.py
+```
+
+Activities trajectories are cached under ignored `edd/activities/.cache/` and
+invalidated by the dataset, model configuration, prompt, Google Places tools,
+LLM factory, cache implementation, or harness source changing. Google Maps keys
+and sensitive query parameters are redacted before persistence. Missing
+credentials, quota/auth failures, and network failures are `blocked_external`:
+they are not cached or counted as model quality failures.
+
+### Transportation: complete execution loop
+
+```bash
+# L1: deterministic fixture, then fresh live route-decision baseline (40 cases)
+.venv/bin/python edd/transportation/l1_evaluate.py
+EDD_REFRESH=1 .venv/bin/python edd/transportation/l1_run.py
+
+# L2 reuses the same cached trajectories; it does not consume Google Routes again
+.venv/bin/python edd/transportation/l2_judge_run.py
+
+# L3 fixed control, then Terra-vs-Luna live tournament
+.venv/bin/python edd/transportation/l3_pairwise.py
+.venv/bin/python edd/transportation/l3_pairwise_run.py
+
+# L4: faithfulness-judge calibration against 28 balanced human-labeled cases
+.venv/bin/python edd/transportation/l4_calibrate.py
+```
+
+Transportation trajectories are cached under ignored `edd/transportation/.cache/`
+and invalidated by the dataset, model configuration, prompt, Google Routes tool,
+LLM factory, cache implementation, or harness source changing. Google Maps keys
+are redacted before persistence. Missing credentials, quota/auth failures, and
+network failures are `blocked_external`: they are not cached or counted as model
+quality failures.
+
+### Preserve a named baseline
+
+The `.cache/` files above are disposable snapshots for reusing provider results.
+They are not durable baselines. Set `EDD_BASELINE` to promote the exact cached or
+fresh run into an append-only baseline bundle with provenance and metrics:
+
+```bash
+BASELINE=2026-07-21-transportation-terra-v1
+
+# Capture fresh trajectories and the deterministic L1 metrics.
+EDD_BASELINE=$BASELINE EDD_REFRESH=1 \
+  .venv/bin/python edd/transportation/l1_run.py
+
+# Reuse the same trajectories and add immutable L2/L3/L4 reports.
+EDD_BASELINE=$BASELINE \
+  .venv/bin/python edd/transportation/l2_judge_run.py
+EDD_BASELINE=$BASELINE \
+  .venv/bin/python edd/transportation/l3_pairwise_run.py
+EDD_BASELINE=$BASELINE \
+  .venv/bin/python edd/transportation/l4_calibrate.py
+```
+
+The same `EDD_BASELINE=<name>` mechanism works for Flights, Hotels, Restaurants,
+Activities, and Transportation. Shared configuration lives in
+`edd/baseline_config.py`; shared storage and immutability enforcement live in
+`edd/baseline_store.py`.
+
+By default artifacts are written under:
+
+```text
+edd/baselines/<component>/<baseline-name>/
+  runs/<run-fingerprint>/
+    manifest.json
+    trajectories.json
+  reports/
+    l1-<report-id>.json
+    l2-<report-id>.json
+    l3-<report-id>.json
+    l4-<report-id>.json
+```
+
+One baseline name can contain several model arms: each dataset/model/source
+combination gets its own run fingerprint. The manifest records the dataset
+version, case count, model configuration, provider, Git commit/dirty state,
+prompt hash, every behavior-source hash, cache hash, capture time, and trajectory
+hash. Reports reference those run fingerprints and preserve their exact metric
+denominators. L2/L3/L4 reports also hash the judge/rubric or calibration sources.
+
+Baseline files are written read-only. Repeating an identical write is
+idempotent; attempting to change metrics for the same baseline identity raises
+`BaselineConflictError`. Use a new baseline name for a new stochastic capture or
+experiment. Provider-blocked and infrastructure-error batches are never
+preserved as model-quality baselines. Configured credentials and credential-like
+fields are redacted before any trajectory or manifest reaches disk.
+
+`edd/baselines/` is not Git-ignored, so selected baselines can be reviewed and
+committed deliberately. For large or externally retained artifacts, point the
+same mechanism at durable storage mounted on the filesystem:
+
+```bash
+EDD_BASELINE_DIR=/path/to/durable/edd-baselines \
+EDD_BASELINE=release-2026-07-21 \
+  .venv/bin/python edd/flights/l1_run.py
+```
+
+### Compare baselines
+
+Use the shared comparison CLI after capturing two or more named baselines. It
+shows L1 exact-match and per-check rates, L2 rubric means and denominators,
+task outcomes, deltas, and the weakest current signals:
+
+```bash
+# Compare every Transportation baseline in chronological-name order.
+.venv/bin/python -m edd.compare_baselines transportation
+
+# Compare only the two names supplied, in this explicit before/after order.
+.venv/bin/python -m edd.compare_baselines transportation \
+  --baseline transportation-before-grounding-fix \
+  --baseline transportation-after-grounding-fix
+
+# Scan all components that have durable baseline directories.
+.venv/bin/python -m edd.compare_baselines --all
+```
+
+The command is read-only: it never calls providers or changes a baseline.
+Treat low L1 rates as deterministic defects to investigate. Treat L2 scores as
+diagnostics to inspect alongside trajectories and calibrated human judgment,
+not arbitrary release gates.
+
+New Transportation L2 reports also persist `case_results`: each case name,
+task outcome, rubric score, and judge comment. This makes the exact lowest
+faithfulness cases auditable instead of preserving only aggregate means.
 
 ---
 

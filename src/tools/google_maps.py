@@ -1,10 +1,9 @@
 """Google Maps Platform tools for Wanderlisted travel agent.
 
-Enabled APIs (5):
+Enabled APIs (4):
   - Geocoding API          → _geocode() helper (address ↔ lat/lng)
   - Places API (New)       → search_places_nearby, search_places_text
   - Routes API             → compute_route, optimize_day_route
-  - Time Zone API          → get_timezone
   - Maps Embed API         → used directly in handbook_template.html.j2 iframes
 
 Routing is consolidated on the modern Routes API: ``compute_route`` handles
@@ -17,7 +16,6 @@ Each tool is stateless and safe to use inside any subagent.
 """
 
 import os
-import time
 from urllib.parse import urlencode
 
 import httpx
@@ -210,8 +208,11 @@ def search_places_nearby(
     Args:
         location: Lat,lng string like "35.6762,139.6503" or a text description
                   (will be geocoded first).
-        place_type: Google place type, e.g. "restaurant", "tourist_attraction",
-                    "lodging", "cafe", "museum", "bar", "park".
+        place_type: One Google place type identifier in lowercase snake_case,
+                e.g. "restaurant", "sushi_restaurant", "seafood_restaurant",
+                "tourist_attraction", "cafe", "museum", "bar". Free-text
+                phrases such as "seafood restaurant" are invalid; use
+                search_places_text for those.
         radius_meters: Search radius in metres (default 1500).
         max_results: Maximum number of results (default 10, max 20).
     """
@@ -332,7 +333,7 @@ def compute_route(
     origin: str,
     destination: str,
     travel_mode: str = "DRIVE",
-    waypoints: str = "",
+    waypoints: list[str] | None = None,
     include_steps: bool = True,
 ) -> str:
     """Compute a route with the Google Routes API.
@@ -340,19 +341,33 @@ def compute_route(
     The single routing tool for Wanderlisted. Handles simple A→B directions,
     transit routing with line details, and multi-stop routes with automatic
     waypoint optimisation. Replaces the legacy Directions and Distance Matrix
-    APIs.
+    APIs. The result contains route endpoints, distance, duration, selected mode,
+    optional optimized stop order, and available steps. It does not contain
+    fares or pass validity, schedules or frequency, accessibility guarantees,
+    reservations, luggage rules, parking, reliability, or traffic forecasts.
+
+    Preserve an explicitly requested travel mode and endpoints. Do not probe a
+    different mode or substitute endpoint unless the user explicitly requests
+    that comparison. A non-transit multi-stop trip is one call with all requested
+    waypoints; do not also issue calls for each leg. TRANSIT is point-to-point, so
+    an explicitly multi-stop transit trip requires one call per consecutive leg.
 
     Args:
         origin: Start address or "lat,lng".
         destination: End address or "lat,lng".
         travel_mode: DRIVE, BICYCLE, WALK, TRANSIT, TWO_WHEELER.
-        waypoints: Optional comma-separated intermediate stops. Ignored for
-            TRANSIT, which is point-to-point only.
+        waypoints: Optional intermediate stops. Rejected for TRANSIT, which
+            requires separate consecutive point-to-point calls.
         include_steps: Include turn-by-turn / transit step details (default True).
     """
-    key = _api_key()
     travel_mode = travel_mode.upper()
     is_transit = travel_mode == "TRANSIT"
+    if is_transit and waypoints:
+        return (
+            "TRANSIT does not support waypoints. Call compute_route once per "
+            "consecutive requested leg without waypoints."
+        )
+    key = _api_key()
 
     field_mask = [
         "routes.duration",
@@ -376,25 +391,14 @@ def compute_route(
         "X-Goog-FieldMask": ",".join(field_mask),
     }
 
-    def _make_waypoint(addr: str) -> dict:
-        addr = addr.strip()
-        if _looks_like_latlng(addr):
-            lat, lng = addr.split(",")
-            return {
-                "location": {
-                    "latLng": {"latitude": float(lat), "longitude": float(lng)}
-                }
-            }
-        return {"address": addr}
-
     body: dict = {
-        "origin": _make_waypoint(origin),
-        "destination": _make_waypoint(destination),
+        "origin": _make_route_waypoint(origin),
+        "destination": _make_route_waypoint(destination),
         "travelMode": travel_mode,
     }
     # TRANSIT is point-to-point only; waypoint optimisation applies to other modes.
     if waypoints and not is_transit:
-        body["intermediates"] = [_make_waypoint(w) for w in waypoints.split(",")]
+        body["intermediates"] = [_make_route_waypoint(w) for w in waypoints]
         body["optimizeWaypointOrder"] = True
 
     logger.debug(f"Routes API: {origin} → {destination} via {waypoints or 'direct'}")
@@ -429,9 +433,8 @@ def compute_route(
     result = f"Route: {origin} → {destination}\nDistance: {dist_km:.1f} km\nDuration: {duration}\nMode: {travel_mode}"
 
     opt_order = route.get("optimizedIntermediateWaypointIndex")
-    if opt_order and waypoints and not is_transit:
-        wp_list = [w.strip() for w in waypoints.split(",")]
-        ordered = [wp_list[i] for i in opt_order]
+    if opt_order is not None and waypoints and not is_transit:
+        ordered = [waypoints[i] for i in opt_order]
         result += f"\nOptimised stop order: {' → '.join(ordered)}"
 
     if include_steps:
@@ -445,174 +448,261 @@ def compute_route(
 # ── Route Optimization API ──────────────────────────────────────────────
 
 
+def compute_day_route_data(
+    stops: list[str],
+    start_location: str,
+    end_location: str = "",
+    travel_mode: str = "DRIVE",
+) -> dict:
+    """Compute structured route data for selected stops.
+
+    Non-transit routes use waypoint optimization in one request. Public-transit
+    routes preserve the selected order and compute each leg independently because
+    Google Routes does not support transit waypoint optimization.
+    """
+    key = _api_key()
+    end_location = end_location or start_location
+    stop_list = [stop.strip() for stop in stops if stop.strip()]
+    mode = _google_route_mode(travel_mode)
+
+    if not stop_list:
+        return {
+            "ordered_stops": [],
+            "legs": [],
+            "total_distance_meters": 0,
+            "total_duration_seconds": 0,
+            "error": "No stops provided.",
+        }
+
+    if mode == "TRANSIT":
+        full_path = [start_location, *stop_list, end_location]
+        legs: list[dict] = []
+        errors: list[str] = []
+        for origin, destination in zip(full_path, full_path[1:]):
+            response = _request_routes(
+                key=key,
+                origin=origin,
+                destination=destination,
+                travel_mode=mode,
+                include_steps=True,
+            )
+            if response.get("error"):
+                errors.append(f"{origin} → {destination}: {response['error']}")
+                continue
+            route = response["route"]
+            leg = route.get("legs", [{}])[0]
+            instructions = _format_route_steps({"legs": [leg]}).splitlines()
+            legs.append(
+                {
+                    "from_location": origin,
+                    "to_location": destination,
+                    "distance_meters": int(leg.get("distanceMeters", 0)),
+                    "duration_seconds": _duration_seconds(leg.get("duration", "0s")),
+                    "instructions": instructions,
+                }
+            )
+        return {
+            "ordered_stops": stop_list,
+            "legs": legs,
+            "total_distance_meters": sum(leg["distance_meters"] for leg in legs),
+            "total_duration_seconds": sum(leg["duration_seconds"] for leg in legs),
+            "error": "; ".join(errors),
+        }
+
+    response = _request_routes(
+        key=key,
+        origin=start_location,
+        destination=end_location,
+        travel_mode=mode,
+        intermediates=stop_list,
+        optimize_waypoints=True,
+        include_steps=False,
+    )
+    if response.get("error"):
+        return {
+            "ordered_stops": stop_list,
+            "legs": [],
+            "total_distance_meters": 0,
+            "total_duration_seconds": 0,
+            "error": response["error"],
+        }
+
+    route = response["route"]
+    order = route.get("optimizedIntermediateWaypointIndex")
+    expected_indices = list(range(len(stop_list)))
+    if not isinstance(order, list) or sorted(order) != expected_indices:
+        order = list(range(len(stop_list)))
+    ordered = [stop_list[index] for index in order]
+    full_path = [start_location, *ordered, end_location]
+    legs = []
+    for index, leg in enumerate(route.get("legs", [])[: len(full_path) - 1]):
+        legs.append(
+            {
+                "from_location": full_path[index],
+                "to_location": full_path[index + 1],
+                "distance_meters": int(leg.get("distanceMeters", 0)),
+                "duration_seconds": _duration_seconds(leg.get("duration", "0s")),
+                "instructions": [],
+            }
+        )
+    return {
+        "ordered_stops": ordered,
+        "legs": legs,
+        "total_distance_meters": int(route.get("distanceMeters", 0)),
+        "total_duration_seconds": _duration_seconds(route.get("duration", "0s")),
+        "error": "",
+    }
+
+
 @tool
 def optimize_day_route(
-    stops: str,
+    stops: list[str],
     start_location: str,
     end_location: str = "",
     travel_mode: str = "DRIVE",
 ) -> str:
-    """Optimize the order of stops for a day trip using Google Route Optimization.
+    """Optimize or plan the route for a selected list of day-trip stops.
 
     Takes a list of places to visit and returns the most efficient ordering.
 
     Args:
-        stops: Comma-separated list of places to visit, e.g.
-               "Senso-ji Temple, Tokyo Tower, Meiji Shrine, Tsukiji Market".
+        stops: Places to visit, e.g. ["Senso-ji Temple", "Tokyo Tower"].
         start_location: Starting point (hotel address or "lat,lng").
         end_location: End point — defaults to start_location (round trip).
         travel_mode: DRIVE, WALK, BICYCLE, TRANSIT, TWO_WHEELER.
     """
-    key = _api_key()
-    if not end_location:
-        end_location = start_location
-
-    # Use Routes API with waypoint optimisation as a lightweight proxy
-    # for the full Route Optimization API
-    headers = {
-        "Content-Type": "application/json",
-        "X-Goog-Api-Key": key,
-        "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.optimizedIntermediateWaypointIndex,routes.legs.duration,routes.legs.distanceMeters",
-    }
-
-    def _make_wp(addr: str) -> dict:
-        addr = addr.strip()
-        if _looks_like_latlng(addr):
-            lat, lng = addr.split(",")
-            return {
-                "location": {
-                    "latLng": {"latitude": float(lat), "longitude": float(lng)}
-                }
-            }
-        return {"address": addr}
-
-    stop_list = [s.strip() for s in stops.split(",") if s.strip()]
-    body = {
-        "origin": _make_wp(start_location),
-        "destination": _make_wp(end_location),
-        "intermediates": [_make_wp(s) for s in stop_list],
-        "travelMode": travel_mode,
-        "optimizeWaypointOrder": True,
-    }
-
-    logger.debug(f"Route Optimisation: {len(stop_list)} stops from {start_location}")
-    try:
-        resp = httpx.post(
-            f"{_ROUTES_URL}/directions/v2:computeRoutes",
-            headers=headers,
-            json=body,
-            timeout=25,
-        )
-        resp.raise_for_status()
-    except httpx.HTTPStatusError as e:
-        logger.error(
-            "Route Optimisation HTTP error %s: %s",
-            e.response.status_code,
-            e.response.text[:200],
-        )
-        return f"Route Optimisation API error (HTTP {e.response.status_code})."
-    except httpx.RequestError as e:
-        logger.error("Route Optimisation request error: %s", e)
-        return f"Could not reach Route Optimisation API: {e}"
-    data = resp.json()
-
-    routes = data.get("routes", [])
-    if not routes:
-        return "Could not compute optimised route."
-
-    route = routes[0]
-    opt_order = route.get(
-        "optimizedIntermediateWaypointIndex", list(range(len(stop_list)))
+    route = compute_day_route_data(
+        stops=stops,
+        start_location=start_location,
+        end_location=end_location,
+        travel_mode=travel_mode,
     )
-    ordered = [stop_list[i] for i in opt_order]
-    total_km = route.get("distanceMeters", 0) / 1000
-    total_dur = route.get("duration", "0s")
+    if route["error"] and not route["legs"]:
+        return f"Could not compute optimised route: {route['error']}"
 
-    legs = route.get("legs", [])
-    leg_details = []
-    full_path = [start_location] + ordered + [end_location]
-    for i, leg in enumerate(legs):
-        leg_dist = leg.get("distanceMeters", 0) / 1000
-        leg_dur = leg.get("duration", "?")
-        leg_details.append(
-            f"  {i + 1}. {full_path[i]} → {full_path[i + 1]}: {leg_dist:.1f} km, {leg_dur}"
+    ordered = route["ordered_stops"]
+    total_km = route["total_distance_meters"] / 1000
+    total_dur = f"{route['total_duration_seconds']}s"
+    final_location = end_location or start_location
+    leg_details = [
+        (
+            f"  {index}. {leg['from_location']} → {leg['to_location']}: "
+            f"{leg['distance_meters'] / 1000:.1f} km, {leg['duration_seconds']}s"
         )
+        for index, leg in enumerate(route["legs"], 1)
+    ]
 
     return (
-        f"Optimised day route ({len(stop_list)} stops, mode={travel_mode}):\n"
+        f"Optimised day route ({len(stops)} stops, mode={_google_route_mode(travel_mode)}):\n"
         f"Total distance: {total_km:.1f} km\n"
         f"Total duration: {total_dur}\n\n"
         f"Order:\n"
         f"  Start: {start_location}\n"
         + "\n".join(f"  → {s}" for s in ordered)
-        + f"\n  → End: {end_location}\n\n"
-        f"Leg details:\n" + "\n".join(leg_details)
-    )
-
-
-# ── Time Zone API ───────────────────────────────────────────────────────
-
-
-@tool
-def get_timezone(
-    location: str,
-    timestamp: int = 0,
-) -> str:
-    """Get timezone information for a location using Google Time Zone API.
-
-    Args:
-        location: Lat,lng string like "35.6762,139.6503" or a text address
-                  (will be geocoded first).
-        timestamp: Unix timestamp for the timezone query. Defaults to now.
-                   Needed because timezone offset can vary with DST.
-    """
-    key = _api_key()
-
-    if not _looks_like_latlng(location):
-        location = _geocode(location, key)
-        if not location:
-            return "Could not geocode the provided location."
-
-    if not timestamp:
-        timestamp = int(time.time())
-
-    params = {
-        "location": location,
-        "timestamp": timestamp,
-        "key": key,
-    }
-    url = f"{_BASE_URL}/timezone/json?{urlencode(params)}"
-    logger.debug(f"TimeZone: {location} @ {timestamp}")
-    try:
-        resp = httpx.get(url, timeout=10)
-        resp.raise_for_status()
-    except httpx.HTTPStatusError as e:
-        logger.error(
-            "TimeZone HTTP error %s: %s", e.response.status_code, e.response.text[:200]
-        )
-        return f"Time Zone API error (HTTP {e.response.status_code})."
-    except httpx.RequestError as e:
-        logger.error("TimeZone request error: %s", e)
-        return f"Could not reach Time Zone API: {e}"
-    data = resp.json()
-
-    if data.get("status") != "OK":
-        return f"Time Zone API error: {data.get('status')} — {data.get('errorMessage', '')}"
-
-    tz_id = data.get("timeZoneId", "Unknown")
-    tz_name = data.get("timeZoneName", "Unknown")
-    raw_offset = data.get("rawOffset", 0) / 3600
-    dst_offset = data.get("dstOffset", 0) / 3600
-    total_offset = raw_offset + dst_offset
-
-    sign = "+" if total_offset >= 0 else ""
-    return (
-        f"Timezone: {tz_name} ({tz_id})\n"
-        f"UTC offset: {sign}{total_offset:.1f}h (raw {sign}{raw_offset:.1f}h + DST {dst_offset:.1f}h)"
+        + f"\n  → End: {final_location}\n\n"
+        f"Leg details:\n"
+        + "\n".join(leg_details)
+        + (f"\n\nWarnings: {route['error']}" if route["error"] else "")
     )
 
 
 # ── internal helpers ─────────────────────────────────────────────────────
+
+
+def _make_route_waypoint(address: str) -> dict:
+    address = address.strip()
+    if _looks_like_latlng(address):
+        latitude, longitude = address.split(",")
+        return {
+            "location": {
+                "latLng": {
+                    "latitude": float(latitude),
+                    "longitude": float(longitude),
+                }
+            }
+        }
+    return {"address": address}
+
+
+def _google_route_mode(travel_mode: str) -> str:
+    mode = travel_mode.strip().upper()
+    if mode in {"TRAIN", "BUS", "FERRY", "SUBWAY"}:
+        return "TRANSIT"
+    if mode not in {"DRIVE", "WALK", "BICYCLE", "TRANSIT", "TWO_WHEELER"}:
+        return "TRANSIT"
+    return mode
+
+
+def _duration_seconds(duration: str) -> int:
+    try:
+        return max(0, int(float(duration.removesuffix("s"))))
+    except (AttributeError, TypeError, ValueError):
+        return 0
+
+
+def _request_routes(
+    *,
+    key: str,
+    origin: str,
+    destination: str,
+    travel_mode: str,
+    intermediates: list[str] | None = None,
+    optimize_waypoints: bool = False,
+    include_steps: bool = False,
+) -> dict:
+    field_mask = [
+        "routes.duration",
+        "routes.distanceMeters",
+        "routes.legs.duration",
+        "routes.legs.distanceMeters",
+        "routes.optimizedIntermediateWaypointIndex",
+    ]
+    if include_steps:
+        field_mask.extend(
+            [
+                "routes.legs.steps.distanceMeters",
+                "routes.legs.steps.staticDuration",
+                "routes.legs.steps.navigationInstruction",
+                "routes.legs.steps.travelMode",
+                "routes.legs.steps.transitDetails",
+            ]
+        )
+    body: dict = {
+        "origin": _make_route_waypoint(origin),
+        "destination": _make_route_waypoint(destination),
+        "travelMode": travel_mode,
+    }
+    if intermediates:
+        body["intermediates"] = [
+            _make_route_waypoint(location) for location in intermediates
+        ]
+        body["optimizeWaypointOrder"] = optimize_waypoints
+    try:
+        response = httpx.post(
+            f"{_ROUTES_URL}/directions/v2:computeRoutes",
+            headers={
+                "Content-Type": "application/json",
+                "X-Goog-Api-Key": key,
+                "X-Goog-FieldMask": ",".join(field_mask),
+            },
+            json=body,
+            timeout=25,
+        )
+        response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        logger.error(
+            "Routes API HTTP error %s: %s",
+            exc.response.status_code,
+            exc.response.text[:200],
+        )
+        return {"error": f"Routes API error (HTTP {exc.response.status_code})."}
+    except httpx.RequestError as exc:
+        logger.error("Routes API request error: %s", exc)
+        return {"error": f"Could not reach Routes API: {exc}"}
+    routes = response.json().get("routes", [])
+    if not routes:
+        return {"error": "No route found."}
+    return {"route": routes[0], "error": ""}
 
 
 def _looks_like_latlng(text: str) -> bool:
@@ -650,7 +740,9 @@ def _format_route_steps(route: dict) -> str:
                 segment = f"{dep} → {arr}" if dep or arr else ""
                 extra = f" ({count} stops)" if count else ""
                 dur_str = f" [{dur}]" if dur else ""
-                lines.append(f"  {len(lines) + 1}. {detail} {segment}{extra}{dur_str}".rstrip())
+                lines.append(
+                    f"  {len(lines) + 1}. {detail} {segment}{extra}{dur_str}".rstrip()
+                )
             else:
                 instr = step.get("navigationInstruction", {}).get("instructions", "")
                 instr = instr.replace("\n", " ").strip()

@@ -26,7 +26,8 @@ strongest model makes the best referee, so Sol judges the Terra-vs-Luna worker
 contest it would only distort as a contestant (a flagship over-reasons a simple
 worker task).
 
-Run it (cost scales: N agent runs x D cases, plus C(N,2) x D x 2 judge calls):
+Run it (agent captures are reused by fingerprint; judge cost scales as
+C(N,2) x D x 2 calls):
     .venv/bin/python edd/flights/l3_pairwise_run.py
 """
 
@@ -36,6 +37,7 @@ import asyncio
 import os
 import sys
 from itertools import combinations
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -45,8 +47,8 @@ load_dotenv()
 import truststore  # noqa: E402
 
 truststore.inject_into_ssl()
-# Toggle: "false" = hermetic loop (just the verdicts); "true" = trace agents + judge.
-os.environ.setdefault("LANGSMITH_TRACING", "false")
+os.environ["LANGSMITH_TRACING"] = "false"
+os.environ["LANGCHAIN_TRACING_V2"] = "false"
 os.environ.setdefault("LANGSMITH_PROJECT", "wanderlisted-edd")
 
 sys.path.insert(
@@ -55,11 +57,11 @@ sys.path.insert(
 
 from langchain_core.tracers.langchain import wait_for_all_tracers  # noqa: E402
 
+from edd.baseline_store import record_component_report
 from edd.flights.l1_dataset import DATASET  # the SAME golden dataset as Layers 1–2
 from edd.flights.l3_pairwise import build_pairwise_judge, judge_pairwise  # noqa: E402
-from edd.harness import run_agent  # shared "run + capture" machinery
+from edd.flights.run_utils import BASELINE_CONFIG, run_flight_dataset
 from edd.models import MODELS  # the shared model registry (single source of truth)
-from src.agent.agents import FlightsAgent  # noqa: E402
 
 # The models to put in the ring — keys from edd/models.py. TWO names = a single
 # A/B; THREE or more = a round-robin tournament (every model vs every other, then
@@ -70,6 +72,7 @@ LINEUP = ["terra", "luna"]
 # contestant: a judge grading its own answers has self-preference bias. Sol
 # outranks both workers, so it's the ideal neutral grader for this contest.
 JUDGE = "sol"
+JUDGE_CASE_CONCURRENCY = 3
 
 
 async def main() -> None:
@@ -84,28 +87,37 @@ async def main() -> None:
     )
     print("=" * 74)
 
-    # 1) Run each contestant's agent over the whole dataset ONCE (concurrently)
-    #    and cache its trajectories — N models x D cases agent runs.
+    # 1) Run or reuse each contestant's pinned dataset snapshot once.
     trajs: dict[str, list] = {}
+    queries = [case["query"] for case in DATASET]
     for name in LINEUP:
-        trajs[name] = await asyncio.gather(
-            *(run_agent(FlightsAgent, c["query"], **MODELS[name]) for c in DATASET)
-        )
+        trajs[name] = await run_flight_dataset(queries, model_config=MODELS[name])
 
     # 2) Play every unordered pair. judge_pairwise runs BOTH slot orders and folds
     #    position bias into each verdict, so one call per (pair, case) suffices.
     #    Build the grader ONCE — Sol (strongest) and NOT a contestant.
     judge = build_pairwise_judge(**MODELS[JUDGE])
+    judge_semaphore = asyncio.Semaphore(JUDGE_CASE_CONCURRENCY)
     tally = {n: {"w": 0, "l": 0, "t": 0} for n in LINEUP}
     pair_rows: list[tuple] = []
 
+    async def judge_battle(trajectory_a, trajectory_b):
+        async with judge_semaphore:
+            return await judge_pairwise(judge, trajectory_a, trajectory_b)
+
     for a, b in combinations(LINEUP, 2):
         verdicts = await asyncio.gather(
-            *(judge_pairwise(judge, ta, tb) for ta, tb in zip(trajs[a], trajs[b]))
+            *(judge_battle(ta, tb) for ta, tb in zip(trajs[a], trajs[b]))
         )
-        wa = wb = tie = flips = 0
-        for v in verdicts:
+        wa = wb = tie = flips = skipped = 0
+        print(f"\nCASE REASONS — {a} vs {b}:")
+        for case_number, (case, v) in enumerate(zip(DATASET, verdicts), start=1):
+            winner = v["winner"] or "SKIP"
+            consistency = "" if v["consistent"] else " (order-sensitive)"
+            print(f"  {case_number:>2}. {winner}{consistency} — {case['query']}")
+            print(f"      {v['comment']}")
             if v["winner"] is None:  # a run errored / empty — not a game
+                skipped += 1
                 continue
             if not v["consistent"]:
                 flips += 1
@@ -121,13 +133,17 @@ async def main() -> None:
                 tie += 1
                 tally[a]["t"] += 1
                 tally[b]["t"] += 1
-        pair_rows.append((a, b, wa, wb, tie, flips))
+        pair_rows.append((a, b, wa, wb, tie, flips, skipped))
 
     # 3) Head-to-head detail (A = the first name's wins), then the leaderboard.
-    print(f"\n{'matchup':24s} {'A':>4s} {'B':>4s} {'tie':>4s} {'flips':>6s}")
+    print(
+        f"\n{'matchup':24s} {'A':>4s} {'B':>4s} {'tie':>4s} {'flips':>6s} {'skip':>5s}"
+    )
     print("-" * 74)
-    for a, b, wa, wb, tie, flips in pair_rows:
-        print(f"{f'{a} vs {b}':24s} {wa:>4d} {wb:>4d} {tie:>4d} {flips:>6d}")
+    for a, b, wa, wb, tie, flips, skipped in pair_rows:
+        print(
+            f"{f'{a} vs {b}':24s} {wa:>4d} {wb:>4d} {tie:>4d} {flips:>6d} {skipped:>5d}"
+        )
 
     def _win_rate(rec: dict) -> float:
         games = rec["w"] + rec["l"] + rec["t"]
@@ -145,14 +161,63 @@ async def main() -> None:
             f"(W {rec['w']}  L {rec['l']}  T {rec['t']}  over {games} games)"
         )
 
-    total_flips = sum(flips for *_, flips in pair_rows)
-    total_decided = sum(wa + wb + tie for _, _, wa, wb, tie, _ in pair_rows)
+    total_flips = sum(row[5] for row in pair_rows)
+    total_skipped = sum(row[6] for row in pair_rows)
+    total_decided = sum(row[2] + row[3] + row[4] for row in pair_rows)
     if total_decided:
         print(
             f"\norder-sensitive verdicts (folded into ties): "
             f"{total_flips}/{total_decided} battles  <- judge stability; "
             "formalizing it is Layer 4."
         )
+    if total_skipped:
+        print(
+            f"\nskipped battles: {total_skipped} (provider-blocked or errored "
+            "arms are not model-quality evidence)"
+        )
+    record_component_report(
+        BASELINE_CONFIG,
+        layer="l3",
+        metrics={
+            "matchups": [
+                {
+                    "model_a": a,
+                    "model_b": b,
+                    "wins_a": wins_a,
+                    "wins_b": wins_b,
+                    "ties": ties,
+                    "order_sensitive": flips,
+                    "skipped": skipped,
+                }
+                for a, b, wins_a, wins_b, ties, flips, skipped in pair_rows
+            ],
+            "leaderboard": {
+                name: {
+                    "wins": tally[name]["w"],
+                    "losses": tally[name]["l"],
+                    "ties": tally[name]["t"],
+                    "win_rate": _win_rate(tally[name]),
+                }
+                for name in LINEUP
+            },
+            "judge_stability": {
+                "order_sensitive": total_flips,
+                "decided": total_decided,
+                "order_sensitive_rate": (
+                    total_flips / total_decided if total_decided else None
+                ),
+                "skipped": total_skipped,
+            },
+        },
+        queries=queries,
+        model_configs={name: MODELS[name] for name in LINEUP},
+        context={"lineup": LINEUP, "judge": JUDGE, "judge_config": MODELS[JUDGE]},
+        report_source_files=(
+            Path(__file__),
+            Path(__file__).with_name("l3_pairwise.py"),
+            Path(__file__).resolve().parents[1] / "rubrics.py",
+        ),
+    )
     print(
         "\nReminder: tiny n and non-deterministic agents feeding a non-deterministic"
         "\njudge — read the leaderboard as a hint, not proof.\n"

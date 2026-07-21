@@ -24,8 +24,9 @@ Best practices applied (per Duffel docs):
 
 import asyncio
 import calendar
+import json
 import os
-from datetime import date
+from datetime import date, timedelta
 
 import httpx
 from langchain_core.tools import tool
@@ -36,6 +37,8 @@ from tenacity import (
     stop_after_attempt,
     wait_exponential,
 )
+
+from src.models import FlightWindowOption, FlightWindowSearchResult
 
 
 # ── Configuration ────────────────────────────────────────────────────────
@@ -424,6 +427,50 @@ def _build_passengers(adults: int, children: int, infants: int) -> list[dict]:
     return passengers
 
 
+def _generate_round_trip_date_pairs(
+    earliest_departure: date,
+    latest_return: date,
+    duration_days: int,
+    *,
+    max_date_pairs: int = 31,
+) -> tuple[list[tuple[date, date]], int]:
+    """Generate inclusive-duration date pairs, sampling only large windows.
+
+    A ``duration_days=14`` trip departs on day 1 and returns on day 14, so the
+    return date is departure + 13 days. The returned integer is the total number
+    of valid pairs in the window, which may exceed the sampled list length.
+    """
+    if duration_days < 1:
+        raise ValueError("duration_days must be at least 1")
+    if latest_return < earliest_departure:
+        raise ValueError("latest_return must be on or after earliest_departure")
+    if max_date_pairs < 1:
+        raise ValueError("max_date_pairs must be at least 1")
+
+    latest_departure = latest_return - timedelta(days=duration_days - 1)
+    if latest_departure < earliest_departure:
+        return [], 0
+
+    total_pairs = (latest_departure - earliest_departure).days + 1
+    if total_pairs <= max_date_pairs:
+        departure_offsets = list(range(total_pairs))
+    elif max_date_pairs == 1:
+        departure_offsets = [total_pairs // 2]
+    else:
+        departure_offsets = sorted(
+            {
+                round(index * (total_pairs - 1) / (max_date_pairs - 1))
+                for index in range(max_date_pairs)
+            }
+        )
+
+    pairs = []
+    for offset in departure_offsets:
+        departure = earliest_departure + timedelta(days=offset)
+        pairs.append((departure, departure + timedelta(days=duration_days - 1)))
+    return pairs, total_pairs
+
+
 # ── Tool: search_flights ─────────────────────────────────────────────────
 
 
@@ -432,7 +479,7 @@ async def search_flights(
     origin: str,
     destination: str,
     departure_date: str,
-    adults: int = 1,
+    adults: int,
     return_date: str = "",
     children: int = 0,
     infants: int = 0,
@@ -448,7 +495,7 @@ async def search_flights(
         origin: Origin IATA airport or city code (e.g., "NYC", "JFK", "LHR")
         destination: Destination IATA airport or city code (e.g., "TYO", "NRT", "CDG")
         departure_date: Departure date in YYYY-MM-DD format
-        adults: Number of adult passengers 12+ years (default 1, max 9)
+        adults: Required number of adult passengers aged 12+ (max 9)
         return_date: Optional return date in YYYY-MM-DD format for round trips
         children: Number of child passengers 2-11 years (default 0)
         infants: Number of infant passengers under 2 years (default 0)
@@ -500,7 +547,7 @@ async def confirm_flight_price(
     origin: str,
     destination: str,
     departure_date: str,
-    adults: int = 1,
+    adults: int,
     return_date: str = "",
     children: int = 0,
     infants: int = 0,
@@ -518,7 +565,7 @@ async def confirm_flight_price(
         origin: Origin IATA airport or city code
         destination: Destination IATA airport or city code
         departure_date: Departure date YYYY-MM-DD
-        adults: Number of adult passengers (default 1)
+        adults: Required number of adult passengers aged 12+
         return_date: Optional return date YYYY-MM-DD
         children: Number of children 2-11 years (default 0)
         infants: Number of infants under 2 (default 0)
@@ -608,7 +655,7 @@ async def get_cheapest_flight(
     origin: str,
     destination: str,
     departure_date: str,
-    adults: int = 1,
+    adults: int,
     return_date: str = "",
     children: int = 0,
     infants: int = 0,
@@ -621,7 +668,7 @@ async def get_cheapest_flight(
         origin: Origin IATA airport or city code
         destination: Destination IATA airport or city code
         departure_date: Departure date YYYY-MM-DD
-        adults: Number of adults (default 1)
+        adults: Required number of adult passengers aged 12+
         return_date: Optional return date YYYY-MM-DD
         children: Number of children 2-11 (default 0)
         infants: Number of infants under 2 (default 0)
@@ -661,12 +708,154 @@ async def get_cheapest_flight(
 
 
 @tool
+async def search_cheapest_round_trip_in_window(
+    origin: str,
+    destination: str,
+    earliest_departure: str,
+    latest_return: str,
+    duration_days: int,
+    adults: int,
+    children: int = 0,
+    infants: int = 0,
+    travel_class: str = "ECONOMY",
+    non_stop: bool = False,
+    max_date_pairs: int = 31,
+) -> str:
+    """Find cheap fixed-duration round trips inside a flexible date window.
+
+    Searches every valid departure/return pair when there are at most
+    ``max_date_pairs`` possibilities. Larger windows are sampled evenly and the
+    result explicitly reports partial coverage. Trip duration is inclusive:
+    a 14-day trip returns 13 days after departure.
+
+    Args:
+        origin: Origin IATA airport or city code.
+        destination: Destination IATA airport or city code.
+        earliest_departure: Earliest outbound date in YYYY-MM-DD format.
+        latest_return: Latest allowed return date in YYYY-MM-DD format.
+        duration_days: Inclusive number of calendar trip days (1-365).
+        adults: Required number of adult passengers aged 12+.
+        children: Number of child passengers aged 2-11.
+        infants: Number of infant passengers under 2.
+        travel_class: ECONOMY, PREMIUM_ECONOMY, BUSINESS, or FIRST.
+        non_stop: If true, only return non-stop flights.
+        max_date_pairs: Maximum date pairs to query (1-31, default 31).
+    """
+    try:
+        earliest = date.fromisoformat(earliest_departure)
+        latest = date.fromisoformat(latest_return)
+        pair_limit = max(1, min(max_date_pairs, 31))
+        pairs, total_valid_pairs = _generate_round_trip_date_pairs(
+            earliest,
+            latest,
+            duration_days,
+            max_date_pairs=pair_limit,
+        )
+    except ValueError as exc:
+        return f"Flight search validation error: {exc}."
+
+    if not pairs:
+        return (
+            "No valid round-trip date pairs fit the requested window: "
+            f"{earliest_departure} to {latest_return} for {duration_days} days."
+        )
+
+    passengers = _build_passengers(adults, children, infants)
+    cabin_class = _map_cabin_class(travel_class) if travel_class else None
+    max_connections = 0 if non_stop else 1
+
+    async def search_pair(pair: tuple[date, date]):
+        departure, return_date = pair
+        try:
+            data = await _create_offer_request(
+                slices=_build_slices(
+                    origin,
+                    destination,
+                    departure.isoformat(),
+                    return_date.isoformat(),
+                ),
+                passengers=passengers,
+                cabin_class=cabin_class,
+                max_connections=max_connections,
+                supplier_timeout=10000,
+            )
+            offers = data.get("data", {}).get("offers", [])
+            if not offers:
+                return pair, None, None
+            cheapest = min(
+                offers,
+                key=lambda offer: float(offer.get("total_amount", "999999")),
+            )
+            return pair, cheapest, None
+        except (httpx.HTTPStatusError, RetryError, httpx.RequestError) as exc:
+            return pair, None, exc
+
+    pair_results = await asyncio.gather(*(search_pair(pair) for pair in pairs))
+    failed_pairs = sum(1 for _, _, error in pair_results if error is not None)
+    options: list[FlightWindowOption] = []
+    for (departure, return_date), offer, _ in pair_results:
+        if offer is None:
+            continue
+        owner = offer.get("owner", {})
+        options.append(
+            FlightWindowOption(
+                departure_date=departure,
+                return_date=return_date,
+                total_amount=str(offer.get("total_amount", "")),
+                currency=offer.get("total_currency", "USD"),
+                offer_id=offer.get("id", ""),
+                airline_name=owner.get("name", ""),
+                origin=origin.upper().strip(),
+                destination=destination.upper().strip(),
+            )
+        )
+
+    options.sort(key=lambda option: float(option.total_amount or "999999"))
+    if not options:
+        if failed_pairs == len(pairs):
+            return (
+                "Flight search error: every flexible round-trip provider request "
+                "failed. Please retry later."
+            )
+        return (
+            f"No flights found from {origin} to {destination} for any of the "
+            f"{len(pairs)} searched {duration_days}-day date pairs."
+        )
+
+    result = FlightWindowSearchResult(
+        origin=origin.upper().strip(),
+        destination=destination.upper().strip(),
+        earliest_departure=earliest,
+        latest_return=latest,
+        duration_days=duration_days,
+        total_valid_pairs=total_valid_pairs,
+        searched_pairs=len(pairs),
+        coverage_complete=len(pairs) == total_valid_pairs,
+        failed_pairs=failed_pairs,
+        options=options[:5],
+    )
+    coverage = (
+        "exhaustive"
+        if result.coverage_complete
+        else f"sampled {result.searched_pairs} of {result.total_valid_pairs} valid pairs"
+    )
+    return (
+        f"Flexible round-trip search coverage: {coverage}.\n"
+        "FLIGHT_WINDOW_RESULT_JSON:\n"
+        + json.dumps(result.model_dump(mode="json"), ensure_ascii=False)
+    )
+
+
+# ── Tool: search_cheapest_flight_in_month ────────────────────────────────
+
+
+@tool
 async def search_cheapest_flight_in_month(
     origin: str,
     destination: str,
     year: int,
     month: int,
-    adults: int = 1,
+    adults: int,
     children: int = 0,
     infants: int = 0,
     travel_class: str = "",
@@ -680,7 +869,7 @@ async def search_cheapest_flight_in_month(
         destination: Destination IATA airport or city code
         year: Year (e.g., 2026)
         month: Month number (1-12)
-        adults: Number of adults (default 1)
+        adults: Required number of adult passengers aged 12+
         children: Number of children 2-11 (default 0)
         infants: Number of infants under 2 (default 0)
         travel_class: ECONOMY, PREMIUM_ECONOMY, BUSINESS, or FIRST

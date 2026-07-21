@@ -9,6 +9,7 @@ load_dotenv(override=True)
 
 # Disable LangSmith tracing for all tests - Speeds up runs (no background HTTP calls to api.smith.langchain.com).
 os.environ["LANGCHAIN_TRACING_V2"] = "false"
+os.environ["LANGSMITH_TRACING"] = "false"
 
 # ── Helpers to detect available API keys ──────────────────────────────────
 

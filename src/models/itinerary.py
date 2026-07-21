@@ -161,6 +161,80 @@ class PlaceCard(BaseModel):
 # ── Transit ──────────────────────────────────────────────────────────────
 
 
+class PlaceRef(BaseModel):
+    """Stable reference to a selected hotel, activity, or restaurant."""
+
+    name: str
+    address: str = ""
+    place_id: str = ""
+    latitude: float = 0.0
+    longitude: float = 0.0
+    category: str = ""
+
+    def route_location(self) -> str:
+        """Return the most precise location accepted by Google Routes."""
+        if self.latitude or self.longitude:
+            return f"{self.latitude},{self.longitude}"
+        return self.address or self.name
+
+
+class DraftDay(BaseModel):
+    """Selected places for one day before route computation."""
+
+    model_config = ConfigDict(use_enum_values=True)
+
+    day_number: int = Field(default=1, ge=1)
+    date: str = ""
+    city: str = ""
+    start_location: PlaceRef
+    end_location: PlaceRef | None = None
+    stops: list[PlaceRef] = Field(default_factory=list)
+    preferred_mode: TransitMode = TransitMode.TRANSIT
+
+
+class DraftItinerary(BaseModel):
+    """Exact hotel and stop selections that Transportation must route."""
+
+    days: list[DraftDay] = Field(default_factory=list)
+    selection_notes: list[str] = Field(default_factory=list)
+    mobility_notes: list[str] = Field(default_factory=list)
+
+
+class RouteLeg(BaseModel):
+    """Measured route between two selected places."""
+
+    model_config = ConfigDict(use_enum_values=True)
+
+    from_place: str
+    to_place: str
+    mode: TransitMode = TransitMode.TRANSIT
+    distance_meters: int = Field(default=0, ge=0)
+    duration_seconds: int = Field(default=0, ge=0)
+    instructions: list[str] = Field(default_factory=list)
+
+
+class DayRoute(BaseModel):
+    """Computed route for one selected draft day."""
+
+    model_config = ConfigDict(use_enum_values=True)
+
+    day_number: int = Field(default=1, ge=1)
+    mode: TransitMode = TransitMode.TRANSIT
+    ordered_stops: list[PlaceRef] = Field(default_factory=list)
+    legs: list[RouteLeg] = Field(default_factory=list)
+    total_distance_meters: int = Field(default=0, ge=0)
+    total_duration_seconds: int = Field(default=0, ge=0)
+    warning: str = ""
+
+
+class RoutePlan(BaseModel):
+    """Transportation-owned route artifact consumed by budget and itinerary."""
+
+    days: list[DayRoute] = Field(default_factory=list)
+    mobility_notes: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
 class TransitStep(BaseModel):
     model_config = ConfigDict(use_enum_values=True)
 

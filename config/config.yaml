@@ -33,14 +33,15 @@ routing:
   # Agents that run concurrently in the parallel dispatch phase
   parallel_agents:
     - FlightsAgent
-    - HotelsAgent
     - DestinationAgent
     - RestaurantsAgent
     - ActivitiesAgent
-    - TransportationAgent
 
-  # Agents that run sequentially after the parallel phase (order matters)
+  # Dependency-owned stages after initial discovery (order matters).
+  # Hotels requires exact TripSkeleton stays; Transportation requires selections.
   sequential_agents:
+    - HotelsAgent
+    - TransportationAgent
     - BudgetAgent
     - ItineraryAgent
 

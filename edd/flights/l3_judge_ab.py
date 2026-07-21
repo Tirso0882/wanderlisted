@@ -31,7 +31,8 @@ load_dotenv()
 import truststore  # noqa: E402  (trust the OS store; never disable verification)
 
 truststore.inject_into_ssl()
-os.environ.setdefault("LANGSMITH_TRACING", "false")  # hermetic — just the scores
+os.environ["LANGSMITH_TRACING"] = "false"  # hermetic — just the scores
+os.environ["LANGCHAIN_TRACING_V2"] = "false"
 os.environ.setdefault("LANGSMITH_PROJECT", "wanderlisted-edd")
 
 sys.path.insert(

@@ -26,7 +26,7 @@ from src.agent.llm import get_llm
 def extract_text(content) -> str:
     """Read text from a LangChain message.content.
 
-    Reasoning models (the gpt-5.4 family, via the Responses API) return content
+    Reasoning models (the gpt-5.6 family, via the Responses API) return content
     as a list of blocks [{"type": "text", "text": "..."}], not a plain string.
     """
     if isinstance(content, str):
@@ -79,7 +79,7 @@ async def run_agent(
                    (reasoning / fast / utility).
       • `effort` — override the tier's default reasoning effort.
       • `**model_kwargs` — forwarded verbatim to get_llm(), so you can pin ANY
-                   model directly: azure_deployment="gpt-5.4-pro" (Azure),
+                   model directly: azure_deployment="gpt-5.6-sol" (Azure),
                    model="gpt-4o" (openai/anthropic/…), temperature=..., etc.
     """
     overrides = dict(model_kwargs)

@@ -161,7 +161,7 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 
 ### Scopes
 
-`agent`, `tools`, `rag`, `graph`, `prompts`, `api`, `frontend`, `k8s`
+`agent`, `tools`, `rag`, `graph`, `prompts`, `api`, `frontend`
 
 ### Examples
 

@@ -11,22 +11,30 @@ The primary runtime graph lives in
 
 ## Flow
 
-`START → TRIAGE → (shallow_reply | SUPERVISOR)`. The supervisor uses `Send()` to
-fan out **6 parallel workers** (flights, hotels, destination, restaurants,
-activities, transportation) → fan-in → `SAFETY_REVIEW` → `BUDGET` →
-`BUDGET_REVIEW` → `ITINERARY` → `HUMAN_REVIEW` → `RENDER_HANDBOOK → END`.
+`START → TRIAGE → (shallow_reply | INTAKE)`. Intake merges each turn into a
+typed `TripRequest` and ends the turn with `needs_user_input` when required
+fields are missing. The supervisor then uses `Send()` to fan out **4 initial
+discovery workers** (flights, destination, restaurants, activities) → fan-in →
+`COMPONENT_GATE` → `SAFETY_REVIEW` → `TRIP_SKELETON`. The skeleton selects exact
+dates and allocates nights, then one `hotel_stay` worker per city searches
+Hotelbeds → `HOTEL_GATE` → `DRAFT_ITINERARY` →
+`TRANSPORTATION` → `BUDGET` → `BUDGET_REVIEW` → `ITINERARY` →
+`HUMAN_REVIEW` → `RENDER_HANDBOOK → END`. Draft selection fixes exact hotel and
+stop references; Transportation owns route computation and emits `RoutePlan`.
 
 ## Non-negotiable patterns
 
 - **Every parallel worker must go through `_run_parallel_agent()`.** It catches
-  exceptions and returns a graceful-degradation `AIMessage` plus
-  `itinerary_components: {agent: {"error": ...}}` so one failing external API
-  (Duffel, Hotelbeds, etc.) can never crash the whole pipeline. Never call a
-  worker executor directly in a node.
+  exceptions and returns a typed `component_results` outcome plus the legacy
+  transcript. The completion gate must stop dependent planning when a requested
+  component needs input, has no inventory, is provider-blocked, or failed.
 - **Parallel results merge through a custom reducer.** Workers write to
   `itinerary_components` which shallow-merges concurrent `Send()` writes. If you
   return a plain dict without the reducer, concurrent writes clobber each other.
   Check the reducer wiring in [src/agent/state.py](../../../src/agent/state.py).
+- **Hotels must never run in initial discovery.** Hotelbeds requires exact city
+  check-in/check-out dates and occupancy. It runs only from `TripSkeleton` via
+  per-stay `Send()` workers and merges through `hotel_search_results`.
 - **Read state with `.get("field", default)`** — `TravelAgentState` is a
   TypedDict, never use attribute access.
 - **Read any LLM reply via `_extract_text_content(msg.content)`** — content is a

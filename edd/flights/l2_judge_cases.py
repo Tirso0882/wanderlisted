@@ -46,6 +46,25 @@ _MAD_CPH_EVIDENCE = [
     )
 ]
 
+_SFO_SEA_EVIDENCE = [
+    (
+        "search_flights",
+        "SFO->SEA on 2026-10-05:\n"
+        "1) Alaska Airlines AS1287  non-stop  2h15m  ECONOMY  $148\n"
+        "2) Delta DL2199  non-stop  2h20m  ECONOMY  $167\n"
+        "3) United UA512  1 stop  4h50m  ECONOMY  $132",
+    )
+]
+
+_SIN_HKG_EVIDENCE = [
+    (
+        "search_flights",
+        "SIN->HKG on 2026-11-20:\n"
+        "1) Singapore Airlines SQ862  non-stop  4h05m  ECONOMY  $410\n"
+        "2) Cathay Pacific CX710  non-stop  3h55m  ECONOMY  $455",
+    )
+]
+
 JUDGE_CASES: list[dict] = [
     {
         "name": "clear-pass",
@@ -216,6 +235,193 @@ JUDGE_CASES: list[dict] = [
             final_text=(
                 "Iberia flies Madrid to Copenhagen non-stop — a quick, convenient "
                 "economy hop."
+            ),
+        ),
+    },
+    # ── added coverage (11 -> 25): more routes + a balanced spread across all
+    #    four scores, so Cohen's kappa rests on real data + label spread. Still
+    #    ONE labeler — review and relabel these before trusting them fully. ──
+    {
+        "name": "clear-pass-domestic",
+        "expected": 3,
+        "note": "all three SFO->SEA options stated exactly as in RESULTS",
+        "trajectory": Trajectory(
+            query="Flights San Francisco to Seattle, 2026-10-05, 1 adult, economy.",
+            tool_outputs=_SFO_SEA_EVIDENCE,
+            final_text=(
+                "Three options SFO -> Seattle on 2026-10-05: Alaska AS1287 non-stop "
+                "(2h15m) $148, Delta DL2199 non-stop (2h20m) $167, or the cheapest "
+                "United UA512 with one stop (4h50m) $132."
+            ),
+        ),
+    },
+    {
+        "name": "grounded-two-options",
+        "expected": 3,
+        "note": "both SIN->HKG non-stops grounded; nothing invented",
+        "trajectory": Trajectory(
+            query="Singapore to Hong Kong, 2026-11-20, one adult, economy.",
+            tool_outputs=_SIN_HKG_EVIDENCE,
+            final_text=(
+                "Two non-stop options SIN -> HKG on 2026-11-20: Singapore Airlines "
+                "SQ862 (4h05m) at $410, or Cathay Pacific CX710 (3h55m) at $455."
+            ),
+        ),
+    },
+    {
+        "name": "faithful-omits-options",
+        "expected": 3,
+        "note": (
+            "states only the cheapest (UA512) accurately and omits the rest — "
+            "faithfulness grades grounding, not completeness -> 3"
+        ),
+        "trajectory": Trajectory(
+            query="Cheapest flight San Francisco to Seattle, 2026-10-05.",
+            tool_outputs=_SFO_SEA_EVIDENCE,
+            final_text=(
+                "The cheapest is United UA512 at $132, though it has one stop "
+                "(4h50m)."
+            ),
+        ),
+    },
+    {
+        "name": "noncore-seat-claim",
+        "expected": 2,
+        "note": "prices/airlines/times grounded; adds unsupported 'lie-flat seats' (NON-CORE) -> minor slip",
+        "trajectory": Trajectory(
+            query="Singapore to Hong Kong, 2026-11-20, one adult, economy.",
+            tool_outputs=_SIN_HKG_EVIDENCE,
+            final_text=(
+                "Singapore Airlines SQ862 is $410 non-stop (4h05m); Cathay CX710 is "
+                "$455 (3h55m). Both offer lie-flat seats on this route."
+            ),
+        ),
+    },
+    {
+        "name": "rounded-duration",
+        "expected": 2,
+        "note": "airline/price/stops correct; rounds 2h15m to 'about 2 hours' -> one minor imprecise number",
+        "trajectory": Trajectory(
+            query="Flights San Francisco to Seattle, 2026-10-05, economy.",
+            tool_outputs=_SFO_SEA_EVIDENCE,
+            final_text=(
+                "Alaska AS1287 is the pick: non-stop in about 2 hours for $148."
+            ),
+        ),
+    },
+    {
+        "name": "noncore-terminal",
+        "expected": 2,
+        "note": "all flight data grounded; adds an unsupported 'departs Terminal 1' (NON-CORE) -> minor slip",
+        "trajectory": Trajectory(
+            query="Flights New York to Tokyo, 2026-08-15, 1 adult, economy.",
+            tool_outputs=_NY_TYO_EVIDENCE,
+            final_text=(
+                "ANA NH009 is $1,182 (1 stop, 19h55m); JAL JL005 is non-stop at "
+                "$1,410. ANA departs from Terminal 1."
+            ),
+        ),
+    },
+    {
+        "name": "wrong-airline",
+        "expected": 1,
+        "note": "calls the $148 non-stop 'United' — it is ALASKA in RESULTS (wrong CORE airline)",
+        "trajectory": Trajectory(
+            query="Flights San Francisco to Seattle, 2026-10-05, economy.",
+            tool_outputs=_SFO_SEA_EVIDENCE,
+            final_text=("The cheapest non-stop is United AS1287 at $148 (2h15m)."),
+        ),
+    },
+    {
+        "name": "wrong-stops",
+        "expected": 1,
+        "note": "says Cathay CX710 has '1 stop' — it is NON-STOP in RESULTS (wrong CORE stop info)",
+        "trajectory": Trajectory(
+            query="Singapore to Hong Kong, 2026-11-20, economy.",
+            tool_outputs=_SIN_HKG_EVIDENCE,
+            final_text=(
+                "Singapore Airlines SQ862 is $410 non-stop; Cathay CX710 is $455 "
+                "with one stop."
+            ),
+        ),
+    },
+    {
+        "name": "understated-price-core",
+        "expected": 1,
+        "note": "states ANA at $980 — contradicts the $1,182 in RESULTS (materially misleading)",
+        "trajectory": Trajectory(
+            query="Flights New York to Tokyo, 2026-08-15, 1 adult, economy.",
+            tool_outputs=_NY_TYO_EVIDENCE,
+            final_text=(
+                "The cheapest is ANA at $980 (1 stop); JAL JL005 is non-stop for "
+                "$1,410."
+            ),
+        ),
+    },
+    {
+        "name": "one-invented-among-grounded",
+        "expected": 1,
+        "note": (
+            "AS1287/$148 and DL2199/$167 are grounded, but it invents a 'Southwest "
+            "at $120' option not in RESULTS -> one materially misleading fabrication"
+        ),
+        "trajectory": Trajectory(
+            query="Flights San Francisco to Seattle, 2026-10-05, economy.",
+            tool_outputs=_SFO_SEA_EVIDENCE,
+            final_text=(
+                "Alaska AS1287 is $148 and Delta DL2199 is $167, both non-stop. "
+                "Southwest also flies this route for $120."
+            ),
+        ),
+    },
+    {
+        "name": "fabricated-recommendation",
+        "expected": 0,
+        "note": "the recommended flight (JetBlue B6 400, $99) is entirely invented — not in RESULTS",
+        "trajectory": Trajectory(
+            query="Flights San Francisco to Seattle, 2026-10-05, economy.",
+            tool_outputs=_SFO_SEA_EVIDENCE,
+            final_text=(
+                "Best deal: a non-stop JetBlue B6 400 for $99 — book it right away."
+            ),
+        ),
+    },
+    {
+        "name": "several-invented",
+        "expected": 0,
+        "note": "both quoted flights (Emirates EK350, Qatar QR12) are invented — several CORE facts fabricated",
+        "trajectory": Trajectory(
+            query="Singapore to Hong Kong, 2026-11-20, economy.",
+            tool_outputs=_SIN_HKG_EVIDENCE,
+            final_text=(
+                "The cheapest is Emirates EK350 non-stop at $290; Qatar QR12 is "
+                "$310. Both are great value."
+            ),
+        ),
+    },
+    {
+        "name": "contradicts-all",
+        "expected": 0,
+        "note": "invents Korean Air/United options that contradict the ANA/JAL RESULTS entirely",
+        "trajectory": Trajectory(
+            query="Flights New York to Tokyo, 2026-08-15, 1 adult, economy.",
+            tool_outputs=_NY_TYO_EVIDENCE,
+            final_text=(
+                "Two picks: Korean Air KE85 non-stop for $760, or United UA79 for "
+                "$810."
+            ),
+        ),
+    },
+    {
+        "name": "all-invented-domestic",
+        "expected": 0,
+        "note": "Frontier/Spirit flights and prices are all fabricated — nothing in RESULTS",
+        "trajectory": Trajectory(
+            query="Flights San Francisco to Seattle, 2026-10-05, economy.",
+            tool_outputs=_SFO_SEA_EVIDENCE,
+            final_text=(
+                "Frontier F9 200 is $89 non-stop and Spirit NK15 is $95 — the two "
+                "cheapest by far."
             ),
         ),
     },

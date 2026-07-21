@@ -25,12 +25,11 @@ class TestItineraryAgent:
         assert self.agent.system_prompt == ITINERARY_SYSTEM_PROMPT
 
     def test_has_correct_tools(self):
-        tool_names = {t.name for t in self.agent.tools}
-        assert "optimize_day_route" in tool_names
+        assert self.agent.tools == []
 
     def test_tool_count(self):
-        assert len(self.agent.tools) == 1
+        assert len(self.agent.tools) == 0
 
     def test_repr(self):
         assert "ItineraryAgent" in repr(self.agent)
-        assert "tools=1" in repr(self.agent)
+        assert "tools=0" in repr(self.agent)

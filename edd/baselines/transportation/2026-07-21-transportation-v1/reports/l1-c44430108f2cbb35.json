@@ -1,0 +1,97 @@
+{
+  "baseline_name": "2026-07-21-transportation-v1",
+  "component": "transportation",
+  "context": {
+    "dataset_case_count": 40,
+    "dataset_version": "1.0.0",
+    "model_configs": {
+      "terra": {
+        "azure_deployment": "gpt-5.6-terra",
+        "tier": "fast"
+      }
+    },
+    "report_sources": [
+      {
+        "path": "edd/transportation/l1_run.py",
+        "sha256": "4e18d772936e9c68a7a8fdb6ec4065a78100b26b976574130f5b1c589a8c7587"
+      },
+      {
+        "path": "edd/transportation/l1_evaluate.py",
+        "sha256": "a61583aa785ccf70c221e1e26dcb4c08837b0ed2f45299b8256661eed1aed64c"
+      }
+    ]
+  },
+  "created_at": "2026-07-21T11:12:22.675244+00:00",
+  "git": {
+    "branch": "main",
+    "commit": "07dc9ffc349dcf297d4bf1007d759c240385e84b",
+    "dirty": true
+  },
+  "kind": "edd-metrics-report",
+  "layer": "l1",
+  "metrics": {
+    "decision_accuracy": {
+      "passed": 34,
+      "rate": 0.85,
+      "scored": 40
+    },
+    "evaluated_cases": 40,
+    "per_check": {
+      "called_compute_route": {
+        "passed": 40,
+        "rate": 1.0,
+        "scored": 40
+      },
+      "correct_include_steps": {
+        "passed": 39,
+        "rate": 0.975,
+        "scored": 40
+      },
+      "correct_route_pairs": {
+        "passed": 39,
+        "rate": 0.975,
+        "scored": 40
+      },
+      "correct_travel_modes": {
+        "passed": 37,
+        "rate": 0.925,
+        "scored": 40
+      },
+      "correct_waypoints": {
+        "passed": 3,
+        "rate": 1.0,
+        "scored": 3
+      },
+      "minimum_route_calls": {
+        "passed": 40,
+        "rate": 1.0,
+        "scored": 40
+      },
+      "no_unrequested_route_pairs": {
+        "passed": 36,
+        "rate": 0.9,
+        "scored": 40
+      },
+      "no_unrequested_waypoints": {
+        "passed": 40,
+        "rate": 1.0,
+        "scored": 40
+      },
+      "valid_travel_modes": {
+        "passed": 40,
+        "rate": 1.0,
+        "scored": 40
+      }
+    },
+    "task_outcomes": {
+      "completed": 38,
+      "no_route": 2
+    }
+  },
+  "metrics_sha256": "66589e9478e33d7369dabfbe55156193202857df226f0813c888d1c8bec0ce20",
+  "report_id": "c44430108f2cbb35",
+  "run_refs": {
+    "terra": "6c39ec3cac5fecf5"
+  },
+  "schema_version": 1
+}

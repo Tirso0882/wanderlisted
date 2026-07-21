@@ -1,16 +1,154 @@
 """Unit tests for Duffel flight tools — mocked API responses."""
 
+import json
+from datetime import date
+
 import respx
 from httpx import Response
 
 from src.tools.flights_duffel import (
+    _generate_round_trip_date_pairs,
     _parse_iso_duration,
     confirm_flight_price,
     get_cheapest_flight,
+    search_cheapest_round_trip_in_window,
     search_cheapest_flight_in_month,
     search_flights,
     search_nearby_airports,
 )
+
+
+def test_flight_tools_require_explicit_adult_count():
+    tools = (
+        search_flights,
+        confirm_flight_price,
+        get_cheapest_flight,
+        search_cheapest_round_trip_in_window,
+        search_cheapest_flight_in_month,
+    )
+
+    for flight_tool in tools:
+        schema = flight_tool.args_schema.model_json_schema()
+        assert "adults" in schema["required"]
+        assert "default" not in schema["properties"]["adults"]
+
+
+def test_generate_round_trip_pairs_uses_inclusive_duration():
+    pairs, total = _generate_round_trip_date_pairs(
+        date(2026, 8, 20),
+        date(2026, 9, 20),
+        14,
+    )
+
+    assert total == 19
+    assert len(pairs) == 19
+    assert pairs[0] == (date(2026, 8, 20), date(2026, 9, 2))
+    assert pairs[-1] == (date(2026, 9, 7), date(2026, 9, 20))
+
+
+def test_generate_round_trip_pairs_supports_arbitrary_duration_and_sampling():
+    pairs, total = _generate_round_trip_date_pairs(
+        date(2026, 8, 1),
+        date(2026, 10, 1),
+        9,
+        max_date_pairs=5,
+    )
+
+    assert total == 54
+    assert len(pairs) == 5
+    assert all((return_date - departure).days == 8 for departure, return_date in pairs)
+    assert pairs[0][0] == date(2026, 8, 1)
+    assert pairs[-1][1] == date(2026, 10, 1)
+
+
+async def test_flexible_round_trip_search_ranks_all_fourteen_day_pairs(monkeypatch):
+    calls: list[tuple[str, str]] = []
+
+    async def fake_offer_request(*, slices, **_kwargs):
+        departure = slices[0]["departure_date"]
+        return_date = slices[1]["departure_date"]
+        calls.append((departure, return_date))
+        day = int(departure[-2:])
+        amount = "500.00" if departure == "2026-08-25" else f"{700 + day}.00"
+        return {
+            "data": {
+                "offers": [
+                    {
+                        "id": f"offer-{departure}",
+                        "total_amount": amount,
+                        "total_currency": "USD",
+                        "owner": {"name": "Test Air"},
+                    }
+                ]
+            }
+        }
+
+    monkeypatch.setattr(
+        "src.tools.flights_duffel._create_offer_request",
+        fake_offer_request,
+    )
+
+    output = await search_cheapest_round_trip_in_window.ainvoke(
+        {
+            "origin": "BOG",
+            "destination": "WAW",
+            "earliest_departure": "2026-08-20",
+            "latest_return": "2026-09-20",
+            "duration_days": 14,
+            "adults": 1,
+        }
+    )
+
+    assert len(calls) == 19
+    assert all(
+        (date.fromisoformat(return_date) - date.fromisoformat(departure)).days == 13
+        for departure, return_date in calls
+    )
+    payload = json.loads(output.split("FLIGHT_WINDOW_RESULT_JSON:\n", 1)[1])
+    assert payload["coverage_complete"] is True
+    assert payload["searched_pairs"] == payload["total_valid_pairs"] == 19
+    assert payload["options"][0]["departure_date"] == "2026-08-25"
+    assert payload["options"][0]["return_date"] == "2026-09-07"
+    assert payload["options"][0]["total_amount"] == "500.00"
+
+
+async def test_flexible_round_trip_search_reports_sampled_large_window(monkeypatch):
+    async def fake_offer_request(*, slices, **_kwargs):
+        return {
+            "data": {
+                "offers": [
+                    {
+                        "id": "sample-offer",
+                        "total_amount": "900.00",
+                        "total_currency": "USD",
+                        "owner": {"name": "Sample Air"},
+                    }
+                ]
+            }
+        }
+
+    monkeypatch.setattr(
+        "src.tools.flights_duffel._create_offer_request",
+        fake_offer_request,
+    )
+
+    output = await search_cheapest_round_trip_in_window.ainvoke(
+        {
+            "origin": "BOG",
+            "destination": "MAD",
+            "earliest_departure": "2026-08-01",
+            "latest_return": "2026-10-01",
+            "duration_days": 9,
+            "adults": 1,
+            "max_date_pairs": 5,
+        }
+    )
+
+    payload = json.loads(output.split("FLIGHT_WINDOW_RESULT_JSON:\n", 1)[1])
+    assert payload["coverage_complete"] is False
+    assert payload["searched_pairs"] == 5
+    assert payload["total_valid_pairs"] == 54
+    assert "sampled 5 of 54" in output
 
 
 # ── Regression: ISO 8601 duration parsing ────────────────────────────────
@@ -269,7 +407,12 @@ async def test_search_flights_basic(monkeypatch):
     )
 
     result = await search_flights.ainvoke(
-        {"origin": "JFK", "destination": "LHR", "departure_date": "2026-08-15"}
+        {
+            "origin": "JFK",
+            "destination": "LHR",
+            "departure_date": "2026-08-15",
+            "adults": 1,
+        }
     )
 
     assert "JFK" in result
@@ -296,7 +439,12 @@ async def test_search_flights_no_results(monkeypatch):
     )
 
     result = await search_flights.ainvoke(
-        {"origin": "XXX", "destination": "YYY", "departure_date": "2026-08-15"}
+        {
+            "origin": "XXX",
+            "destination": "YYY",
+            "departure_date": "2026-08-15",
+            "adults": 1,
+        }
     )
 
     assert "No flights found" in result
@@ -322,7 +470,12 @@ async def test_search_flights_api_error(monkeypatch):
     )
 
     result = await search_flights.ainvoke(
-        {"origin": "INVALID", "destination": "LHR", "departure_date": "2026-08-15"}
+        {
+            "origin": "INVALID",
+            "destination": "LHR",
+            "departure_date": "2026-08-15",
+            "adults": 1,
+        }
     )
 
     assert "error" in result.lower() or "Invalid origin" in result
@@ -342,6 +495,7 @@ async def test_search_flights_with_cabin_class(monkeypatch):
             "origin": "JFK",
             "destination": "LHR",
             "departure_date": "2026-08-15",
+            "adults": 1,
             "travel_class": "BUSINESS",
         }
     )
@@ -367,6 +521,7 @@ async def test_search_flights_non_stop(monkeypatch):
             "origin": "JFK",
             "destination": "LHR",
             "departure_date": "2026-08-15",
+            "adults": 1,
             "non_stop": True,
         }
     )
@@ -391,6 +546,7 @@ async def test_search_flights_round_trip(monkeypatch):
             "origin": "JFK",
             "destination": "LHR",
             "departure_date": "2026-08-15",
+            "adults": 1,
             "return_date": "2026-08-22",
         }
     )
@@ -451,6 +607,7 @@ async def test_confirm_flight_price(monkeypatch):
             "origin": "JFK",
             "destination": "LHR",
             "departure_date": "2026-08-15",
+            "adults": 1,
             "offer_index": 1,
         }
     )
@@ -485,6 +642,7 @@ async def test_confirm_flight_price_hold_offer(monkeypatch):
             "origin": "JFK",
             "destination": "LHR",
             "departure_date": "2026-08-15",
+            "adults": 1,
             "offer_index": 2,
         }
     )
@@ -506,6 +664,7 @@ async def test_confirm_flight_price_invalid_index(monkeypatch):
             "origin": "JFK",
             "destination": "LHR",
             "departure_date": "2026-08-15",
+            "adults": 1,
             "offer_index": 99,
         }
     )
@@ -523,7 +682,12 @@ async def test_get_cheapest_flight(monkeypatch):
     )
 
     result = await get_cheapest_flight.ainvoke(
-        {"origin": "JFK", "destination": "LHR", "departure_date": "2026-08-15"}
+        {
+            "origin": "JFK",
+            "destination": "LHR",
+            "departure_date": "2026-08-15",
+            "adults": 1,
+        }
     )
 
     assert "Cheapest flight" in result
@@ -540,7 +704,13 @@ async def test_search_cheapest_flight_in_month(monkeypatch):
     )
 
     result = await search_cheapest_flight_in_month.ainvoke(
-        {"origin": "JFK", "destination": "LHR", "year": 2027, "month": 3}
+        {
+            "origin": "JFK",
+            "destination": "LHR",
+            "year": 2027,
+            "month": 3,
+            "adults": 1,
+        }
     )
 
     assert "Cheapest flights" in result
@@ -553,7 +723,13 @@ async def test_search_cheapest_flight_in_month_past(monkeypatch):
     monkeypatch.setenv("DUFFEL_ACCESS_TOKEN", "duffel_test_mock123")
 
     result = await search_cheapest_flight_in_month.ainvoke(
-        {"origin": "JFK", "destination": "LHR", "year": 2020, "month": 1}
+        {
+            "origin": "JFK",
+            "destination": "LHR",
+            "year": 2020,
+            "month": 1,
+            "adults": 1,
+        }
     )
 
     assert "No future dates" in result
@@ -604,7 +780,12 @@ async def test_search_flights_conditions_formatting(monkeypatch):
     )
 
     result = await search_flights.ainvoke(
-        {"origin": "JFK", "destination": "LHR", "departure_date": "2026-08-15"}
+        {
+            "origin": "JFK",
+            "destination": "LHR",
+            "departure_date": "2026-08-15",
+            "adults": 1,
+        }
     )
 
     # First offer: change allowed with fee, refund not allowed
@@ -622,7 +803,12 @@ async def test_search_flights_sorted_by_price(monkeypatch):
     )
 
     result = await search_flights.ainvoke(
-        {"origin": "JFK", "destination": "LHR", "departure_date": "2026-08-15"}
+        {
+            "origin": "JFK",
+            "destination": "LHR",
+            "departure_date": "2026-08-15",
+            "adults": 1,
+        }
     )
 
     # 450 should appear before 720
@@ -642,7 +828,12 @@ async def test_search_flights_supplier_timeout_in_url(monkeypatch):
     ).mock(return_value=Response(200, json=_MOCK_OFFER_REQUEST_RESPONSE))
 
     await search_flights.ainvoke(
-        {"origin": "JFK", "destination": "LHR", "departure_date": "2026-08-15"}
+        {
+            "origin": "JFK",
+            "destination": "LHR",
+            "departure_date": "2026-08-15",
+            "adults": 1,
+        }
     )
 
     request_url = str(route.calls[0].request.url)
@@ -661,7 +852,12 @@ async def test_search_flights_retry_on_429(monkeypatch):
     ]
 
     result = await search_flights.ainvoke(
-        {"origin": "JFK", "destination": "LHR", "departure_date": "2026-08-15"}
+        {
+            "origin": "JFK",
+            "destination": "LHR",
+            "departure_date": "2026-08-15",
+            "adults": 1,
+        }
     )
 
     assert "BA178" in result

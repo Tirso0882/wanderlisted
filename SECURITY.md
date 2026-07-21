@@ -20,7 +20,7 @@ Alternatively, you can email the maintainer directly. Please include the word **
 To help us triage and respond quickly, please provide:
 
 - A description of the vulnerability and its potential impact
-- The component(s) affected (e.g., API layer, agent graph, RAG pipeline, MCP server)
+- The component(s) affected (e.g., API layer, agent graph, RAG pipeline,  server)
 - Step-by-step reproduction instructions
 - Any proof-of-concept or exploit code (if applicable)
 - Suggested remediation (if known)

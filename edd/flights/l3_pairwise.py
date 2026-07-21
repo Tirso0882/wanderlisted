@@ -17,11 +17,13 @@ WHAT CHANGES FROM LAYER 2
     concrete answers. That's why pairwise is the backbone of real prompt/model
     iteration (and of "LLM arena" leaderboards).
 
-THE ONE RULE OF A/B — vary exactly ONE thing.
-    A pairwise result is only attributable if the two answers differ in a SINGLE
-    factor. The runner (l3_pairwise_run.py) holds the agent, tools, query, and
-    model fixed and changes only the reasoning EFFORT — the same knob
-    l3_judge_ab.py turned on the JUDGE, now turned on the AGENT.
+THE ONE RULE OF A/B — state what varies.
+    A controlled A/B result is attributable only when the two answers differ in
+    a SINGLE factor: for example, hold the agent, tools, query, and model fixed
+    while changing reasoning effort. The default runner
+    (l3_pairwise_run.py), however, compares named model configurations from
+    edd/models.py: Terra and Luna use different deployments and tiers. Read that
+    result as a model-configuration comparison, not an effort-only experiment.
 
 THE NEW HAZARD — position bias.
     LLM judges systematically favor whichever answer sits in a particular slot
@@ -47,7 +49,6 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
-from typing import Literal
 
 # Put the project root on the path so `edd.*` / `src.*` import whether this file
 # is run directly (python edd/flights/l3_pairwise.py) or imported by the runner.
@@ -55,30 +56,21 @@ sys.path.insert(
     0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 )
 
-from langchain_core.messages import HumanMessage, SystemMessage  # noqa: E402
-from pydantic import BaseModel, Field  # noqa: E402
-
 from edd.harness import Trajectory  # noqa: E402
-from src.agent.llm import get_llm  # noqa: E402
+from edd.flights.run_utils import classify_flight_outcome  # noqa: E402
+from edd.rubrics import (  # noqa: E402
+    AGENT_SPECS,
+    build_pairwise_judge,
+    compare_pairwise,
+    pairwise_rubric,
+)
 
 
 # ── The pairwise verdict ─────────────────────────────────────────────────────
-# Same trick as Layer 2's `Verdict`: forcing structured output turns an opinion
-# into a measurement. `reasoning` is declared BEFORE `winner` so the model must
-# justify itself first and commit to a choice second (cheap chain-of-thought that
-# makes the pick more stable and inspectable). The winner is a THREE-way enum —
-# 'tie' is a first-class outcome, not a failure to decide.
-class Preference(BaseModel):
-    """One judge's pairwise verdict comparing two answers on ONE dimension."""
-
-    reasoning: str = Field(
-        description="1–2 sentences naming the concrete difference that decided "
-        "it, or why the two answers are equally good (a tie)."
-    )
-    winner: Literal["A", "B", "tie"] = Field(
-        description="Which answer is better on THIS dimension: 'A', 'B', or 'tie' "
-        "when they are equally good."
-    )
+# The pairwise verdict schema (`Preference`) now lives in edd/rubrics.py, shared
+# by every agent's judge. This file just picks the Flights spec and builds its
+# rubric from it — the same single-dimension, tie-honest discipline, one line.
+_SPEC = AGENT_SPECS["flights"]
 
 
 # ── The rubric (single-dimension, isolation-aware, tie-honest) ───────────────
@@ -88,79 +80,10 @@ class Preference(BaseModel):
 #   • fairness   — forbid the two cheapest shortcuts to a bogus winner: rewarding
 #                  the longer or the more confident answer. Ties are allowed and
 #                  expected; do not invent a winner.
-HELPFULNESS_PAIRWISE_RUBRIC = """You compare TWO travel-assistant answers to the \
-SAME request and pick the more HELPFUL one.
-
-You will receive:
-  • REQUEST — what the traveler asked for.
-  • ANSWER A and ANSWER B — two responses to that same request.
-
-Judge ONE thing: which answer better serves the REQUEST — surfaces the most
-relevant option(s), gives the details a traveler needs to choose, and stays clear
-and concise?
-
-IMPORTANT (isolation): both answers were produced with no access to the
-traveler's profile, budget, loyalty programs, or prior conversation. Judge only
-what is answerable from THIS request; do not reward or punish either answer for
-context neither was given.
-
-IMPORTANT (fairness): ignore superficial length and confidence. A longer or more
-assertive answer is NOT automatically better. Answer 'tie' when the two are
-equally useful — do not invent a winner.
-
-Reply with:
-  • reasoning — name the concrete difference that decided it, or why it's a tie.
-  • winner — 'A', 'B', or 'tie'.
-"""
+HELPFULNESS_PAIRWISE_RUBRIC = pairwise_rubric(_SPEC)
 
 
 # ── The judge handle ─────────────────────────────────────────────────────────
-def build_pairwise_judge(
-    tier: str = "reasoning", effort: str | None = None, **overrides
-):
-    """Build the pairwise grader: a strong LLM constrained to emit a `Preference`.
-
-    WHO SHOULD JUDGE — two rules:
-      • at least as capable as the answers it compares (the Flights agent runs on
-        `fast`; we judge on `reasoning`), and
-      • a THIRD model, distinct from BOTH arms under test. If one arm IS the
-        `reasoning`-tier model, judging on `reasoning` shares identity with a
-        contestant and reintroduces self-preference bias — point the judge at a
-        different strong model instead (pass `tier=`, `effort=`, or an explicit
-        `azure_deployment=` / `model=` here). Position bias is handled separately,
-        by the order-swap inside `judge_pairwise`.
-
-    `method="function_calling"` is the codebase-standard structured-output path
-    for the gpt-5.4 reasoning models (see supervisor_agent and renderer). Extra
-    `**overrides` are forwarded verbatim to get_llm().
-    """
-    if effort:
-        overrides["reasoning_effort"] = effort
-    return get_llm(tier=tier, **overrides).with_structured_output(
-        Preference, method="function_calling"
-    )
-
-
-def _pairwise_payload(request: str, answer_a: str, answer_b: str) -> str:
-    """One request, two answers to compare — the judge's whole input."""
-    return f"REQUEST:\n{request}\n\nANSWER A:\n{answer_a}\n\nANSWER B:\n{answer_b}"
-
-
-async def _one_verdict(
-    judge, rubric: str, payload: str, *, timeout: float = 60.0
-) -> Preference:
-    """A single pairwise judge call, with a timeout. Both orders share it."""
-    return await asyncio.wait_for(
-        judge.ainvoke([SystemMessage(content=rubric), HumanMessage(content=payload)]),
-        timeout=timeout,
-    )
-
-
-# Map a swapped-order verdict back to the ORIGINAL labels: in the swapped call,
-# "A" meant traj_b and "B" meant traj_a, so A<->B; 'tie' is symmetric.
-_DESWAP = {"A": "B", "B": "A", "tie": "tie"}
-
-
 async def judge_pairwise(
     judge,
     traj_a: Trajectory,
@@ -168,77 +91,31 @@ async def judge_pairwise(
     *,
     rubric: str = HELPFULNESS_PAIRWISE_RUBRIC,
 ) -> dict:
-    """Compare A vs B on one dimension, controlling for POSITION BIAS.
+    """Compare A vs B on helpfulness, controlling for POSITION BIAS.
 
-    An LLM judge favors whichever answer sits in a given slot, so a single call
-    is untrustworthy. We ask TWICE, swapping the slots, and only declare a winner
-    when both orders agree:
+    Thin binding over the scaffold's `compare_pairwise`, which judges BOTH slot
+    orders and only declares a winner when they agree (a flip -> 'tie', flagged
+    consistent=False). `build_pairwise_judge` is imported from the scaffold and
+    re-exported here, so l3_pairwise_run.py keeps importing both from this file.
 
-        pass 1 (as-is)   : slot A = traj_a,  slot B = traj_b
-        pass 2 (swapped) : slot A = traj_b,  slot B = traj_a
-
-    De-swap pass 2 back to the original labels, then reconcile:
-      • both orders point to the SAME answer -> that answer wins (robust)
-      • both say 'tie'                       -> genuine tie
-      • they disagree (order-sensitive)      -> 'tie', flagged consistent=False
-
-    Returns {"winner": "A"|"B"|"tie"|None, "consistent": bool|None, "comment"},
-    with the winner in terms of the ORIGINAL labels (traj_a = A, traj_b = B).
-    SKIPs (winner=None) when there is nothing to compare — an answer is empty or
-    the run errored. A judge failure is captured as data, never raised.
+    Returns {"key", "winner": "A"|"B"|"tie"|None, "consistent": bool|None,
+    "comment"} in the ORIGINAL labels (traj_a = A, traj_b = B). SKIPs
+    (winner=None) when an answer is empty or the run errored.
     """
-    if (
-        traj_a.error
-        or traj_b.error
-        or not traj_a.final_text.strip()
-        or not traj_b.final_text.strip()
-    ):
+    outcome_a = classify_flight_outcome(traj_a)
+    outcome_b = classify_flight_outcome(traj_b)
+    blocked = {"blocked_external", "infra_error"}
+    if outcome_a in blocked or outcome_b in blocked:
         return {
             "key": "helpfulness_pairwise",
             "winner": None,
             "consistent": None,
-            "comment": "an answer was empty or the run errored — nothing to compare",
+            "comment": (
+                "external/infra failure in at least one arm "
+                f"(A={outcome_a}, B={outcome_b}); excluded from model comparison"
+            ),
         }
-
-    request = traj_a.query  # both variants ran the SAME query
-    payload_ab = _pairwise_payload(request, traj_a.final_text, traj_b.final_text)
-    payload_ba = _pairwise_payload(request, traj_b.final_text, traj_a.final_text)
-
-    try:
-        v1, v2 = await asyncio.gather(
-            _one_verdict(judge, rubric, payload_ab),
-            _one_verdict(judge, rubric, payload_ba),
-        )
-    except Exception as exc:  # noqa: BLE001 — a judge failure is data, not a crash
-        return {
-            "key": "helpfulness_pairwise",
-            "winner": None,
-            "consistent": None,
-            "comment": f"judge error: {exc}",
-        }
-
-    w1 = v1.winner  # already in original labels (A=traj_a, B=traj_b)
-    w2 = _DESWAP[v2.winner]  # de-swapped back to original labels
-
-    if w1 == w2:
-        # Both orders agree — a robust verdict (a real win, or a genuine tie).
-        return {
-            "key": "helpfulness_pairwise",
-            "winner": w1,
-            "consistent": True,
-            "comment": v1.reasoning,
-        }
-    # Orders disagree -> the pick depended on position, not quality. Don't trust
-    # it: count it as a tie, but flag the inconsistency (a Layer-4 trust signal).
-    return {
-        "key": "helpfulness_pairwise",
-        "winner": "tie",
-        "consistent": False,
-        "comment": (
-            f"order-sensitive: shown one way -> {w1}, swapped -> {w2}; "
-            f"counted as tie. ({v1.reasoning})"
-        ),
-    }
+    return await compare_pairwise(judge, traj_a, traj_b, rubric=rubric)
 
 
 # ── Fixture demo — teach the pairwise judge WITHOUT running the agent ────────
@@ -300,6 +177,7 @@ if __name__ == "__main__":
     import truststore  # trust the OS store; never disable verification
 
     truststore.inject_into_ssl()
-    os.environ.setdefault("LANGSMITH_TRACING", "false")  # fixture demo = hermetic
+    os.environ["LANGSMITH_TRACING"] = "false"
+    os.environ["LANGCHAIN_TRACING_V2"] = "false"
 
     asyncio.run(_demo())

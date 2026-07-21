@@ -1,0 +1,245 @@
+{
+  "baseline_name": "transportation-after-fix",
+  "component": "transportation",
+  "context": {
+    "calibration_case_count": 28,
+    "calibration_cases_sha256": "d3b4361f613ba9c589f3e863be97ef512517533c4f460e923e84282c2722ba3c",
+    "judge_config": {
+      "effort": "tier_default",
+      "tier": "reasoning"
+    },
+    "report_sources": [
+      {
+        "path": "edd/calibration.py",
+        "sha256": "913b994dbb3e73358f981e0e66fe428044b3d355866b39e95cb182b7ea6d1bce"
+      },
+      {
+        "path": "edd/rubrics.py",
+        "sha256": "7c5533b9c6489df4bb0896e481f977a4599bfacd16eb774a4a8f0f9624412a22"
+      },
+      {
+        "path": "edd/transportation/l2_judge.py",
+        "sha256": "bf14e5b3281c51ad832a735d1d1bf73bf8f737e55f3e3fc365fe0b80e7be7701"
+      }
+    ],
+    "rubric_module": "edd/transportation/l2_judge.py"
+  },
+  "created_at": "2026-07-21T14:28:22.236036+00:00",
+  "git": {
+    "branch": "main",
+    "commit": "07dc9ffc349dcf297d4bf1007d759c240385e84b",
+    "dirty": true
+  },
+  "kind": "edd-metrics-report",
+  "layer": "l4",
+  "metrics": {
+    "bias": 0.0,
+    "case_results": [
+      {
+        "comment": "The answer accurately states the WALK route, 1.7 km distance, and 12-minute duration (720 seconds), and its directions match the two listed steps: south on Via Nazionale, then continue to the Colosseum.",
+        "delta": 0,
+        "human": 3,
+        "judge": 3,
+        "name": "rome-walk-grounded"
+      },
+      {
+        "comment": "The answer\u2019s 23.0 km distance, approximately 40-minute duration (2400 seconds), transit mode, and sequence of Tokyo Monorail to Hamamatsucho followed by the JR Yamanote Line to Shibuya are all directly supported by the results.",
+        "delta": 0,
+        "human": 3,
+        "judge": 3,
+        "name": "tokyo-transit-grounded"
+      },
+      {
+        "comment": "The answer accurately matches the route steps (Elizabeth line to Tottenham Court Road, then Bus 26 to Tate Modern), distance (5.6 km), and duration (1800 seconds = about 30 minutes).",
+        "delta": 0,
+        "human": 3,
+        "judge": 3,
+        "name": "london-transit-grounded"
+      },
+      {
+        "comment": "The answer accurately states the bicycle route, 3.1 km distance, travel via Prinsengracht, and about 14 minutes (840 seconds), all supported by the results.",
+        "delta": 0,
+        "human": 3,
+        "judge": 3,
+        "name": "amsterdam-bicycle-grounded"
+      },
+      {
+        "comment": "The answer accurately states that Google Routes returned no route, exactly matching the result \u201cNo route found.\u201d It introduces no unsupported route facts.",
+        "delta": 0,
+        "human": 3,
+        "judge": 3,
+        "name": "no-route-honest"
+      },
+      {
+        "comment": "The answer\u2019s 23.0 km distance, approximately 40-minute duration (2400 seconds), transit mode, and sequence of Tokyo Monorail followed by the JR Yamanote Line are all directly supported by the results.",
+        "delta": 0,
+        "human": 3,
+        "judge": 3,
+        "name": "request-echo-grounded"
+      },
+      {
+        "comment": "The core route claims are fully supported: it is a 1.7 km walk, 720 seconds equals about 12 minutes, and the steps specify Via Nazionale. \u201cScenic\u201d is unsupported non-core commentary, so it is only a minor slip.",
+        "delta": 0,
+        "human": 2,
+        "judge": 2,
+        "name": "rome-soft-scenic-claim"
+      },
+      {
+        "comment": "The core route claims are fully supported: Tokyo Monorail to Hamamatsucho, then JR Yamanote Line to Shibuya, over 23.0 km in about 40 minutes (2400 seconds). \u201cComfortable\u201d is non-core commentary and does not affect grounding.",
+        "delta": 1,
+        "human": 2,
+        "judge": 3,
+        "name": "tokyo-soft-comfort-claim"
+      },
+      {
+        "comment": "The Elizabeth line, Bus 26, 30-minute duration, and 5.6 km distance are all supported by the results. However, \u201creliable\u201d is an unsupported non-core service-quality claim, so this is an otherwise grounded answer with one minor slip.",
+        "delta": 0,
+        "human": 2,
+        "judge": 2,
+        "name": "london-soft-reliability-claim"
+      },
+      {
+        "comment": "The core route claims are supported: the mode is bicycle, the distance is 3.1 km, the 840-second duration equals 14 minutes, and Prinsengracht appears in the route steps. \u201cLovely canal views\u201d is an unsupported non-core commentary, so this is an essentially grounded answer with one minor slip.",
+        "delta": 0,
+        "human": 2,
+        "judge": 2,
+        "name": "amsterdam-soft-views-claim"
+      },
+      {
+        "comment": "The walking mode, Via Nazionale direction, and 1.7 km distance are supported, but the answer says roughly 10 minutes whereas RESULTS give 720 seconds (12 minutes). This is a minor duration rounding slip that is unlikely to change the traveler\u2019s decision.",
+        "delta": 0,
+        "human": 2,
+        "judge": 2,
+        "name": "rome-rounded-duration"
+      },
+      {
+        "comment": "judge error: ",
+        "delta": null,
+        "human": 2,
+        "judge": null,
+        "name": "tokyo-soft-luggage-tip"
+      },
+      {
+        "comment": "The 1.7 km walking route and Via Nazionale are supported, but the claimed duration of about 25 minutes contradicts the result's 720 seconds (12 minutes). This is a materially misleading error in a core route fact.",
+        "delta": 0,
+        "human": 1,
+        "judge": 1,
+        "name": "rome-wrong-duration"
+      },
+      {
+        "comment": "The 40-minute total and JR Yamanote Line leg are supported, but the first line is materially wrong: RESULTS specify the Tokyo Monorail from Haneda Airport Terminal 3 to Hamamatsucho, not the Keikyu Airport Line.",
+        "delta": 0,
+        "human": 1,
+        "judge": 1,
+        "name": "tokyo-wrong-line"
+      },
+      {
+        "comment": "The Elizabeth line, transfer to Bus 26, destination, and approximately 30-minute total duration are supported by the results. However, the asserted GBP 4.20 fare is not returned by the tool and is an invented fare, which is a material grounding error under the rubric.",
+        "delta": 0,
+        "human": 1,
+        "judge": 1,
+        "name": "london-invented-fare"
+      },
+      {
+        "comment": "The distance (3.1 km) and duration (about 14 minutes from 840s) are supported, but \u201cDrive\u201d materially contradicts the BICYCLE mode requested and returned by the route results.",
+        "delta": 0,
+        "human": 1,
+        "judge": 1,
+        "name": "amsterdam-wrong-mode"
+      },
+      {
+        "comment": "The 12-minute walking duration and Via Nazionale are supported, but the claimed 4.5 km distance contradicts the authoritative 1.7 km result. This is a materially misleading error in a core route fact.",
+        "delta": 0,
+        "human": 1,
+        "judge": 1,
+        "name": "rome-wrong-distance"
+      },
+      {
+        "comment": "The 30-minute total duration and Elizabeth line departure from Paddington are supported, but the answer incorrectly says the Elizabeth line goes directly to Tate Modern. The results require a transfer at Tottenham Court Road to Bus 26, so the transit steps and directness are materially misleading.",
+        "delta": 0,
+        "human": 1,
+        "judge": 1,
+        "name": "london-wrong-transfer-count"
+      },
+      {
+        "comment": "The answer contradicts every core route fact: RESULTS specify a 1.7 km, 12-minute walk, while the answer invents a taxi mode, a 5 km driving distance, a 4-minute duration, and a EUR 25 fare.",
+        "delta": 0,
+        "human": 0,
+        "judge": 0,
+        "name": "rome-fabricated-taxi"
+      },
+      {
+        "comment": "The answer contradicts nearly every core route fact: the results require the Tokyo Monorail to Hamamatsucho and then the JR Yamanote Line to Shibuya, taking 40 minutes with 13 listed stops, not a direct Narita Express to Shinjuku in 12 minutes with no stops. It also invents a JPY 3,000 fare.",
+        "delta": 0,
+        "human": 0,
+        "judge": 0,
+        "name": "tokyo-fabricated-route"
+      },
+      {
+        "comment": "The answer contradicts nearly every core route fact: it gives the Piccadilly line to Heathrow instead of the Elizabeth line to Tottenham Court Road followed by bus 26 to Tate Modern, and invents a 10-minute duration, 40 km distance, and GBP 25 fare. The results specify 5.6 km and 30 minutes, so the response is largely fabricated.",
+        "delta": 0,
+        "human": 0,
+        "judge": 0,
+        "name": "london-multiple-contradictions"
+      },
+      {
+        "comment": "The answer contradicts every core route fact: it says metro rather than bicycle, 12 km rather than 3.1 km, Schiphol Airport rather than the Rijksmuseum, and 45 minutes rather than 840 seconds (14 minutes); it also invents a EUR 9 fare.",
+        "delta": 0,
+        "human": 0,
+        "judge": 0,
+        "name": "amsterdam-multiple-contradictions"
+      },
+      {
+        "comment": "The results explicitly say \u201cNo route found,\u201d but the answer invents a direct Bus 14 route, an 18-minute duration, and a EUR 2.50 fare. Several core route facts are fabricated and directly contradict the source.",
+        "delta": 0,
+        "human": 0,
+        "judge": 0,
+        "name": "no-route-invented-directions"
+      },
+      {
+        "comment": "The answer contradicts every core route fact: RESULTS specify a 1.7 km, 12-minute walk in Rome, while the answer invents Tokyo transit lines, a 40-minute duration, and a 23 km distance.",
+        "delta": 0,
+        "human": 0,
+        "judge": 0,
+        "name": "cross-route-composite"
+      },
+      {
+        "comment": "judge error: ",
+        "delta": null,
+        "human": 3,
+        "judge": null,
+        "name": "operational-limitations-grounded"
+      },
+      {
+        "comment": "The Elizabeth line, Tottenham Court Road transfer, Bus 26, 5.6 km distance, and 30-minute duration are supported. However, \u201callow another 10 minutes for waiting\u201d is an unsupported added time estimate and could materially affect the stated journey duration.",
+        "delta": -1,
+        "human": 2,
+        "judge": 1,
+        "name": "soft-unverified-waiting-buffer"
+      },
+      {
+        "comment": "The Elizabeth line, Bus 26, and 30-minute total duration are supported. However, the GBP 4.20 fare, universal Oyster-pass coverage, 5-minute frequency, and fully step-free/working-lift claims are not present in the results; the invented fare is a material route-data error.",
+        "delta": 0,
+        "human": 1,
+        "judge": 1,
+        "name": "invented-operational-contract"
+      },
+      {
+        "comment": "The results say \u201cNo route found,\u201d yet the answer invents Bus 14, a 10-minute frequency, a EUR 2.50 fare, day-pass coverage, and guaranteed step-free accessibility. These are several unsupported core route and schedule/fare claims, so the answer is largely fabricated.",
+        "delta": 0,
+        "human": 0,
+        "judge": 0,
+        "name": "no-route-invented-operational-contract"
+      }
+    ],
+    "exact": 0.9230769230769231,
+    "kappa": 0.9700115340253749,
+    "mae": 0.07692307692307693,
+    "n": 26,
+    "within1": 1.0
+  },
+  "metrics_sha256": "8129113582d915d5ad0c336b7e56cba99f1e7c25334305c70e0e5dfe06b4872e",
+  "report_id": "64e44a0bbe664f4b",
+  "run_refs": {},
+  "schema_version": 1
+}
