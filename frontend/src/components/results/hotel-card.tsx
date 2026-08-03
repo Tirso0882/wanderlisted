@@ -3,6 +3,7 @@
 import { Star, MapPin, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { formatCurrency } from "@/lib/format-currency";
 import type { HotelOption } from "@/lib/types";
 
 export function HotelCard({ hotel }: { hotel: HotelOption }) {
@@ -26,7 +27,7 @@ export function HotelCard({ hotel }: { hotel: HotelOption }) {
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="text-sm leading-tight">{hotel.name}</CardTitle>
           <span className="shrink-0 text-lg font-bold text-primary">
-            ${hotel.price_per_night_usd.toLocaleString()}
+            {formatCurrency(hotel.price_per_night_usd, "USD")}
             <span className="text-xs font-normal text-muted-foreground">
               /night
             </span>
@@ -78,7 +79,7 @@ export function HotelCard({ hotel }: { hotel: HotelOption }) {
         {/* Total + Cancellation */}
         <div className="flex items-center justify-between text-xs">
           <span className="font-medium">
-            Total: ${hotel.total_price_usd.toLocaleString()}
+            Total: {formatCurrency(hotel.total_price_usd, "USD")}
           </span>
           {hotel.cancellation_policy && (
             <span className="text-muted-foreground">

@@ -1,9 +1,10 @@
 "use client";
 
-import { Calendar, Sun, Cloud, MapPin, Clock, ExternalLink } from "lucide-react";
+import { Calendar, Clock, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { formatCurrency } from "@/lib/format-currency";
 import { WeatherStrip } from "./weather-strip";
 import type { DayPlan, TimeBlock } from "@/lib/types";
 import { useState } from "react";
@@ -27,7 +28,7 @@ function TimeBlockCard({ block }: { block: TimeBlock }) {
         {period.label}
         {block.subtotal_usd > 0 && (
           <Badge variant="outline" className="ml-auto text-xs font-normal">
-            ~${block.subtotal_usd}
+            ~{formatCurrency(block.subtotal_usd, "USD")}
           </Badge>
         )}
       </h4>
@@ -52,7 +53,7 @@ function TimeBlockCard({ block }: { block: TimeBlock }) {
               </p>
               {activity.estimated_cost_usd > 0 && (
                 <span className="shrink-0 text-xs font-semibold text-primary">
-                  ${activity.estimated_cost_usd}
+                  {formatCurrency(activity.estimated_cost_usd, "USD")}
                 </span>
               )}
             </div>
@@ -106,7 +107,7 @@ function TimeBlockCard({ block }: { block: TimeBlock }) {
           )}
           {step.fare_estimate_usd > 0 && (
             <span className="ml-auto font-medium">
-              ${step.fare_estimate_usd}
+              {formatCurrency(step.fare_estimate_usd, "USD")}
             </span>
           )}
         </div>
@@ -142,7 +143,7 @@ function DayCard({ day }: { day: DayPlan }) {
             )}
             {day.daily_cost_usd > 0 && (
               <Badge variant="secondary" className="text-xs">
-                ${day.daily_cost_usd}
+                {formatCurrency(day.daily_cost_usd, "USD")}
               </Badge>
             )}
             <span className="text-xs text-muted-foreground">

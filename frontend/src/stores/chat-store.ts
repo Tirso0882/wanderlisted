@@ -89,7 +89,7 @@ function msgId(): string {
 const INITIAL_AGENTS: Record<AgentName, AgentStatus> = {
   FlightsAgent: "idle",
   HotelsAgent: "idle",
-  DestinationAgent: "idle",
+  TravelReadinessAgent: "idle",
   RestaurantsAgent: "idle",
   ActivitiesAgent: "idle",
   TransportationAgent: "idle",
@@ -103,8 +103,8 @@ function detectIntent(message: string): ViewMode | null {
   const patterns: [ViewMode, RegExp][] = [
     ["flights", /\b(flight|fly|airport|airline|book.*fly|plane)\b/],
     ["hotels", /\b(hotel|stay|accommodation|lodging|hostel|airbnb|check.?in)\b/],
-    ["destination", /\b(destination|city|country|where.*(go|visit)|guide|info.*(about|on))\b/],
-    ["activities", /\b(activit|thing.*to.*do|attraction|sightseeing|museum|tour|adventure)\b/],
+    ["destination", /\b(safe|safety|advisory|weather|forecast|visa|entry|health|culture|custom|etiquette|packing?)\b/],
+    ["activities", /\b(activit|thing.*to.*do|attraction|sightseeing|museum|tour|adventure|hidden.*gem|event|festival)\b/],
     ["restaurants", /\b(restaurant|food|eat|dining|cuisine|meal|lunch|dinner|breakfast|cafe)\b/],
     ["transport", /\b(transport|getting.*around|taxi|uber|subway|metro|bus|train|rental.*car)\b/],
     ["budget", /\b(budget|cost|price|expense|money|spend|cheap|afford)\b/],
@@ -181,7 +181,7 @@ export const useChatStore = create<ChatState>()(
             const agentViewMap: Record<AgentName, ViewMode> = {
               FlightsAgent: "flights",
               HotelsAgent: "hotels",
-              DestinationAgent: "destination",
+              TravelReadinessAgent: "destination",
               RestaurantsAgent: "restaurants",
               ActivitiesAgent: "activities",
               TransportationAgent: "transport",
@@ -194,7 +194,7 @@ export const useChatStore = create<ChatState>()(
               ...(targetView && s.activeView === "home" ? { activeView: targetView } : {}),
             }));
           },
-          onToolResult: (_toolName) => {
+          onToolResult: () => {
             set((s) => {
               const updated = { ...s.agents };
               for (const [key, status] of Object.entries(updated)) {
@@ -260,16 +260,28 @@ export const useChatStore = create<ChatState>()(
 
             const interrupted = data?.interrupted as boolean | undefined;
             const interruptPayload = data?.interrupt_data as InterruptData | undefined;
+            const completedAgents = Object.fromEntries(
+              Object.entries(current.agents).map(([name, status]) => [
+                name,
+                status === "running" ? "completed" : status,
+              ]),
+            ) as Record<AgentName, AgentStatus>;
 
             set({
               isStreaming: false,
               streamingContent: "",
               abortController: null,
               runId: (data?.run_id as string) ?? current.runId,
-              interruptData: interrupted ? (interruptPayload ?? null) : null,
+              interruptData:
+                interrupted === undefined
+                  ? current.interruptData
+                  : interrupted
+                    ? (interruptPayload ?? current.interruptData)
+                    : null,
               budget: (data?.budget as BudgetBreakdown) ?? current.budget,
               components:
                 (data?.components as Record<string, unknown>) ?? current.components,
+              agents: completedAgents,
             });
           },
         };
@@ -278,7 +290,7 @@ export const useChatStore = create<ChatState>()(
         const viewToAgent: Partial<Record<ViewMode, string>> = {
           flights: "FlightsAgent",
           hotels: "HotelsAgent",
-          destination: "DestinationAgent",
+          destination: "TravelReadinessAgent",
           restaurants: "RestaurantsAgent",
           activities: "ActivitiesAgent",
           transport: "TransportationAgent",

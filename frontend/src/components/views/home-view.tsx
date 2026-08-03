@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import {
   Plane,
   Hotel,
-  MapPin,
+  ShieldCheck,
   Compass,
   Utensils,
   Bus,
@@ -44,11 +44,11 @@ const AGENT_CARDS: AgentCard[] = [
   },
   {
     id: "destination",
-    icon: MapPin,
-    label: "Destination",
-    description: "City guides & travel info",
+    icon: ShieldCheck,
+    label: "Travel Essentials",
+    description: "Safety, weather, entry & customs",
     gradient: "from-emerald-500/10 to-green-500/5",
-    example: "Tell me about visiting Barcelona in summer",
+    example: "Check safety and weather for Barcelona in summer",
   },
   {
     id: "activities",

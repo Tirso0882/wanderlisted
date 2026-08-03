@@ -9,13 +9,20 @@ import {
   Languages,
   Clock,
   Coins,
+  CloudSun,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import type { SafetyInfo, CultureGuide } from "@/lib/types";
+import type {
+  SafetyInfo,
+  CultureGuide,
+  DayWeather,
+  TravelReadinessReport,
+} from "@/lib/types";
 
 const ADVISORY_COLORS: Record<string, string> = {
+  unknown: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
   green: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
   yellow:
     "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
@@ -35,7 +42,7 @@ function SafetyCard({ safety }: { safety: SafetyInfo }) {
           </CardTitle>
           <Badge
             className={
-              ADVISORY_COLORS[safety.advisory_level] ?? ADVISORY_COLORS.green
+              ADVISORY_COLORS[safety.advisory_level] ?? ADVISORY_COLORS.unknown
             }
           >
             {safety.advisory_level.toUpperCase()}
@@ -207,22 +214,6 @@ function CultureCard({ culture }: { culture: CultureGuide }) {
           </div>
         )}
 
-        {/* Food specialties */}
-        {culture.food_specialties.length > 0 && (
-          <div className="space-y-1">
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Must-Try Foods
-            </h4>
-            <div className="flex flex-wrap gap-1.5">
-              {culture.food_specialties.map((food) => (
-                <Badge key={food} variant="secondary" className="text-xs">
-                  {food}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Dining customs */}
         {culture.dining_customs.length > 0 && (
           <div className="space-y-1">
@@ -244,16 +235,20 @@ function CultureCard({ culture }: { culture: CultureGuide }) {
 export function DestinationTab({
   safety,
   culture,
+  weather = [],
+  readiness = null,
 }: {
   safety: SafetyInfo | null;
   culture: CultureGuide | null;
+  weather?: DayWeather[];
+  readiness?: TravelReadinessReport | null;
 }) {
-  if (!safety && !culture) {
+  if (!safety && !culture && weather.length === 0 && !readiness) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <MapPin className="mb-3 h-8 w-8 text-muted-foreground/40" />
         <p className="text-sm text-muted-foreground">
-          Destination research will appear here once the agent completes.
+          Travel essentials will appear here once the readiness check completes.
         </p>
       </div>
     );
@@ -261,8 +256,67 @@ export function DestinationTab({
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
+      {readiness?.summary && (
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Travel-readiness summary</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">{readiness.summary}</p>
+          </CardContent>
+        </Card>
+      )}
       {safety && <SafetyCard safety={safety} />}
       {culture && <CultureCard culture={culture} />}
+      {weather.length > 0 && (
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <CloudSun className="h-4 w-4" /> Forecast for your travel dates
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {weather.map((day) => (
+              <div key={day.date} className="rounded-md bg-muted/50 p-3 text-sm">
+                <div className="font-medium">{day.date}</div>
+                <div className="text-muted-foreground">{day.condition}</div>
+                <div>{Math.round(day.temp_low_c)}–{Math.round(day.temp_high_c)}°C · {day.rain_probability_pct}% rain</div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+      {readiness && readiness.planning_constraints.length > 0 && (
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Planning constraints</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {readiness.planning_constraints.map((constraint, index) => (
+              <div key={`${constraint.category}-${index}`} className="flex gap-2 text-sm">
+                <Badge variant="outline">{constraint.category}</Badge>
+                <span>{constraint.summary}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+      {readiness && readiness.limitations.length > 0 && (
+        <Card className="border-amber-300 lg:col-span-2 dark:border-amber-800">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <AlertTriangle className="h-4 w-4 text-amber-600" /> Verification limits
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-1 text-sm text-muted-foreground">
+              {readiness.limitations.map((item, index) => (
+                <li key={index}>• {item}</li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

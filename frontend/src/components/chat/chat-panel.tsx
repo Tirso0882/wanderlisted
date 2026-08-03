@@ -38,7 +38,7 @@ export function ChatPanel() {
                 id: "streaming",
                 role: "assistant",
                 content: streamingContent,
-                timestamp: Date.now(),
+                timestamp: messages.at(-1)?.timestamp ?? 0,
               }}
               isStreaming
             />
