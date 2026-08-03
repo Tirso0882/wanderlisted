@@ -45,7 +45,7 @@ class TravelAgentState(MessagesState):
     hotel_search_results: Annotated[dict[str, Any], _merge_components] = {}
     active_hotel_stay: Annotated[dict[str, Any], _last_value] = {}
 
-    # Confirmed destination cities — used to scope RAG metadata filtering
+    # Confirmed destination cities — used to scope destination research
     destinations: list[str] = []
 
     # User profiling — passed to every subagent for personalized results
@@ -63,6 +63,6 @@ class TravelAgentState(MessagesState):
 
     # HITL (Human-in-the-Loop) — Phase 4
     human_feedback: str = ""  # Free-text feedback from user
-    hitl_action: str = ""  # Last HITL action: "approved", "rejected", "edited"
+    hitl_action: str = ""  # proceed, cancel, approved, rejected, edited, adjust_target
     safety_acknowledged: bool = False  # User acknowledged safety advisory
     budget_adjustment_accepted: bool = False  # User accepted budget adjustment

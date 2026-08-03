@@ -17,12 +17,12 @@ You are an expert git workflow assistant. Perform the full categorized-commit �
 |---|---|---|
 | `feat` | New files, new functionality, new agents/tools | `feat(agents): add RestaurantsAgent and ActivitiesAgent` |
 | `refactor` | Restructured existing code, changed architecture | `refactor(graph): rewrite dispatch to parallel fan-out` |
-| `fix` | Bug fixes, error corrections | `fix(rag): add metadata filter to prevent cross-destination bleed` |
+| `fix` | Bug fixes, error corrections | `fix(destination): enforce official safety sources` |
 | `docs` | Markdown, prompts, README, comments-only changes | `docs(prompts): add PR workflow prompt` |
 | `test` | Test files only | `test(agents): add smoke tests for new subagents` |
 | `chore` | Config, deps, CI, Makefile, .gitignore | `chore(deps): add httpx to requirements` |
 | `style` | Formatting-only changes (no logic) | `style(tools): run ruff format` |
-| `perf` | Performance improvements | `perf(rag): cache embedding generator` |
+| `perf` | Performance improvements | `perf(destination): reuse Tavily response cache` |
 
 - If a file fits multiple categories, assign it to the **most impactful** one
 - Present the categorized file groups to me for approval before committing
@@ -37,7 +37,7 @@ For **each category** (in order: `chore` → `fix` → `refactor` → `feat` →
    - bullet 1: what changed
    - bullet 2: what changed
    ```
-3. Scope = the most relevant module (e.g. `agent`, `tools`, `rag`, `graph`, `prompts`)
+3. Scope = the most relevant module (e.g. `agent`, `destination`, `tools`, `graph`, `prompts`)
 4. Summary: imperative mood, lowercase, no period, max 72 chars
 5. Commit: `git commit -m "<message>"`
 6. Move to the next category

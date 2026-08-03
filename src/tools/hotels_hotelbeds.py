@@ -10,8 +10,10 @@ includes supplements and discounts).
 """
 
 import hashlib
+import json
 import os
 import time
+from datetime import datetime, timezone
 
 import httpx
 from langchain_core.tools import tool
@@ -449,6 +451,40 @@ async def search_hotels_hotelbeds(
             "⚠ Note: Hotels marked RECHECK require calling check_hotel_rate_hotelbeds "
             "with their rate key to get confirmed pricing before booking."
         )
+
+    observed_at = datetime.now(timezone.utc).isoformat()
+    pricing_options = []
+    for hotel in hotels[:8]:
+        currency = hotel.get("currency", "USD")
+        for room in hotel.get("rooms", []):
+            for rate in room.get("rates", []):
+                rate_key = rate.get("rateKey", "")
+                net = rate.get("net")
+                if not rate_key or net is None:
+                    continue
+                pricing_options.append(
+                    {
+                        "rate_key": rate_key,
+                        "hotel_name": hotel.get("name", "Unknown Hotel"),
+                        "money": {"amount": str(net), "currency": currency},
+                        "room_name": room.get("name", ""),
+                        "rate_type": rate.get("rateType", ""),
+                        "check_in": check_in_date,
+                        "check_out": check_out_date,
+                        "observed_at": observed_at,
+                    }
+                )
+    results.append(
+        "HOTEL_PRICING_JSON:\n"
+        + json.dumps(
+            {
+                "city_code": city_code.upper().strip(),
+                "options": pricing_options,
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+    )
 
     return "\n".join(results)
 

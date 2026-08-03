@@ -64,6 +64,10 @@ _SPEC = AGENT_SPECS["flights"]
 # cases it is later scored on would inflate κ by memorization; these use
 # different routes/numbers on purpose. One anchor per boundary the judge must
 # hold: a clean 3, a NON-CORE-slip 2, and a CORE-error 1.
+# These distinctive anchor identifiers are checked against the calibration corpus
+# in tests/test_judge_prompt_holdouts.py. Change them if these examples change.
+CALIBRATION_HOLDOUT_MARKERS = ("British Airways BA175", "LHR->JFK", "2026-05-02")
+
 _FAITH_EXAMPLES = """EXAMPLES (illustrative anchors — do NOT treat as evidence for the case you score):
   • RESULTS: "LHR->JFK 2026-05-02: British Airways BA175 non-stop 8h05m ECONOMY $612".
     ANSWER: "British Airways BA175 flies London Heathrow to New York JFK non-stop

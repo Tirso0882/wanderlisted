@@ -37,7 +37,7 @@ _CASES = [
     (
         [
             {"type": "text", "text": "Weather"},
-            {"type": "tool_use", "name": "get_weather"},
+            {"type": "tool_use", "name": "search_destination_web"},
             {"type": "text", "text": "Paris"},
         ],
         "Weather Paris",

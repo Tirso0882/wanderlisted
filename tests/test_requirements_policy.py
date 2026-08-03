@@ -1,5 +1,7 @@
 """Deterministic requirement-policy tests across request scopes."""
 
+import pytest
+
 from src.agent.policies.requirements import (
     build_clarification_message,
     missing_required_fields,
@@ -8,7 +10,7 @@ from src.agent.policies.requirements import (
 from src.models import DateWindow, RequestScope, TravelerParty, TripRequest
 
 
-def test_polish_full_trip_requires_only_origin_and_adults():
+def test_polish_full_trip_requires_origin_passport_and_adults():
     request = TripRequest(
         scope=RequestScope.FULL_ITINERARY,
         locale="pl",
@@ -24,14 +26,15 @@ def test_polish_full_trip_requires_only_origin_and_adults():
 
     missing = missing_required_fields(request)
 
-    assert missing == ["origin_city", "adults"]
+    assert missing == ["passport_country", "origin_city", "adults"]
     message = build_clarification_message(missing, request.locale)
     assert "Z jakiego miasta" in message
+    assert "paszport" in message
     assert "Ile osób dorosłych" in message
     assert requested_agents(request) == [
         "FlightsAgent",
         "HotelsAgent",
-        "DestinationAgent",
+        "TravelReadinessAgent",
         "RestaurantsAgent",
         "ActivitiesAgent",
         "TransportationAgent",
@@ -40,15 +43,32 @@ def test_polish_full_trip_requires_only_origin_and_adults():
     ]
 
 
-def test_focused_destination_information_does_not_over_question():
+def test_legacy_destination_capability_is_rejected():
+    with pytest.raises(ValueError):
+        TripRequest(
+            scope=RequestScope.FOCUSED,
+            destinations=["krakow"],
+            requested_capabilities=["destination"],
+        )
+
     request = TripRequest(
         scope=RequestScope.FOCUSED,
         destinations=["krakow"],
-        requested_capabilities=["destination"],
+        requested_capabilities=["travel_readiness"],
+    )
+    assert missing_required_fields(request) == []
+    assert requested_agents(request) == ["TravelReadinessAgent"]
+
+
+def test_focused_entry_guidance_requires_passport_country():
+    request = TripRequest(
+        scope=RequestScope.FOCUSED,
+        destinations=["japan"],
+        requested_capabilities=["travel_readiness"],
+        readiness_topics=["entry"],
     )
 
-    assert missing_required_fields(request) == []
-    assert requested_agents(request) == ["DestinationAgent"]
+    assert missing_required_fields(request) == ["passport_country"]
 
 
 def test_focused_hotel_search_requires_exact_stay_and_occupancy():

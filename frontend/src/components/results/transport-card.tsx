@@ -3,6 +3,7 @@
 import { Bus, Train, Footprints, Car, Ship, Bike, ArrowRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { formatCurrency } from "@/lib/format-currency";
 import type { TransitStep } from "@/lib/types";
 import type { LucideIcon } from "lucide-react";
 
@@ -46,7 +47,7 @@ export function TransportCard({ step }: { step: TransitStep }) {
           </Badge>
           {step.fare_estimate_usd > 0 && (
             <span className="text-xs font-medium text-primary">
-              ${step.fare_estimate_usd}
+              {formatCurrency(step.fare_estimate_usd, "USD")}
             </span>
           )}
         </div>

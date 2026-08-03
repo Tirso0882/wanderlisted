@@ -18,6 +18,8 @@ const ADVISORY_COLORS: Record<string, string> = {
 export function SafetyReviewGate({ data }: { data: InterruptData }) {
   const sessionId = useChatStore((s) => s.sessionId);
   const setInterruptData = useChatStore((s) => s.setInterruptData);
+  const setComponents = useChatStore((s) => s.setComponents);
+  const setBudget = useChatStore((s) => s.setBudget);
 
   const level = (data.advisory_level as string) ?? "orange";
   const summary = data.summary ?? "This destination has a travel advisory.";
@@ -25,10 +27,13 @@ export function SafetyReviewGate({ data }: { data: InterruptData }) {
   const handleDecision = async (approved: boolean) => {
     if (!sessionId) return;
     setInterruptData(null);
-    await resumeChat({
+    const result = await resumeChat({
       session_id: sessionId,
       decision: { approved, gate: "safety_review" },
     });
+    setComponents(result.components);
+    setBudget(result.budget);
+    setInterruptData(result.interrupted ? result.interrupt_data : null);
   };
 
   return (

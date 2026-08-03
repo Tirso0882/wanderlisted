@@ -3,6 +3,7 @@
 import { Star, Clock, MapPin, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { formatCurrency } from "@/lib/format-currency";
 import type { PlaceCard } from "@/lib/types";
 
 interface PlaceCardComponentProps {
@@ -37,7 +38,7 @@ export function PlaceCardComponent({
           </div>
           {place.estimated_cost_usd > 0 && (
             <span className="shrink-0 text-sm font-bold text-primary">
-              ${place.estimated_cost_usd}
+              {formatCurrency(place.estimated_cost_usd, "USD")}
             </span>
           )}
         </div>

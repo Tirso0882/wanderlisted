@@ -3,6 +3,7 @@
 import { Plane, Clock, ArrowRight, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { formatCurrency } from "@/lib/format-currency";
 import type { FlightOption } from "@/lib/types";
 
 export function FlightCard({ flight }: { flight: FlightOption }) {
@@ -24,7 +25,7 @@ export function FlightCard({ flight }: { flight: FlightOption }) {
             {outFirst?.carrier ?? "Airline"} {outFirst?.flight_number ?? ""}
           </CardTitle>
           <span className="text-lg font-bold text-primary">
-            ${flight.total_price_usd.toLocaleString()}
+            {formatCurrency(flight.total_price_usd, flight.currency || "USD")}
           </span>
         </div>
       </CardHeader>

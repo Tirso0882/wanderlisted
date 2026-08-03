@@ -3,7 +3,7 @@
 from src.agent.agents.base import SpecializedAgent
 from src.agent.agents.flights_agent import FlightsAgent
 from src.agent.agents.hotels_agent import HotelsAgent
-from src.agent.agents.destination_agent import DestinationAgent
+from src.agent.agents.travel_readiness_agent import TravelReadinessAgent
 from src.agent.agents.budget_agent import BudgetAgent
 from src.agent.agents.restaurants_agent import RestaurantsAgent
 from src.agent.agents.activities_agent import ActivitiesAgent
@@ -15,7 +15,7 @@ __all__ = [
     "SpecializedAgent",
     "FlightsAgent",
     "HotelsAgent",
-    "DestinationAgent",
+    "TravelReadinessAgent",
     "BudgetAgent",
     "RestaurantsAgent",
     "ActivitiesAgent",

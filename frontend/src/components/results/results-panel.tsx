@@ -3,7 +3,7 @@
 import {
   Plane,
   Hotel,
-  MapPin,
+  ShieldCheck,
   Compass,
   Utensils,
   Bus,
@@ -21,12 +21,16 @@ import { DestinationTab } from "./destination-tab";
 import { ItineraryTab } from "./itinerary-tab";
 import { OverviewTab } from "./overview-tab";
 import { useChatStore } from "@/stores/chat-store";
-import type { AgentName, AgentStatus } from "@/lib/types";
+import type {
+  AgentName,
+  AgentStatus,
+  TravelReadinessReport,
+} from "@/lib/types";
 
 const TAB_AGENT_MAP: Record<string, AgentName> = {
   flights: "FlightsAgent",
   hotels: "HotelsAgent",
-  destination: "DestinationAgent",
+  destination: "TravelReadinessAgent",
   activities: "ActivitiesAgent",
   restaurants: "RestaurantsAgent",
   transport: "TransportationAgent",
@@ -49,6 +53,7 @@ export function ResultsPanel() {
   const handbook = useChatStore((s) => s.handbook);
   const budget = useChatStore((s) => s.budget);
   const agents = useChatStore((s) => s.agents);
+  const components = useChatStore((s) => s.components);
   const activeTab = useChatStore((s) => s.activeView);
   const setActiveTab = useChatStore((s) => s.setActiveView);
 
@@ -56,8 +61,17 @@ export function ResultsPanel() {
   const flights = handbook?.flights ?? [];
   const hotels = handbook?.hotels ?? [];
   const days = handbook?.days ?? [];
-  const safety = handbook?.safety ?? null;
-  const culture = handbook?.culture ?? null;
+  const readiness =
+    (components?.readiness as { data?: TravelReadinessReport } | undefined)
+      ?.data ??
+    (components?.readiness_preflight as
+      | { data?: TravelReadinessReport }
+      | undefined)?.data;
+  const safety = readiness?.safety ?? handbook?.safety ?? null;
+  const culture = readiness?.culture ?? handbook?.culture ?? null;
+  const weather =
+    readiness?.weather ??
+    days.flatMap((day) => (day.weather ? [day.weather] : []));
 
   // Extract activities, restaurants, transport from day plans
   const allActivities = days.flatMap((d) =>
@@ -74,7 +88,7 @@ export function ResultsPanel() {
     { value: "overview", icon: LayoutGrid, label: "Overview" },
     { value: "flights", icon: Plane, label: "Flights" },
     { value: "hotels", icon: Hotel, label: "Hotels" },
-    { value: "destination", icon: MapPin, label: "Destination" },
+    { value: "destination", icon: ShieldCheck, label: "Travel Essentials" },
     { value: "activities", icon: Compass, label: "Activities" },
     { value: "restaurants", icon: Utensils, label: "Food" },
     { value: "transport", icon: Bus, label: "Transit" },
@@ -141,7 +155,12 @@ export function ResultsPanel() {
           </TabsContent>
 
           <TabsContent value="destination" className="mt-0">
-            <DestinationTab safety={safety} culture={culture} />
+            <DestinationTab
+              safety={safety}
+              culture={culture}
+              weather={weather}
+              readiness={readiness}
+            />
           </TabsContent>
 
           <TabsContent value="activities" className="mt-0">

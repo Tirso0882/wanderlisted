@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import {
   Plane,
   Hotel,
-  MapPin,
+  ShieldCheck,
   Utensils,
   Compass,
   Bus,
@@ -24,7 +24,7 @@ import type { AgentName, AgentStatus } from "@/lib/types";
 const AGENT_META: Record<AgentName, { icon: LucideIcon; label: string; emoji: string }> = {
   FlightsAgent: { icon: Plane, label: "Flights", emoji: "✈️" },
   HotelsAgent: { icon: Hotel, label: "Hotels", emoji: "🏨" },
-  DestinationAgent: { icon: MapPin, label: "Destination", emoji: "🗺️" },
+  TravelReadinessAgent: { icon: ShieldCheck, label: "Travel Essentials", emoji: "🛡️" },
   RestaurantsAgent: { icon: Utensils, label: "Restaurants", emoji: "🍽️" },
   ActivitiesAgent: { icon: Compass, label: "Activities", emoji: "🎯" },
   TransportationAgent: { icon: Bus, label: "Transport", emoji: "🚌" },

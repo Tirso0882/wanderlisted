@@ -49,6 +49,10 @@ _SPEC = AGENT_SPECS["hotels"]
 # In-context anchors (rubric-construction checklist item 7) — DISJOINT from
 # l2_judge_cases.py (that set uses Rome + Barcelona; these use Lisbon). One anchor
 # per boundary the judge must hold: a clean 3, a NON-CORE-slip 2, and a CORE-error 1.
+# These distinctive anchor identifiers are checked against the calibration corpus
+# in tests/test_judge_prompt_holdouts.py. Change them if these examples change.
+CALIBRATION_HOLDOUT_MARKERS = ("Hotel Lumen", "Baixa, Lisbon", "EUR 592")
+
 _FAITH_EXAMPLES = """EXAMPLES (illustrative anchors — do NOT treat as evidence for the case you score):
   • RESULTS: "1. Hotel Lumen  Category: 4 stars  Location: Baixa, Lisbon
     Room: Deluxe Room  Price: 592.00 EUR (total stay)  Board: Bed and Breakfast
@@ -97,6 +101,7 @@ HELPFULNESS_RUBRIC = helpfulness_rubric(_SPEC) + "\n\n" + _HOTEL_HELPFULNESS_RUL
 __all__ = [
     "FAITHFULNESS_RUBRIC",
     "HELPFULNESS_RUBRIC",
+    "CALIBRATION_HOLDOUT_MARKERS",
     "JUDGES",
     "build_judge",
     "judge_faithfulness",

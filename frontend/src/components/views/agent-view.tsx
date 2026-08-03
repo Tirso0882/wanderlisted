@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import {
   Plane,
   Hotel,
-  MapPin,
+  ShieldCheck,
   Compass,
   Utensils,
   Bus,
@@ -31,7 +31,7 @@ const VIEW_META: Record<
 > = {
   flights: { icon: Plane, label: "Flights", color: "text-blue-500" },
   hotels: { icon: Hotel, label: "Hotels", color: "text-amber-500" },
-  destination: { icon: MapPin, label: "Destination", color: "text-emerald-500" },
+  destination: { icon: ShieldCheck, label: "Travel Essentials", color: "text-emerald-500" },
   activities: { icon: Compass, label: "Activities", color: "text-purple-500" },
   restaurants: { icon: Utensils, label: "Restaurants", color: "text-rose-500" },
   transport: { icon: Bus, label: "Transport", color: "text-teal-500" },
@@ -43,7 +43,7 @@ const VIEW_META: Record<
 const VIEW_AGENT_MAP: Partial<Record<ViewMode, AgentName>> = {
   flights: "FlightsAgent",
   hotels: "HotelsAgent",
-  destination: "DestinationAgent",
+  destination: "TravelReadinessAgent",
   activities: "ActivitiesAgent",
   restaurants: "RestaurantsAgent",
   transport: "TransportationAgent",

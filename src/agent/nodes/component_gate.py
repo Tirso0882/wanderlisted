@@ -11,13 +11,14 @@ from src.models import ComponentStatus, TripRequest
 _AGENT_COMPONENT = {
     "FlightsAgent": "flights",
     "HotelsAgent": "hotels",
-    "DestinationAgent": "destination",
+    "TravelReadinessAgent": "readiness",
     "RestaurantsAgent": "restaurants",
     "ActivitiesAgent": "activities",
 }
 
 _STATUS_PRIORITY = (
     ComponentStatus.NEEDS_USER_INPUT,
+    ComponentStatus.STALE,
     ComponentStatus.BLOCKED_EXTERNAL,
     ComponentStatus.NO_INVENTORY,
     ComponentStatus.FAILED,

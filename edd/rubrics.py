@@ -253,11 +253,90 @@ def build_pairwise_judge(
 #    "comment"} and captures a judge failure as DATA (score=None), never a crash.
 # ══════════════════════════════════════════════════════════════════════════════
 async def _run_judge(judge, rubric: str, payload: str, *, timeout: float = 60.0):
-    """One judge call, with a timeout. Kept tiny so every scorer shares it."""
-    return await asyncio.wait_for(
-        judge.ainvoke([SystemMessage(content=rubric), HumanMessage(content=payload)]),
-        timeout=timeout,
-    )
+    """Run one judge call with bounded retries for transport-only failures."""
+    max_attempts = 3
+    for attempt in range(max_attempts):
+        try:
+            return await asyncio.wait_for(
+                judge.ainvoke(
+                    [SystemMessage(content=rubric), HumanMessage(content=payload)]
+                ),
+                timeout=timeout,
+            )
+        except Exception as exc:  # noqa: BLE001 - retry policy inspects the chain
+            if attempt == max_attempts - 1 or not _is_transient_judge_error(exc):
+                raise
+            await asyncio.sleep(2**attempt)
+    raise AssertionError("unreachable")
+
+
+_TRANSIENT_JUDGE_EXCEPTION_NAMES = frozenset(
+    {
+        "APIConnectionError",
+        "APITimeoutError",
+        "ConnectError",
+        "ConnectTimeout",
+        "ConnectionError",
+        "InternalServerError",
+        "PoolTimeout",
+        "RateLimitError",
+        "ReadError",
+        "ReadTimeout",
+        "RemoteProtocolError",
+        "ServiceUnavailableError",
+        "TimeoutError",
+    }
+)
+_TRANSIENT_JUDGE_MESSAGE_MARKERS = (
+    "connection error",
+    "connection reset",
+    "name or service not known",
+    "nodename nor servname provided",
+    "rate limit",
+    "server disconnected",
+    "temporarily unavailable",
+    "timed out",
+)
+
+
+def _exception_chain(exc: BaseException):
+    """Yield an exception and its explicit/implicit causes without looping."""
+    seen: set[int] = set()
+    current: BaseException | None = exc
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        yield current
+        current = current.__cause__ or current.__context__
+
+
+def _is_transient_judge_error(exc: BaseException) -> bool:
+    """Return whether a judge failure is safe to retry without changing input."""
+    for item in _exception_chain(exc):
+        if isinstance(item, (asyncio.TimeoutError, ConnectionError, TimeoutError)):
+            return True
+        if type(item).__name__ in _TRANSIENT_JUDGE_EXCEPTION_NAMES:
+            return True
+        status_code = getattr(item, "status_code", None)
+        if status_code is None:
+            status_code = getattr(getattr(item, "response", None), "status_code", None)
+        if status_code == 429 or isinstance(status_code, int) and status_code >= 500:
+            return True
+        detail = str(item).lower()
+        if any(marker in detail for marker in _TRANSIENT_JUDGE_MESSAGE_MARKERS):
+            return True
+    return False
+
+
+def _format_judge_error(exc: BaseException) -> str:
+    """Keep the provider exception type and root cause in evaluation output."""
+    parts: list[str] = []
+    for item in _exception_chain(exc):
+        name = type(item).__name__
+        detail = str(item).strip()
+        rendered = f"{name}: {detail}" if detail else name
+        if rendered not in parts:
+            parts.append(rendered)
+    return " <- ".join(parts) or type(exc).__name__
 
 
 _URL_RE = re.compile(r"https?://\S+")
@@ -278,6 +357,7 @@ def _format_evidence(
     *,
     max_chars_per_output: int = 20_000,
     max_total_chars: int = 80_000,
+    preserve_urls: bool = False,
 ) -> str:
     """Format bounded evidence without starving later tool calls.
 
@@ -288,8 +368,12 @@ def _format_evidence(
     if needed share the total budget across ALL blocks so every call remains
     represented.
     """
+
+    def prepare(output: str) -> str:
+        return output if preserve_urls else _URL_RE.sub("<URL>", output)
+
     blocks = [
-        f"[{name}]\n{_truncate_middle(_URL_RE.sub('<URL>', out), max_chars_per_output)}"
+        f"[{name}]\n{_truncate_middle(prepare(out), max_chars_per_output)}"
         for name, out in traj.tool_outputs
     ]
     text = "\n\n".join(blocks)
@@ -301,7 +385,12 @@ def _format_evidence(
 
 
 async def score_faithfulness(
-    judge, traj: Trajectory, *, rubric: str, key: str = "faithfulness"
+    judge,
+    traj: Trajectory,
+    *,
+    rubric: str,
+    key: str = "faithfulness",
+    preserve_evidence_urls: bool = False,
 ) -> dict:
     """Grade whether the final answer is grounded in the tool RESULTS.
 
@@ -309,7 +398,7 @@ async def score_faithfulness(
     or no answer. (Layer 1's `called_*` check already flags a missing tool call;
     each layer checks its own thing.)
     """
-    evidence = _format_evidence(traj)
+    evidence = _format_evidence(traj, preserve_urls=preserve_evidence_urls)
     if not evidence.strip() or not traj.final_text.strip():
         return {
             "key": key,
@@ -324,7 +413,11 @@ async def score_faithfulness(
     try:
         verdict = await _run_judge(judge, rubric, payload)
     except Exception as exc:  # noqa: BLE001 — a judge failure is data, not a crash
-        return {"key": key, "score": None, "comment": f"judge error: {exc}"}
+        return {
+            "key": key,
+            "score": None,
+            "comment": f"judge error: {_format_judge_error(exc)}",
+        }
     return {"key": key, "score": verdict.score, "comment": verdict.reasoning}
 
 
@@ -338,7 +431,11 @@ async def score_helpfulness(
     try:
         verdict = await _run_judge(judge, rubric, payload)
     except Exception as exc:  # noqa: BLE001
-        return {"key": key, "score": None, "comment": f"judge error: {exc}"}
+        return {
+            "key": key,
+            "score": None,
+            "comment": f"judge error: {_format_judge_error(exc)}",
+        }
     return {"key": key, "score": verdict.score, "comment": verdict.reasoning}
 
 
@@ -403,12 +500,11 @@ async def compare_pairwise(
             _run_judge(judge, rubric, payload_ba),
         )
     except Exception as exc:  # noqa: BLE001 — a judge failure is data, not a crash
-        detail = str(exc).strip() or type(exc).__name__
         return {
             "key": key,
             "winner": None,
             "consistent": None,
-            "comment": f"judge error: {detail}",
+            "comment": f"judge error: {_format_judge_error(exc)}",
         }
 
     w1 = v1.winner  # already in original labels (A=traj_a, B=traj_b)
@@ -488,23 +584,23 @@ AGENT_SPECS: dict[str, AgentRubricSpec] = {
         "that is NOT in / contradicts RESULTS, or review/rating facts matched to the WRONG hotel",
         surfaces="the most relevant hotel option(s) that fit any stars/board/budget stated in the request",
     ),
-    "destination": AgentRubricSpec(
-        agent="Destination",
-        evidence_source="the research tools (`research_destination`, "
-        "`search_destination_guides`, `search_web`, `search_hidden_gems`) plus "
-        "`get_weather` and `get_safety_info`",
-        domain="DESTINATION FACTS",
-        request_fields="destination, dates/season, topic (culture, weather, safety, transport, food, events)",
+    "readiness": AgentRubricSpec(
+        agent="Travel readiness",
+        evidence_source="the bounded Tavily and typed Open-Meteo evidence returned "
+        "by the readiness pipeline; safety, entry, health, and emergency claims "
+        "additionally require a permitted official source",
+        domain="TRAVEL READINESS FACTS",
+        request_fields="destination, passport country, dates/season, topic (culture, weather, safety, entry, health, practical preparation)",
         request_echo="the destination name, the month/season asked about",
         core_facts="safety/advisory level, weather/climate figures, visa/entry rules, "
-        "currency, health requirements, and dated events",
+        "currency, health requirements, and preparation constraints",
         noncore="general cultural colour, subjective 'vibe' descriptions, and non-specific tips",
         wrong_decision="mis-plan a trip over",
         minor_slip="a paraphrased custom, a rounded temperature, or a soft cultural "
         "generalisation not stated verbatim in RESULTS",
         core_error="a safety/advisory level, visa/entry rule, currency, health requirement, "
-        "or event date that is NOT in / contradicts RESULTS",
-        surfaces="the destination facts and insider guidance the request asked for, "
+        "or preparation constraint that is NOT in / contradicts RESULTS",
+        surfaces="the readiness facts and constraints the request asked for, "
         "clearly attributed to their source",
     ),
     "restaurants": AgentRubricSpec(
@@ -555,18 +651,16 @@ AGENT_SPECS: dict[str, AgentRubricSpec] = {
     ),
     "budget": AgentRubricSpec(
         agent="Budget",
-        evidence_source="the `calculate_budget` and `convert_currency` tools",
+        evidence_source="the typed BudgetAgent report and its selected price evidence, exchange-rate records, and versioned regional estimates",
         domain="BUDGET FIGURES",
         request_fields="travellers, duration, destination, travel style, currency, component costs",
         request_echo='"for 2 people", "5 nights", the target currency',
-        core_facts="the per-category and total costs, the currency, the conversion rate, "
-        "and the traveller/night counts the totals are built from",
+        core_facts="the selected source IDs, per-category and total costs, base/display currencies, conversion rates, coverage, target verdict, and traveller/night counts the totals are built from",
         noncore="general 'this is affordable' commentary and non-numeric saving tips",
         wrong_decision="mis-budget a trip over",
         minor_slip="a rounded subtotal or a paraphrased assumption, provided the math still reconciles",
-        core_error="a total that does NOT reconcile with its components, a wrong currency or "
-        "conversion rate, or a figure the tools never returned",
-        surfaces="a clear cost breakdown whose total reconciles with its parts, with assumptions disclosed",
+        core_error="a total that does NOT reconcile with its components, a wrong currency or conversion rate, a figure not supported by selected evidence or a regional baseline, or a verdict asserted despite partial coverage",
+        surfaces="a clear reconciling cost breakdown with display currency, coverage, missing and estimated categories, assumptions, reserve status, and target overage",
     ),
     "itinerary": AgentRubricSpec(
         agent="Itinerary",

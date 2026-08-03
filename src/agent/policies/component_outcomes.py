@@ -64,8 +64,17 @@ def _error_category(text: str) -> ErrorCategory:
         return ErrorCategory.RATE_LIMIT
     if any(marker in lowered for marker in ("timeout", "timed out")):
         return ErrorCategory.TIMEOUT
+    if "tavilytimeouterror" in lowered:
+        return ErrorCategory.TIMEOUT
     if any(
-        marker in lowered for marker in ("http", "provider", "connection", "retryerror")
+        marker in lowered
+        for marker in (
+            "http",
+            "provider",
+            "connection",
+            "retryerror",
+            "tavilytransienterror",
+        )
     ):
         return ErrorCategory.PROVIDER
     return ErrorCategory.INTERNAL

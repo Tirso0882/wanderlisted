@@ -13,7 +13,7 @@ from src.agent.policies.requirements import (
     build_clarification_message,
     missing_required_fields,
 )
-from src.agent.prompts import INTAKE_SYSTEM_PROMPT
+from src.agent.prompts import INTAKE_CONTEXT_PROMPT, INTAKE_SYSTEM_PROMPT
 from src.agent.state import TravelAgentState
 from src.models import TripRequest, TripRequestPatch, merge_trip_request
 
@@ -45,10 +45,11 @@ async def intake_node(state: TravelAgentState, *, llm) -> dict:
         method="function_calling",
     )
 
-    context = (
-        f"Current date: {date.today().isoformat()}\n"
-        "Current canonical request (preserve values not changed by this turn):\n"
-        f"{json.dumps(current.model_dump(mode='json'), ensure_ascii=False)}"
+    context = INTAKE_CONTEXT_PROMPT.format(
+        current_date=date.today().isoformat(),
+        canonical_request=json.dumps(
+            current.model_dump(mode="json"), ensure_ascii=False
+        ),
     )
     try:
         patch = await structured_llm.ainvoke(
@@ -84,6 +85,10 @@ async def intake_node(state: TravelAgentState, *, llm) -> dict:
         "workflow_status": status,
         "pending_questions": missing,
         "request_revision": state.get("request_revision", 0) + 1,
+        # HITL decisions are scoped to one execution, not future requests.
+        "hitl_action": "",
+        "safety_acknowledged": False,
+        "budget_adjustment_accepted": False,
         "destinations": request.destinations or state.get("destinations", []),
         "travel_style": request.travel_style or state.get("travel_style", ""),
         "accessibility_needs": request.accessibility_needs

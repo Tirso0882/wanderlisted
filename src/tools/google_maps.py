@@ -29,6 +29,12 @@ logger = AppLogger(logger_name="tools.google_maps", level="DEBUG")
 _BASE_URL = "https://maps.googleapis.com/maps/api"
 _ROUTES_URL = "https://routes.googleapis.com"
 
+# These values can appear in Places responses but are not valid Table-A filters
+# for Nearby Search (New). Specific concepts belong in Text Search instead.
+UNSUPPORTED_NEARBY_PLACE_TYPES = frozenset(
+    {"comic_book_store", "cooking_school", "dance_studio", "jazz_club"}
+)
+
 # ── helpers ──────────────────────────────────────────────────────────────
 
 
@@ -208,14 +214,22 @@ def search_places_nearby(
     Args:
         location: Lat,lng string like "35.6762,139.6503" or a text description
                   (will be geocoded first).
-        place_type: One Google place type identifier in lowercase snake_case,
-                e.g. "restaurant", "sushi_restaurant", "seafood_restaurant",
-                "tourist_attraction", "cafe", "museum", "bar". Free-text
-                phrases such as "seafood restaurant" are invalid; use
-                search_places_text for those.
+        place_type: One supported Google Places Table-A type identifier in
+                lowercase snake_case, e.g. "restaurant", "tourist_attraction",
+                "cafe", "museum", or "bar". Snake case alone does not make a
+                type valid. Use search_places_text for specific concepts such as
+                comic book stores, cooking schools, jazz clubs, or dance studios.
         radius_meters: Search radius in metres (default 1500).
         max_results: Maximum number of results (default 10, max 20).
     """
+    place_type = place_type.strip().lower()
+    if place_type in UNSUPPORTED_NEARBY_PLACE_TYPES:
+        phrase = place_type.replace("_", " ")
+        return (
+            f"Unsupported Nearby Search type: {place_type}. "
+            f"Call search_places_text with a query like '{phrase} near {location}'."
+        )
+
     key = _api_key()
 
     # If location looks like text, geocode it first
@@ -259,6 +273,15 @@ def search_places_nearby(
             e.response.status_code,
             e.response.text[:200],
         )
+        try:
+            provider_message = e.response.json()["error"]["message"]
+        except (KeyError, TypeError, ValueError):
+            provider_message = ""
+        if e.response.status_code == 400 and "Unsupported types:" in provider_message:
+            return (
+                f"Unsupported Nearby Search type: {place_type}. "
+                "Call search_places_text with the requested concept and location."
+            )
         return (
             f"Places API error (HTTP {e.response.status_code}). Try a different search."
         )

@@ -11,7 +11,25 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, Tool
 from langgraph.graph import END
 from langgraph.types import Send
 
-from src.models import DraftDay, DraftItinerary, PlaceRef, build_trip_skeleton
+from src.readiness import (
+    PlanningConstraint,
+    ReadinessSource,
+    TravelReadinessReport,
+    TravelReadinessRun,
+)
+from src.tools.tavily import TavilyTimeoutError
+from src.models import (
+    BudgetBreakdown,
+    BudgetCoverageStatus,
+    BudgetVerdict,
+    ConversionStatus,
+    DraftDay,
+    DraftItinerary,
+    PlaceRef,
+    SafetyInfo,
+    build_trip_skeleton,
+)
+from src.budget import BudgetRun
 from src.agent.stage4_graph import (
     # Helpers
     build_user_profile_context,
@@ -23,7 +41,7 @@ from src.agent.stage4_graph import (
     supervisor_node,
     flights_node,
     hotels_node,
-    destination_node,
+    readiness_node,
     restaurants_node,
     activities_node,
     draft_itinerary_node,
@@ -39,6 +57,8 @@ from src.agent.stage4_graph import (
     route_after_triage,
     route_after_intake,
     route_after_supervisor,
+    route_after_readiness_preflight,
+    route_after_readiness,
     route_after_safety_review,
     route_after_trip_skeleton,
     route_after_hotel_gate,
@@ -48,6 +68,22 @@ from src.agent.stage4_graph import (
     route_after_budget_review,
     route_after_human_review,
 )
+
+
+def _verified_safety_coverage(destination: str) -> dict:
+    return {
+        "items": [
+            {
+                "destination": destination,
+                "topic": "safety",
+                "critical": True,
+                "state": "verified",
+                "source_ids": ["S1"],
+                "error_category": "none",
+                "detail": "",
+            }
+        ]
+    }
 
 
 # ── Helper function tests ────────────────────────────────────────────────────
@@ -339,10 +375,53 @@ class TestWorkerNodes:
         assert result["current_agent"] == "hotels"
         assert set(result["itinerary_components"].keys()) == {"hotels"}
 
-    async def test_destination_node_writes_only_destination_key(self):
-        result = await self._run(destination_node)
-        assert result["current_agent"] == "destination"
-        assert set(result["itinerary_components"].keys()) == {"destination"}
+    async def test_readiness_node_writes_only_readiness_key(self):
+        mock_executor = AsyncMock()
+        report = TravelReadinessReport(
+            destinations=["tokyo"],
+            sources=[
+                ReadinessSource(
+                    id="S1",
+                    title="Tokyo",
+                    url="https://example.com/tokyo",
+                    domain="example.com",
+                    query="Tokyo travel",
+                    topic="culture",
+                )
+            ],
+        )
+        mock_executor.research.return_value = TravelReadinessRun(
+            report=report,
+            message="Grounded Tokyo research.",
+        )
+        state = {
+            "messages": [HumanMessage(content="Research Tokyo")],
+            "trip_request": {"destinations": ["tokyo"]},
+            "itinerary_components": {"routing": []},
+        }
+        result = await readiness_node(state, executor=mock_executor)
+        assert result["current_agent"] == "readiness"
+        assert set(result["itinerary_components"].keys()) == {"readiness"}
+        assert result["itinerary_components"]["readiness"]["data"]["destinations"] == [
+            "tokyo"
+        ]
+        assert result["component_results"]["readiness"]["evidence_count"] == 1
+
+    async def test_readiness_timeout_is_classified_as_external(self):
+        mock_executor = AsyncMock()
+        mock_executor.research.side_effect = TavilyTimeoutError(
+            "Tavily request timed out"
+        )
+        result = await readiness_node(
+            {
+                "messages": [HumanMessage(content="Research Tokyo")],
+                "trip_request": {"destinations": ["tokyo"]},
+            },
+            executor=mock_executor,
+        )
+        outcome = result["component_results"]["readiness"]
+        assert outcome["status"] == "blocked_external"
+        assert outcome["error_category"] == "timeout"
 
     async def test_restaurants_node_writes_only_restaurants_key(self):
         result = await self._run(restaurants_node)
@@ -353,6 +432,63 @@ class TestWorkerNodes:
         result = await self._run(activities_node)
         assert result["current_agent"] == "activities"
         assert set(result["itinerary_components"].keys()) == {"activities"}
+
+    async def test_activities_receive_only_grounded_readiness_constraints(self):
+        mock_executor = AsyncMock()
+
+        async def invoke(payload):
+            return {
+                "messages": [
+                    *payload["messages"],
+                    AIMessage(content="Selected accessible places."),
+                ]
+            }
+
+        mock_executor.ainvoke.side_effect = invoke
+        report = TravelReadinessReport(
+            destinations=["tokyo"],
+            summary="General readiness prose that discovery does not need.",
+            planning_constraints=[
+                PlanningConstraint(
+                    category="culture",
+                    severity="warning",
+                    destination="Tokyo",
+                    summary="Temple admission requires covered shoulders.",
+                    source_ids=["S1"],
+                )
+            ],
+            sources=[
+                ReadinessSource(
+                    id="S1",
+                    title="Grounded constraint",
+                    url="https://example.com/constraint",
+                    domain="example.com",
+                    query="Tokyo access constraint",
+                    topic="culture",
+                )
+            ],
+        )
+        state = {
+            "messages": [HumanMessage(content="Find Tokyo activities")],
+            "itinerary_components": {
+                "readiness": {
+                    "messages": [AIMessage(content=report.summary)],
+                    "data": report.model_dump(mode="json"),
+                }
+            },
+        }
+
+        await activities_node(state, executor=mock_executor)
+
+        payload = mock_executor.ainvoke.await_args.args[0]
+        system_context = "\n".join(
+            message.content
+            for message in payload["messages"]
+            if isinstance(message, SystemMessage)
+        )
+        assert "GROUNDED READINESS PLANNING CONSTRAINTS" in system_context
+        assert "covered shoulders" in system_context
+        assert report.summary not in system_context
 
     async def test_transportation_node_writes_only_transportation_key(self):
         result = await self._run(transportation_node)
@@ -526,7 +662,7 @@ class TestDraftItineraryNode:
                 "routing": ["TransportationAgent", "ItineraryAgent"],
                 "hotels": {"messages": [AIMessage(content="Hotel Central")]},
                 "activities": {"messages": [AIMessage(content="City Museum")]},
-                "destination": {
+                "readiness": {
                     "messages": [AIMessage(content="Use the city travel card.")]
                 },
             },
@@ -549,23 +685,29 @@ class TestDraftItineraryNode:
 
 class TestBudgetNode:
     async def test_runs_budget_and_stores_result(self):
-        mock_llm = MagicMock()
-        mock_executor = AsyncMock()
-        mock_executor.ainvoke.return_value = {
-            "messages": [AIMessage(content="Total budget: $3,500")],
-        }
-        # structured output extraction — just skip it for unit test
-        mock_llm.with_structured_output.side_effect = Exception("skip")
+        agent = AsyncMock()
+        agent.run.return_value = BudgetRun(
+            report=BudgetBreakdown(
+                total=3500,
+                summary="Validated total",
+                request_fingerprint="budget-fingerprint",
+            ),
+            message="Validated total",
+        )
 
         state = {
             "messages": [HumanMessage(content="budget?")],
             "itinerary_components": {"completed_agents": []},
         }
-        result = await budget_node(state, llm=mock_llm, executor=mock_executor)
+        result = await budget_node(state, agent=agent)
 
         assert result["current_agent"] == "budget"
         assert "budget" in result["itinerary_components"]
+        assert result["itinerary_components"]["budget_structured"]["total"] == 3500
         assert "BudgetAgent" in result["itinerary_components"]["completed_agents"]
+        assert result["component_results"]["budget"]["request_fingerprint"] == (
+            "budget-fingerprint"
+        )
 
 
 # ── Itinerary node tests ────────────────────────────────────────────────────
@@ -652,36 +794,93 @@ class TestSynthesizeNode:
 
 class TestSafetyReviewNode:
     async def test_safe_destination_passes_through(self):
+        report = TravelReadinessReport(
+            destinations=["japan"],
+            safety=SafetyInfo(
+                advisory_level="green", advisory_summary="Normal precautions."
+            ),
+            sources=[
+                ReadinessSource(
+                    id="S1",
+                    title="Official advisory",
+                    url="https://travel.state.gov/japan",
+                    domain="travel.state.gov",
+                    query="Japan advisory",
+                    topic="safety",
+                    is_official=True,
+                )
+            ],
+            citations={"safety.advisory_level": ["S1"]},
+        )
         state = {
             "itinerary_components": {
-                "destination": {
-                    "messages": [
-                        AIMessage(content="Japan is very safe. Level 1 advisory.")
-                    ],
+                "readiness_preflight": {
+                    "data": report.model_dump(mode="json"),
+                    "coverage": _verified_safety_coverage("japan"),
                 },
             },
             "safety_acknowledged": False,
         }
         result = await safety_review_node(state)
         assert result["current_agent"] == "safety_review"
-        assert "hitl_action" not in result
+        assert result["hitl_action"] == "approved"
 
-    async def test_no_destination_data_passes_through(self):
+    async def test_missing_structured_safety_data_fails_closed(self):
         state = {"itinerary_components": {}, "safety_acknowledged": False}
         result = await safety_review_node(state)
-        assert result["current_agent"] == "safety_review"
+        assert result["hitl_action"] == "rejected"
 
-    async def test_already_acknowledged_passes_through(self):
+    async def test_stale_preflight_fingerprint_fails_closed_at_safety_gate(self):
+        report = TravelReadinessReport(
+            destinations=["tokyo"],
+            safety=SafetyInfo(
+                advisory_level="green", advisory_summary="Normal precautions."
+            ),
+            sources=[
+                ReadinessSource(
+                    id="S1",
+                    title="Official advisory",
+                    url="https://travel.state.gov/japan",
+                    domain="travel.state.gov",
+                    query="Japan advisory",
+                    topic="safety",
+                    is_official=True,
+                )
+            ],
+            citations={"safety.advisory_level": ["S1"]},
+        )
         state = {
+            "messages": [HumanMessage(content="Is Kyoto safe?")],
+            "trip_request": {
+                "scope": "focused",
+                "destinations": ["kyoto"],
+                "requested_capabilities": ["travel_readiness"],
+                "readiness_topics": ["safety"],
+            },
             "itinerary_components": {
-                "destination": {
-                    "messages": [AIMessage(content="Level 4: Do not travel")],
+                "readiness_preflight": {
+                    "data": report.model_dump(mode="json"),
+                    "coverage": _verified_safety_coverage("tokyo"),
                 },
             },
-            "safety_acknowledged": True,
+            "component_results": {
+                "readiness_preflight": {
+                    "status": "completed",
+                    "request_fingerprint": "stale-request",
+                }
+            },
         }
+
         result = await safety_review_node(state)
-        assert result["current_agent"] == "safety_review"
+
+        assert result["hitl_action"] == "rejected"
+        assert "no longer matches" in result["messages"][0].content
+
+    async def test_already_acknowledged_passes_through(self):
+        state = TestSafetyReviewInterrupt._state("red", "Level 4: Do not travel")
+        state["safety_acknowledged"] = True
+        result = await safety_review_node(state)
+        assert result["hitl_action"] == "approved"
 
     async def test_detects_danger_keywords(self):
         """Verify the danger-detection logic without triggering interrupt()."""
@@ -792,9 +991,9 @@ class TestRouteAfterTriage:
         }
         assert route_after_triage(state) == "intake"
 
-    def test_target_agent_bypasses_intake_for_developer_isolation(self):
+    def test_target_agent_still_routes_through_required_intake(self):
         state = {"current_agent": "triage:deep", "target_agent": "FlightsAgent"}
-        assert route_after_triage(state) == "supervisor"
+        assert route_after_triage(state) == "intake"
 
 
 class TestRouteAfterIntake:
@@ -828,15 +1027,57 @@ class TestRouteAfterSupervisor:
         targets = {s.node for s in result}
         assert targets == {"flights"}
 
-    def test_single_parallel_agent_returns_one_send(self):
+    def test_readiness_runs_before_parallel_dispatch(self):
         state = {
-            "messages": [HumanMessage(content="hotels only")],
-            "itinerary_components": {"routing": ["DestinationAgent"]},
+            "messages": [HumanMessage(content="Tokyo etiquette")],
+            "trip_request": {
+                "scope": "focused",
+                "destinations": ["tokyo"],
+                "requested_capabilities": ["travel_readiness"],
+                "readiness_topics": ["culture"],
+            },
+            "itinerary_components": {"routing": ["TravelReadinessAgent"]},
         }
         result = route_after_supervisor(state)
-        assert isinstance(result, list)
-        assert len(result) == 1
-        assert result[0].node == "destination"
+        assert result == "readiness"
+
+    def test_stale_readiness_fingerprint_is_not_reused(self):
+        state = {
+            "messages": [HumanMessage(content="Tokyo etiquette")],
+            "trip_request": {
+                "scope": "focused",
+                "destinations": ["tokyo"],
+                "requested_capabilities": ["travel_readiness"],
+                "readiness_topics": ["culture"],
+            },
+            "itinerary_components": {"routing": ["TravelReadinessAgent"]},
+            "component_results": {
+                "readiness": {
+                    "status": "completed",
+                    "request_fingerprint": "stale-request",
+                }
+            },
+        }
+
+        assert route_after_supervisor(state) == "readiness"
+
+    def test_full_trip_runs_safety_preflight_before_any_discovery(self):
+        state = {
+            "messages": [HumanMessage(content="Plan the whole trip")],
+            "trip_request": {
+                "scope": "full_itinerary",
+                "destinations": ["tokyo"],
+                "passport_country": "Poland",
+            },
+            "itinerary_components": {
+                "routing": [
+                    "FlightsAgent",
+                    "TravelReadinessAgent",
+                    "ActivitiesAgent",
+                ]
+            },
+        }
+        assert route_after_supervisor(state) == "readiness_preflight"
 
     def test_transportation_waits_for_discovery_fanout(self):
         state = {
@@ -870,6 +1111,18 @@ class TestRouteAfterSupervisor:
         assert route_after_supervisor(state) == "itinerary"
 
 
+class TestRouteAfterReadinessPreflight:
+    def test_verified_preflight_continues_to_safety_gate(self):
+        state = {"component_results": {"readiness_preflight": {"status": "completed"}}}
+        assert route_after_readiness_preflight(state) == "safety_review"
+
+    def test_missing_advisory_evidence_fails_closed(self):
+        state = {
+            "component_results": {"readiness_preflight": {"status": "no_inventory"}}
+        }
+        assert route_after_readiness_preflight(state) == END
+
+
 class TestRouteAfterSafetyReview:
     def test_rejected_ends(self):
         state = {"hitl_action": "rejected", "itinerary_components": {"routing": []}}
@@ -896,12 +1149,87 @@ class TestRouteAfterSafetyReview:
         }
         assert route_after_safety_review(state) == "trip_skeleton"
 
-    def test_approved_no_sequential_ends(self):
+    def test_approved_dispatches_requested_parallel_discovery(self):
         state = {
             "hitl_action": "approved",
             "itinerary_components": {"routing": ["FlightsAgent"]},
         }
-        assert route_after_safety_review(state) == END
+        result = route_after_safety_review(state)
+        assert isinstance(result, list)
+        assert [send.node for send in result] == ["flights"]
+
+    def test_full_trip_runs_readiness_details_before_discovery(self):
+        state = {
+            "hitl_action": "approved",
+            "trip_request": {"scope": "full_itinerary"},
+            "itinerary_components": {
+                "routing": [
+                    "TravelReadinessAgent",
+                    "FlightsAgent",
+                    "ActivitiesAgent",
+                ],
+                "readiness_preflight": {"data": {"destinations": ["tokyo"]}},
+            },
+            "component_results": {"readiness": {"status": "completed"}},
+        }
+
+        assert route_after_safety_review(state) == "readiness"
+
+
+class TestRouteAfterReadiness:
+    def test_completed_readiness_dispatches_other_discovery_workers(self):
+        report = TravelReadinessReport(
+            destinations=["tokyo"],
+            planning_constraints=[
+                PlanningConstraint(
+                    category="culture",
+                    severity="warning",
+                    summary="Temple admission requires covered shoulders.",
+                    source_ids=["S1"],
+                )
+            ],
+            sources=[
+                ReadinessSource(
+                    id="S1",
+                    title="Grounded constraint",
+                    url="https://example.com/constraint",
+                    domain="example.com",
+                    query="Tokyo access constraint",
+                    topic="culture",
+                )
+            ],
+        )
+        state = {
+            "itinerary_components": {
+                "routing": [
+                    "TravelReadinessAgent",
+                    "FlightsAgent",
+                    "ActivitiesAgent",
+                ],
+                "readiness": {"data": report.model_dump(mode="json")},
+            },
+            "component_results": {"readiness": {"status": "completed"}},
+        }
+
+        result = route_after_readiness(state)
+
+        assert isinstance(result, list)
+        assert {send.node for send in result} == {"flights", "activities"}
+        assert all(
+            send.arg["itinerary_components"]["readiness"]["data"]
+            == report.model_dump(mode="json")
+            for send in result
+        )
+
+    def test_failed_readiness_reaches_gate_without_spending_discovery_calls(self):
+        state = {
+            "itinerary_components": {
+                "routing": ["TravelReadinessAgent", "ActivitiesAgent"]
+            },
+            "component_results": {"readiness": {"status": "blocked_external"}},
+        }
+
+        assert route_after_readiness(state) == "component_gate"
 
 
 class TestRouteAfterTripSkeleton:
@@ -1009,17 +1337,26 @@ class TestRouteAfterBudgetReview:
 
     def test_approved_with_itinerary_routes(self):
         state = {
-            "hitl_action": "approved",
+            "hitl_action": "proceed",
             "itinerary_components": {"routing": ["ItineraryAgent"]},
         }
         assert route_after_budget_review(state) == "itinerary"
 
     def test_approved_no_itinerary_ends(self):
         state = {
-            "hitl_action": "approved",
+            "hitl_action": "proceed",
             "itinerary_components": {"routing": ["BudgetAgent"]},
         }
         assert route_after_budget_review(state) == END
+
+    def test_adjust_target_routes_only_to_budget(self):
+        state = {
+            "hitl_action": "adjust_target",
+            "itinerary_components": {
+                "routing": ["FlightsAgent", "HotelsAgent", "BudgetAgent"]
+            },
+        }
+        assert route_after_budget_review(state) == "budget"
 
 
 class TestRouteAfterHumanReview:
@@ -1040,37 +1377,59 @@ class TestRouteAfterHumanReview:
 
 
 class TestSafetyReviewInterrupt:
+    @staticmethod
+    def _state(level: str, summary: str, *, official: bool = True) -> dict:
+        report = TravelReadinessReport(
+            destinations=["test"],
+            safety=SafetyInfo(
+                advisory_level=level,
+                advisory_summary=summary,
+            ),
+            sources=[
+                ReadinessSource(
+                    id="S1",
+                    title="Advisory",
+                    url="https://travel.state.gov/advisory",
+                    domain="travel.state.gov",
+                    query="test advisory",
+                    topic="safety",
+                    is_official=official,
+                )
+            ],
+            citations={"safety.advisory_level": ["S1"]},
+        )
+        return {
+            "itinerary_components": {
+                "readiness_preflight": {
+                    "messages": [AIMessage(content=summary)],
+                    "data": report.model_dump(mode="json"),
+                    "coverage": (
+                        _verified_safety_coverage("test") if official else {"items": []}
+                    ),
+                }
+            },
+            "safety_acknowledged": False,
+        }
+
     @patch("src.agent.stage4_graph.is_hitl_enabled", return_value=True)
     @patch("src.agent.stage4_graph.interrupt")
     async def test_dangerous_approved(self, mock_interrupt, _hitl):
         mock_interrupt.return_value = {"approved": True}
-        state = {
-            "itinerary_components": {
-                "destination": {
-                    "messages": [
-                        AIMessage(content="Level 4: Do not travel to this area")
-                    ],
-                },
-            },
-            "safety_acknowledged": False,
-        }
+        state = self._state("red", "Level 4: Do not travel to this area")
         result = await safety_review_node(state)
         assert result["hitl_action"] == "approved"
         assert result["safety_acknowledged"] is True
         mock_interrupt.assert_called_once()
+        payload = mock_interrupt.call_args.args[0]
+        assert payload["gate"] == "safety_review"
+        assert payload["advisory_level"] == "red"
+        assert "Do not travel" in payload["summary"]
 
     @patch("src.agent.stage4_graph.is_hitl_enabled", return_value=True)
     @patch("src.agent.stage4_graph.interrupt")
     async def test_dangerous_rejected(self, mock_interrupt, _hitl):
         mock_interrupt.return_value = {"approved": False}
-        state = {
-            "itinerary_components": {
-                "destination": {
-                    "messages": [AIMessage(content="Level 4: Do not travel")],
-                },
-            },
-            "safety_acknowledged": False,
-        }
+        state = self._state("red", "Level 4: Do not travel")
         result = await safety_review_node(state)
         assert result["hitl_action"] == "rejected"
         assert "cancelled" in result["messages"][0].content.lower()
@@ -1079,24 +1438,34 @@ class TestSafetyReviewInterrupt:
     @patch("src.agent.stage4_graph.interrupt")
     async def test_reconsider_travel_triggers_interrupt(self, mock_interrupt, _hitl):
         mock_interrupt.return_value = {"approved": True}
-        state = {
-            "itinerary_components": {
-                "destination": {
-                    "messages": [
-                        AIMessage(content="Level 3: Reconsider travel advisory")
-                    ],
-                },
-            },
-            "safety_acknowledged": False,
-        }
+        state = self._state("orange", "Level 3: Reconsider travel advisory")
         result = await safety_review_node(state)
         assert result["hitl_action"] == "approved"
 
-    async def test_tool_message_content_is_checked(self):
-        """ToolMessage content should also be scanned for danger keywords."""
+    @patch("src.agent.stage4_graph.is_hitl_enabled", return_value=True)
+    @patch("src.agent.stage4_graph.interrupt")
+    async def test_nonofficial_dangerous_level_fails_closed(
+        self, mock_interrupt, _hitl
+    ):
+        state = self._state("red", "Do not travel", official=False)
+        result = await safety_review_node(state)
+        assert result["current_agent"] == "safety_review"
+        assert result["hitl_action"] == "rejected"
+        mock_interrupt.assert_not_called()
+
+    @patch("src.agent.stage4_graph.is_hitl_enabled", return_value=False)
+    async def test_disabling_hitl_does_not_disable_evidence_validation(self, _hitl):
+        state = self._state("red", "Do not travel", official=False)
+
+        result = await safety_review_node(state)
+
+        assert result["hitl_action"] == "rejected"
+
+    async def test_prose_without_structured_data_does_not_trigger(self):
+        """Untrusted prose must never drive the safety gate."""
         state = {
             "itinerary_components": {
-                "destination": {
+                "readiness_preflight": {
                     "messages": [
                         ToolMessage(content="Safe to visit. Level 1.", tool_call_id="x")
                     ],
@@ -1105,9 +1474,7 @@ class TestSafetyReviewInterrupt:
             "safety_acknowledged": False,
         }
         result = await safety_review_node(state)
-        # Level 1 is not dangerous
-        assert result["current_agent"] == "safety_review"
-        assert "hitl_action" not in result
+        assert result["hitl_action"] == "rejected"
 
 
 # ── Budget review HITL interrupt paths ───────────────────────────────────────
@@ -1117,52 +1484,80 @@ class TestBudgetReviewInterrupt:
     @patch("src.agent.stage4_graph.is_hitl_enabled", return_value=True)
     @patch("src.agent.stage4_graph.interrupt")
     async def test_overspend_approved(self, mock_interrupt, _hitl):
-        mock_interrupt.return_value = {"approved": True}
+        mock_interrupt.return_value = {
+            "gate": "budget_review",
+            "action": "proceed",
+        }
         state = {
             "itinerary_components": {
-                "budget_structured": {"total": 5000, "target_budget": 3000},
+                "budget_structured": {
+                    "total": 5000,
+                    "target_budget": 3000,
+                    "coverage_status": BudgetCoverageStatus.COMPLETE,
+                    "conversion_status": ConversionStatus.NOT_NEEDED,
+                    "verdict": BudgetVerdict.OVER_BUDGET,
+                },
             },
             "messages": [HumanMessage(content="Plan my trip")],
             "budget_adjustment_accepted": False,
         }
         result = await budget_review_node(state)
-        assert result["hitl_action"] == "approved"
+        assert result["hitl_action"] == "proceed"
         assert result["budget_adjustment_accepted"] is True
         mock_interrupt.assert_called_once()
 
     @patch("src.agent.stage4_graph.is_hitl_enabled", return_value=True)
     @patch("src.agent.stage4_graph.interrupt")
-    async def test_overspend_approved_with_feedback(self, mock_interrupt, _hitl):
+    async def test_overspend_adjusts_target_in_existing_currency(
+        self, mock_interrupt, _hitl
+    ):
         mock_interrupt.return_value = {
-            "approved": True,
-            "feedback": "Use budget hotels",
+            "gate": "budget_review",
+            "action": "adjust_target",
+            "new_budget": 5000,
         }
         state = {
             "itinerary_components": {
-                "budget_structured": {"total": 4500, "target_budget": 3000},
+                "budget_structured": {
+                    "total": 4500,
+                    "target_budget": 3000,
+                    "coverage_status": "complete",
+                    "conversion_status": "complete",
+                    "verdict": "over_budget",
+                },
             },
+            "trip_request": {"budget_amount": 3000, "budget_currency": "EUR"},
             "messages": [],
             "budget_adjustment_accepted": False,
         }
         result = await budget_review_node(state)
-        assert result["hitl_action"] == "approved"
-        assert result["human_feedback"] == "Use budget hotels"
+        assert result["hitl_action"] == "adjust_target"
+        assert result["trip_request"]["budget_amount"] == 5000
+        assert result["trip_request"]["budget_currency"] == "EUR"
 
     @patch("src.agent.stage4_graph.is_hitl_enabled", return_value=True)
     @patch("src.agent.stage4_graph.interrupt")
     async def test_overspend_rejected(self, mock_interrupt, _hitl):
-        mock_interrupt.return_value = {"approved": False, "feedback": "Too expensive"}
+        mock_interrupt.return_value = {
+            "gate": "budget_review",
+            "action": "cancel",
+        }
         state = {
             "itinerary_components": {
-                "budget_structured": {"total": 6000, "target_budget": 3000},
+                "budget_structured": {
+                    "total": 6000,
+                    "target_budget": 3000,
+                    "coverage_status": "complete",
+                    "conversion_status": "complete",
+                    "verdict": "over_budget",
+                },
             },
             "messages": [],
             "budget_adjustment_accepted": False,
         }
         result = await budget_review_node(state)
-        assert result["hitl_action"] == "rejected"
-        assert result["human_feedback"] == "Too expensive"
-        assert "adjustment" in result["messages"][0].content.lower()
+        assert result["hitl_action"] == "cancel"
+        assert "cancelled" in result["messages"][0].content.lower()
 
 
 # ── Human review HITL interrupt paths ────────────────────────────────────────
@@ -1219,7 +1614,7 @@ class TestHumanReviewInterrupt:
                 "hotels": {"messages": []},
                 "restaurants": {"messages": []},
                 "activities": {"messages": []},
-                "destination": {"messages": []},
+                "readiness": {"messages": []},
                 "transportation": {"messages": []},
                 "budget": {"messages": []},
                 "itinerary": {"messages": [AIMessage(content="Day 1 preview")]},
@@ -1234,44 +1629,45 @@ class TestHumanReviewInterrupt:
 
 
 class TestBudgetNodeStructured:
-    async def test_extracts_structured_budget(self):
-        mock_llm = MagicMock()
-        mock_executor = AsyncMock()
-
-        # The executor receives enriched messages and appends its own
-        budget_msg = AIMessage(
-            content="Budget: $3,500 total. Flights $800, Hotels $1200."
+    async def test_reuses_stored_evidence_and_rates(self):
+        agent = AsyncMock()
+        agent.run.return_value = BudgetRun(
+            report=BudgetBreakdown(total=3500, flights=800),
+            message="Validated total",
         )
-
-        async def _fake_invoke(input_dict, **kwargs):
-            return {"messages": input_dict["messages"] + [budget_msg]}
-
-        mock_executor.ainvoke = _fake_invoke
-
-        # Mock structured output extraction success
-        mock_structured = AsyncMock()
-        mock_budget = MagicMock()
-        mock_budget.model_dump.return_value = {
-            "flights": 800,
-            "accommodation": 1200,
-            "transport": 200,
-            "meals": 500,
-            "activities": 300,
-            "misc": 500,
-            "total": 3500,
-        }
-        mock_structured.ainvoke.return_value = mock_budget
-        mock_llm.with_structured_output.return_value = mock_structured
 
         state = {
             "messages": [HumanMessage(content="budget?")],
-            "itinerary_components": {"completed_agents": []},
+            "itinerary_components": {
+                "completed_agents": [],
+                "budget_evidence_structured": [
+                    {
+                        "category": "flights",
+                        "money": {"amount": "800", "currency": "USD"},
+                        "source_component": "flights",
+                        "source_id": "offer-1",
+                        "selection_status": "selected",
+                    }
+                ],
+                "budget_structured": {
+                    "conversion_rates": [
+                        {
+                            "from_currency": "EUR",
+                            "to_currency": "USD",
+                            "rate": 1.1,
+                            "provider": "fake",
+                            "observed_at": "now",
+                        }
+                    ]
+                },
+            },
         }
-        result = await budget_node(state, llm=mock_llm, executor=mock_executor)
+        result = await budget_node(state, agent=agent)
 
         assert result["current_agent"] == "budget"
-        assert "budget_structured" in result["itinerary_components"]
-        assert result["itinerary_components"]["budget_structured"]["flights"] == 800
+        context = agent.run.await_args.args[0]
+        assert context.additional_evidence[0].source_id == "offer-1"
+        assert context.stored_rates[0].rate == 1.1
 
 
 # ── Render handbook node tests ───────────────────────────────────────────────
@@ -1334,7 +1730,7 @@ class TestRenderHandbookNode:
                 "hotels": {
                     "messages": [AIMessage(content="Shinjuku hotel $120/night")],
                 },
-                "destination": {
+                "readiness": {
                     "messages": [AIMessage(content="Tokyo is safe. Level 1.")],
                 },
                 "restaurants": {
@@ -1419,7 +1815,7 @@ class TestRenderHandbookNode:
         state = {
             "messages": [HumanMessage(content="Plan")],
             "itinerary_components": {
-                "destination": {
+                "readiness": {
                     "messages": [
                         ToolMessage(content="Safety data from API", tool_call_id="t1"),
                         AIMessage(content="Tokyo is very safe"),

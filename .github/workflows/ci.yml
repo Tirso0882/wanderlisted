@@ -11,9 +11,6 @@ env:
   REGISTRY: ghcr.io
   DUFFEL_ACCESS_TOKEN: "duffel_test_fake"
   GOOGLE_MAPS_API_KEY: "test"
-  OPENWEATHER_API_KEY: "test"
-  PINECONE_API_KEY: "test"
-  PINECONE_INDEX_NAME: "test"
   AZURE_OPENAI_API_KEY: "test"
   AZURE_OPENAI_ENDPOINT: "https://test.openai.azure.com"
   AZURE_OPENAI_DEPLOYMENT_NAME: "test"
@@ -49,7 +46,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-      - run: pip install ruff
+      - run: pip install ruff==0.15.10
       - run: ruff check src/ tests/ scripts/
       - run: ruff format --check src/ tests/ scripts/
 
@@ -82,7 +79,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
       - run: pip install -r requirements.txt
-      - run: pytest tests/test_evaluators.py -x --tb=short -q
+      - run: pytest tests/test_evaluators.py tests/test_edd_budget.py -x --tb=short -q
 
   # ──────────────────────────────────────────────────────────────────
   # Job 4: Docker build dry-run — catch Dockerfile issues on PRs

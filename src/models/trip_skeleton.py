@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from decimal import Decimal
 
 from pydantic import BaseModel, Field, model_validator
+
+from src.models.pricing import BudgetCategory, PriceEvidence, SelectionStatus
 
 
 class FlightWindowOption(BaseModel):
@@ -18,6 +21,25 @@ class FlightWindowOption(BaseModel):
     airline_name: str = ""
     origin: str = ""
     destination: str = ""
+    observed_at: datetime | None = None
+    price_evidence: PriceEvidence | None = None
+
+    @model_validator(mode="after")
+    def _validate_selected_price(self) -> "FlightWindowOption":
+        if self.price_evidence is None:
+            return self
+        evidence = self.price_evidence
+        if evidence.category != BudgetCategory.FLIGHTS:
+            raise ValueError("selected flight must use flight pricing")
+        if not self.offer_id or evidence.source_id != self.offer_id:
+            raise ValueError("selected flight offer ID must match price source ID")
+        if evidence.selection_status != SelectionStatus.SELECTED:
+            raise ValueError("selected flight price must be marked selected")
+        if evidence.money.currency != self.currency.strip().upper():
+            raise ValueError("selected flight currencies must match")
+        if evidence.money.amount != Decimal(str(self.total_amount)):
+            raise ValueError("selected flight amounts must match")
+        return self
 
 
 class FlightWindowSearchResult(BaseModel):

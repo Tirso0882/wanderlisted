@@ -198,6 +198,48 @@ class TestSearchPlacesNearby:
         assert "Sala de Baile" in result
 
     @respx.mock
+    async def test_known_unsupported_type_redirects_to_text_search_without_http(
+        self, monkeypatch
+    ):
+        monkeypatch.delenv("GOOGLE_MAPS_API_KEY", raising=False)
+        nearby_route = respx.post(
+            "https://places.googleapis.com/v1/places:searchNearby"
+        )
+
+        result = await search_places_nearby.ainvoke(
+            {"location": "Tokyo", "place_type": "comic_book_store"}
+        )
+
+        assert "Unsupported Nearby Search type" in result
+        assert "search_places_text" in result
+        assert not nearby_route.called
+
+    @respx.mock
+    async def test_provider_unsupported_type_error_returns_actionable_message(
+        self, monkeypatch
+    ):
+        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
+        respx.post("https://places.googleapis.com/v1/places:searchNearby").mock(
+            return_value=Response(
+                400,
+                json={
+                    "error": {
+                        "code": 400,
+                        "message": "Unsupported types: future_new_type.",
+                        "status": "INVALID_ARGUMENT",
+                    }
+                },
+            )
+        )
+
+        result = await search_places_nearby.ainvoke(
+            {"location": "38.3452,-0.4810", "place_type": "future_new_type"}
+        )
+
+        assert "Unsupported Nearby Search type" in result
+        assert "search_places_text" in result
+
+    @respx.mock
     async def test_http_error_returns_message(self, monkeypatch):
         monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
         respx.post("https://places.googleapis.com/v1/places:searchNearby").mock(

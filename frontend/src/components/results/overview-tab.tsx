@@ -3,7 +3,7 @@
 import {
   Plane,
   Hotel,
-  MapPin,
+  ShieldCheck,
   Utensils,
   Compass,
   Bus,
@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useChatStore } from "@/stores/chat-store";
+import { formatCurrency } from "@/lib/format-currency";
 import type { AgentName, AgentStatus } from "@/lib/types";
 import type { LucideIcon } from "lucide-react";
 
@@ -40,11 +41,11 @@ const AGENT_META: {
     description: "Finding accommodations and availability",
   },
   {
-    name: "DestinationAgent",
-    icon: MapPin,
-    label: "Destination",
+    name: "TravelReadinessAgent",
+    icon: ShieldCheck,
+    label: "Travel Essentials",
     tab: "destination",
-    description: "Researching safety, culture, and local info",
+    description: "Checking safety, weather, entry, health, and local customs",
   },
   {
     name: "ActivitiesAgent",
@@ -193,7 +194,10 @@ export function OverviewTab() {
             <Card>
               <CardContent className="p-4 text-center">
                 <p className="text-2xl font-bold">
-                  ${handbook.budget_total.toLocaleString()}
+                  {formatCurrency(
+                    handbook.budget_total,
+                    handbook.budget_base_currency ?? "USD",
+                  )}
                 </p>
                 <p className="text-xs text-muted-foreground">Est. total cost</p>
               </CardContent>

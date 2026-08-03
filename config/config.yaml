@@ -13,27 +13,55 @@ logging:
     base_path: "logs"
     level: DEBUG
 
-# ── RAG / Chunker ────────────────────────────────────────────────────────
-rag:
-  chunk_size: 2000
-  chunk_overlap: 200
-  min_chunk_size: 200
-  max_section_size: 3000
-  default_tenant: "wikivoyage"
-  reranker:
-    enabled: true
-    model: "rerank-v3.5"
-    top_n: 5
-  query_decomposition:
-    enabled: true
-    max_sub_queries: 4
+# ── Travel-readiness research (Tavily + Open-Meteo) ──────────────────────
+travel_readiness:
+  max_queries: 6
+  max_results_per_query: 5
+  concurrency: 4
+  timeout_seconds: 15
+  max_retries: 3
+  cache_ttl_seconds: 21600
+  cache_max_size: 200
+  weather:
+    timeout_seconds: 10
+    max_retries: 2
+    forecast_horizon_days: 16
+    cache_ttl_seconds: 3600
+  official_sources:
+    safety_by_origin:
+      united states: travel.state.gov
+      us: travel.state.gov
+      united kingdom: gov.uk
+      uk: gov.uk
+      poland: gov.pl
+      polska: gov.pl
+      colombia: cancilleria.gov.co
+      kolumbia: cancilleria.gov.co
+    safety_fallback:
+      - travel.state.gov
+      - gov.uk
+    weather:
+      - worldweather.wmo.int
+    health:
+      - who.int
+      - cdc.gov
+    # Trusted official visitor authorities. These label returned evidence as
+    # official without restricting broader culture/etiquette searches.
+    culture_authorities:
+      - gotokyo.org
+      - japan.travel
+    # Add official destination-government domains before emitting these facts.
+    visa: []
+    emergency: []
 
 # ── Routing ──────────────────────────────────────────────────────────────
 routing:
-  # Agents that run concurrently in the parallel dispatch phase
+  # Discovery agents run concurrently. TravelReadinessAgent is listed here for
+  # routing compatibility but the graph completes it before discovery so its
+  # grounded constraints are available to the remaining workers.
   parallel_agents:
     - FlightsAgent
-    - DestinationAgent
+    - TravelReadinessAgent
     - RestaurantsAgent
     - ActivitiesAgent
 
@@ -53,17 +81,23 @@ timeouts:
   routes: 25
   flights: 30
   hotels: 30
-  weather: 10
   currency: 10
 
 # ── HITL Gates ───────────────────────────────────────────────────────────
-# Toggle human-in-the-loop interrupt gates.
-# Set to true for interactive use (LangGraph Studio), false for headless (webapp).
+# Toggle human-in-the-loop interrupt gates. The web app supports safety
+# acknowledgement and therefore keeps safety_review enabled.
 # Override per-gate via env: HITL_SAFETY_REVIEW=false, HITL_BUDGET_REVIEW=false, etc.
 hitl:
-  safety_review: false
-  budget_review: false
+  safety_review: true
+  budget_review: true
   human_review: false
+
+# ── Budget policy ────────────────────────────────────────────────────────
+budget:
+  reserve_recommendation_percent: 10
+  review_overage_percent: 10
+  review_overage_floor_usd: 100
+  exchange_rate_cache_ttl_seconds: 3600
 
 # ── API ──────────────────────────────────────────────────────────────────
 api:

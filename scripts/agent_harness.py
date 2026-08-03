@@ -48,7 +48,7 @@ from langchain_core.messages import (
 from src.agent.agents import (
     ActivitiesAgent,
     BudgetAgent,
-    DestinationAgent,
+    TravelReadinessAgent,
     FlightsAgent,
     HotelsAgent,
     ItineraryAgent,
@@ -57,13 +57,14 @@ from src.agent.agents import (
     TransportationAgent,
 )
 from src.agent.llm import get_llm
+from src.models import TripRequest
 
 # ── Agent registry ────────────────────────────────────────────────────────
 # Maps CLI name → (AgentClass, LLM tier).  Add new agents here.
 AGENT_REGISTRY: dict[str, tuple[type[SpecializedAgent], str]] = {
     "flights": (FlightsAgent, "fast"),
     "hotels": (HotelsAgent, "fast"),
-    "destination": (DestinationAgent, "reasoning"),
+    "readiness": (TravelReadinessAgent, "reasoning"),
     "restaurants": (RestaurantsAgent, "fast"),
     "activities": (ActivitiesAgent, "fast"),
     "transportation": (TransportationAgent, "fast"),
@@ -174,16 +175,6 @@ async def run_agent_harness(
 
     try:
         llm = get_llm(tier=tier)
-        agent = cls(llm)
-        result["tools"] = [t.name for t in agent.tools]
-        result["system_prompt"] = agent.system_prompt
-
-        executor = create_agent(
-            model=llm,
-            tools=agent.tools,
-            system_prompt=agent.system_prompt,
-        )
-
         profile = SystemMessage(
             content=(
                 "USER PROFILE:\n"
@@ -195,7 +186,31 @@ async def run_agent_harness(
         user_msg = HumanMessage(content=prompt)
 
         t0 = time.perf_counter()
-        run_result = await executor.ainvoke({"messages": [profile, user_msg]})
+        if agent_name == "readiness":
+            agent = TravelReadinessAgent(llm)
+            result["tools"] = ["tavily_search"]
+            result["system_prompt"] = "Fixed Tavily readiness research pipeline"
+            readiness_run = await agent.research(
+                question=prompt,
+                trip_request=TripRequest(destinations=[dest]),
+            )
+            run_result = {
+                "messages": [
+                    profile,
+                    user_msg,
+                    AIMessage(content=readiness_run.message),
+                ]
+            }
+        else:
+            agent = cls(llm)
+            result["tools"] = [t.name for t in agent.tools]
+            result["system_prompt"] = agent.system_prompt
+            executor = create_agent(
+                model=llm,
+                tools=agent.tools,
+                system_prompt=agent.system_prompt,
+            )
+            run_result = await executor.ainvoke({"messages": [profile, user_msg]})
         result["elapsed_s"] = round(time.perf_counter() - t0, 2)
 
         # Parse messages

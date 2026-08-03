@@ -20,7 +20,7 @@ VALID_AGENT_NAMES = frozenset(
     {
         "FlightsAgent",
         "HotelsAgent",
-        "DestinationAgent",
+        "TravelReadinessAgent",
         "RestaurantsAgent",
         "ActivitiesAgent",
         "TransportationAgent",
@@ -47,9 +47,11 @@ def correct_tool_routing(inputs: dict, outputs: dict) -> dict:
         )
     elif "weather" in question or "temperature" in question:
         score = int(
-            "get_weather" in tools_used
-            or "DestinationAgent" in outputs.get("agents_routed", [])
+            "open_meteo_forecast" in tools_used
+            or "TravelReadinessAgent" in outputs.get("agents_routed", [])
         )
+    elif any(term in question for term in ("event", "festival", "hidden gem")):
+        score = int("ActivitiesAgent" in outputs.get("agents_routed", []))
     elif "restaurant" in question or "eat" in question or "food" in question:
         score = int(
             "search_activities" in tools_used
@@ -119,139 +121,6 @@ def handbook_section_completeness(outputs: dict) -> dict:
     found = sum(1 for s in required_sections if s in output)
     score = found / len(required_sections)
     return {"score": score, "key": "handbook_section_completeness"}
-
-
-# ── RAG Evaluators (LLM-as-Judge, replaces RAGAS) ────────────────────────
-# 6 metrics: context_precision, context_recall, context_entity_recall,
-# noise_sensitivity, response_relevancy, faithfulness
-
-
-class _RAGScore(BaseModel):
-    """Structured score from RAG evaluation judge."""
-
-    score: float = Field(description="Score between 0.0 and 1.0", ge=0.0, le=1.0)
-    reasoning: str = Field(description="Brief justification for the score")
-
-
-_RAG_SYSTEM = (
-    "You are an impartial RAG evaluation judge. "
-    "Evaluate ONLY what is asked. Return a score between 0.0 and 1.0."
-)
-
-
-def _ask_rag_judge(prompt: str) -> dict:
-    """Call LLM judge and return parsed RAGScore."""
-    client = OpenAI()
-    completion = client.beta.chat.completions.parse(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": _RAG_SYSTEM},
-            {"role": "user", "content": prompt},
-        ],
-        response_format=_RAGScore,
-    )
-    parsed = completion.choices[0].message.parsed
-    return {"score": parsed.score, "reasoning": parsed.reasoning}
-
-
-def context_precision(inputs: dict, reference_outputs: dict, outputs: dict) -> dict:
-    """Were the retrieved contexts relevant to answering the question?"""
-    result = _ask_rag_judge(
-        f"Question: {inputs.get('question', '')}\n\n"
-        f"Reference answer: {reference_outputs.get('reference', '')}\n\n"
-        f"Retrieved contexts:\n{chr(10).join(outputs.get('retrieved_contexts', []))}\n\n"
-        "Score 0-1: what fraction of the retrieved contexts are relevant "
-        "to answering the question correctly? Irrelevant contexts score 0."
-    )
-    return {
-        "score": result["score"],
-        "key": "context_precision",
-        "comment": result["reasoning"],
-    }
-
-
-def context_recall(inputs: dict, reference_outputs: dict, outputs: dict) -> dict:
-    """Were all pieces of the reference answer covered by retrieved contexts?"""
-    result = _ask_rag_judge(
-        f"Question: {inputs.get('question', '')}\n\n"
-        f"Reference answer: {reference_outputs.get('reference', '')}\n\n"
-        f"Retrieved contexts:\n{chr(10).join(outputs.get('retrieved_contexts', []))}\n\n"
-        "Score 0-1: what fraction of the claims in the reference answer "
-        "can be attributed to the retrieved contexts? "
-        "1.0 means every claim is supported by the contexts."
-    )
-    return {
-        "score": result["score"],
-        "key": "context_recall",
-        "comment": result["reasoning"],
-    }
-
-
-def context_entity_recall(inputs: dict, reference_outputs: dict, outputs: dict) -> dict:
-    """Were the key entities from the reference found in retrieved contexts?"""
-    result = _ask_rag_judge(
-        f"Reference answer: {reference_outputs.get('reference', '')}\n\n"
-        f"Retrieved contexts:\n{chr(10).join(outputs.get('retrieved_contexts', []))}\n\n"
-        "Extract all named entities (places, people, organizations, prices, dates) "
-        "from the reference answer. Score 0-1: what fraction of those entities "
-        "appear in the retrieved contexts?"
-    )
-    return {
-        "score": result["score"],
-        "key": "context_entity_recall",
-        "comment": result["reasoning"],
-    }
-
-
-def noise_sensitivity(inputs: dict, reference_outputs: dict, outputs: dict) -> dict:
-    """How well does the response avoid being misled by irrelevant contexts?"""
-    result = _ask_rag_judge(
-        f"Question: {inputs.get('question', '')}\n\n"
-        f"Reference answer: {reference_outputs.get('reference', '')}\n\n"
-        f"Retrieved contexts:\n{chr(10).join(outputs.get('retrieved_contexts', []))}\n\n"
-        f"Agent response: {outputs.get('output', '')}\n\n"
-        "Some retrieved contexts may be irrelevant noise. "
-        "Score 0-1: how well did the agent ignore irrelevant contexts "
-        "and produce a correct answer? 1.0 means no noise influence."
-    )
-    return {
-        "score": result["score"],
-        "key": "noise_sensitivity",
-        "comment": result["reasoning"],
-    }
-
-
-def response_relevancy(inputs: dict, outputs: dict) -> dict:
-    """Is the response relevant to the question asked?"""
-    result = _ask_rag_judge(
-        f"Question: {inputs.get('question', '')}\n\n"
-        f"Agent response: {outputs.get('output', '')}\n\n"
-        "Score 0-1: how relevant is the response to the question? "
-        "1.0 = perfectly on-topic and complete. "
-        "0.0 = completely off-topic or answers a different question."
-    )
-    return {
-        "score": result["score"],
-        "key": "response_relevancy",
-        "comment": result["reasoning"],
-    }
-
-
-def faithfulness(inputs: dict, outputs: dict) -> dict:
-    """Does the response only contain claims supported by retrieved contexts?"""
-    result = _ask_rag_judge(
-        f"Retrieved contexts:\n{chr(10).join(outputs.get('retrieved_contexts', []))}\n\n"
-        f"Agent response: {outputs.get('output', '')}\n\n"
-        "Extract every factual claim from the agent response. "
-        "Score 0-1: what fraction of those claims are supported by "
-        "the retrieved contexts? Claims not in the context are hallucinations. "
-        "1.0 = fully grounded, 0.0 = entirely hallucinated."
-    )
-    return {
-        "score": result["score"],
-        "key": "faithfulness",
-        "comment": result["reasoning"],
-    }
 
 
 # ── Layer 2: LLM-as-Judge Evaluator (0–3 quality scale) ──────────────────

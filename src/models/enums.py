@@ -76,6 +76,7 @@ class DayPeriod(StrEnum):
 
 
 class AdvisoryLevel(StrEnum):
+    UNKNOWN = "unknown"
     GREEN = "green"
     YELLOW = "yellow"
     ORANGE = "orange"
@@ -83,7 +84,7 @@ class AdvisoryLevel(StrEnum):
 
     @classmethod
     def _missing_(cls, value: object) -> "AdvisoryLevel":
-        return _lookup_or_default(cls, value, cls.GREEN)
+        return _lookup_or_default(cls, value, cls.UNKNOWN)
 
 
 class PackingCategory(StrEnum):

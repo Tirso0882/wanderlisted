@@ -10,7 +10,7 @@ every requested city rather than allowing the first city to satisfy the case.
 
 from __future__ import annotations
 
-DATASET_VERSION = "1.0.0"
+DATASET_VERSION = "1.0.1"
 DATASET_SIZE = 40
 
 DATASET: list[dict] = [
@@ -163,7 +163,16 @@ DATASET: list[dict] = [
         "expected": {
             "locations": [{"rio de janeiro", "rio"}],
             "interests": [{"samba"}, {"music", "dance"}],
-            "activity_type": [{"night club", "live music venue", "tourist attraction"}],
+            "activity_type": [
+                {
+                    "night club",
+                    "live music venue",
+                    "tourist attraction",
+                    "music experience",
+                    "dance experience",
+                    "samba experience",
+                }
+            ],
         },
     },
     {
@@ -173,7 +182,9 @@ DATASET: list[dict] = [
         "expected": {
             "locations": [{"bangkok"}],
             "interests": [{"thai cooking", "cooking class"}, {"food"}],
-            "activity_type": [{"tourist attraction", "school"}],
+            "activity_type": [
+                {"tourist attraction", "school", "cooking class", "food experience"}
+            ],
         },
     },
     {
@@ -183,7 +194,15 @@ DATASET: list[dict] = [
         "expected": {
             "locations": [{"buenos aires"}],
             "interests": [{"tango"}, {"dance"}],
-            "activity_type": [{"live music venue", "night club", "tourist attraction"}],
+            "activity_type": [
+                {
+                    "live music venue",
+                    "night club",
+                    "tourist attraction",
+                    "tango show",
+                    "dance experience",
+                }
+            ],
         },
     },
     {
@@ -331,7 +350,9 @@ DATASET: list[dict] = [
         "expected": {
             "locations": [{"prague"}],
             "interests": [{"workshop"}, {"event room", "event space"}],
-            "activity_type": [{"event venue", "conference center", "event space"}],
+            "activity_type": [
+                {"event venue", "conference center", "event space", "event room"}
+            ],
             "group_fit": [{"20 people", "large group", "group"}],
             "venue_rental": [{"rental", "rent", "hire"}],
         },
@@ -430,7 +451,15 @@ DATASET: list[dict] = [
         "expected": {
             "locations": [{"dublin"}],
             "interests": [{"escape room", "games"}],
-            "activity_type": [{"amusement center", "tourist attraction"}],
+            "activity_type": [
+                {
+                    "amusement center",
+                    "tourist attraction",
+                    "escape room",
+                    "games activity",
+                    "group activity",
+                }
+            ],
             "group_fit": [{"12 people", "large group", "group"}],
         },
     },

@@ -249,8 +249,7 @@ Choose the narrowest command for the touched layer:
 .venv/bin/python edd/flights/l1_run.py
 
 # Tracked LangSmith experiments (requires configured services/API keys)
-.venv/bin/python scripts/eval_agents.py --run --mode agent
-.venv/bin/python scripts/eval_agents.py --run --mode rag
+.venv/bin/python scripts/eval_agents.py --run
 ```
 
 Report skipped live checks explicitly. Never weaken TLS verification or leak

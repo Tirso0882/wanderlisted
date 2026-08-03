@@ -22,7 +22,7 @@ def _mock_llm(patch):
     return llm, structured
 
 
-async def test_polish_request_stops_before_fanout_for_two_missing_fields():
+async def test_polish_request_stops_before_fanout_for_required_fields():
     llm, _ = _mock_llm(
         TripRequestPatch(
             scope=RequestScope.FULL_ITINERARY,
@@ -46,7 +46,12 @@ async def test_polish_request_stops_before_fanout_for_two_missing_fields():
     result = await intake_node(state, llm=llm)
 
     assert result["workflow_status"] == "needs_user_input"
-    assert result["pending_questions"] == ["origin_city", "adults"]
+    assert result["pending_questions"] == [
+        "passport_country",
+        "origin_city",
+        "adults",
+    ]
+    assert "paszport" in result["messages"][0].content
     assert "Z jakiego miasta" in result["messages"][0].content
     assert "Ile osób dorosłych" in result["messages"][0].content
 
@@ -75,13 +80,18 @@ async def test_short_answer_merges_pending_request_and_becomes_ready():
     second_llm, structured = _mock_llm(
         TripRequestPatch(
             locale="pl",
+            passport_country="Kolumbia",
             origin_city="Bogota",
             travelers=TravelerPartyPatch(adults=1),
         )
     )
     second = await intake_node(
         {
-            "messages": [HumanMessage(content="Bogota, jedna dorosła osoba")],
+            "messages": [
+                HumanMessage(
+                    content="Bogota, paszport kolumbijski, jedna dorosła osoba"
+                )
+            ],
             "trip_request": first["trip_request"],
             "request_revision": first["request_revision"],
             "pending_questions": first["pending_questions"],

@@ -1,4 +1,4 @@
-.PHONY: help install dev studio test reindex rag-test clean lint fmt \
+.PHONY: help install dev studio test clean lint fmt \
        docker-build docker-up docker-down eval-layer1 \
        smoke smoke-simple harness harness-agent \
        frontend frontend-build frontend-install
@@ -12,8 +12,6 @@ help:
 	@echo "  make studio       — Start LangGraph Studio-compatible dev server"
 	@echo "  make test         — Run all tests (unit + integration)"
 	@echo "  make test-unit    — Run unit tests only"
-	@echo "  make reindex      — Re-index all 29 guides into Pinecone"
-	@echo "  make rag-test     — Test RAG retrieval with 6 sample queries"
 	@echo "  make coverage     — Show test coverage report"
 	@echo "  make lint         — Lint code with ruff"
 	@echo "  make fmt          — Format code with ruff"
@@ -47,7 +45,7 @@ install:
 	.venv/bin/pip install -r requirements.txt
 
 dev:
-	HITL_SAFETY_REVIEW=false HITL_BUDGET_REVIEW=false HITL_HUMAN_REVIEW=false \
+	HITL_SAFETY_REVIEW=false HITL_HUMAN_REVIEW=false \
 	.venv/bin/python -m uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
 
 studio:
@@ -58,16 +56,6 @@ test:
 
 test-unit:
 	.venv/bin/pytest tests/ -v --tb=short -m "not integration"
-
-reindex:
-	@echo "Removing stale manifest and re-indexing into Pinecone…"
-	rm -f knowledge_base/.cache/manifest.json
-	.venv/bin/python -m src.rag.indexer
-	@echo "✓ Re-index complete. Run 'make rag-test' to validate."
-
-rag-test:
-	@echo "Testing RAG retrieval with 6 sample queries…"
-	.venv/bin/python scripts/test_rag_query.py
 
 coverage:
 	.venv/bin/pytest --cov=src tests/ --cov-report=html
@@ -103,7 +91,8 @@ docker-down:
 
 # ── Evaluation ────────────────────────────────────────────────────
 eval-layer1:
-	.venv/bin/pytest tests/test_evaluators.py -x --tb=short -q
+	.venv/bin/pytest tests/test_evaluators.py tests/test_edd_budget.py -x --tb=short -q
+	.venv/bin/python -m edd.budget.l1_run
 
 # ── Agent Harness (individual agent testing with HTML reports) ────
 # Optional: ARGS="--dest Paris --open"  (extra flags passed to harness)

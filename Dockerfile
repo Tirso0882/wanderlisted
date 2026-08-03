@@ -24,7 +24,6 @@ COPY --from=builder /install /usr/local
 COPY src/ src/
 COPY config/ config/
 COPY custom_logging/ custom_logging/
-COPY knowledge_base/ knowledge_base/
 COPY pyproject.toml .
 
 ENV PYTHONUNBUFFERED=1

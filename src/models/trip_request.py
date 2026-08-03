@@ -7,6 +7,8 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from src.models.pricing import KnownTripCost
+
 
 class RequestScope(StrEnum):
     """How much of the travel workflow the user requested."""
@@ -22,12 +24,24 @@ class RequestedCapability(StrEnum):
 
     FLIGHTS = "flights"
     HOTELS = "hotels"
-    DESTINATION = "destination"
+    TRAVEL_READINESS = "travel_readiness"
     RESTAURANTS = "restaurants"
     ACTIVITIES = "activities"
     TRANSPORTATION = "transportation"
     BUDGET = "budget"
     ITINERARY = "itinerary"
+
+
+class ReadinessTopic(StrEnum):
+    """Focused, non-commercial destination-readiness topics."""
+
+    SAFETY = "safety"
+    ENTRY = "entry"
+    HEALTH = "health"
+    WEATHER = "weather"
+    CULTURE = "culture"
+    PRACTICAL = "practical"
+    PACKING = "packing"
 
 
 class DateWindow(BaseModel):
@@ -108,15 +122,19 @@ class TripRequest(BaseModel):
     scope: RequestScope = RequestScope.UNKNOWN
     locale: str = "en"
     origin_country: str = ""
+    passport_country: str = ""
     origin_city: str = ""
     origin_airport: str = ""
     destinations: list[str] = Field(default_factory=list)
     requested_capabilities: list[RequestedCapability] = Field(default_factory=list)
+    readiness_topics: list[ReadinessTopic] = Field(default_factory=list)
     date_window: DateWindow = Field(default_factory=DateWindow)
     travelers: TravelerParty = Field(default_factory=TravelerParty)
     travel_style: str = ""
     budget_amount: float | None = Field(default=None, ge=0)
     budget_currency: str = "USD"
+    known_costs: list[KnownTripCost] = Field(default_factory=list)
+    contingency_percent: float | None = Field(default=None, ge=0, le=100)
     interests: list[str] = Field(default_factory=list)
     dietary_restrictions: list[str] = Field(default_factory=list)
     accessibility_needs: list[str] = Field(default_factory=list)
@@ -154,15 +172,19 @@ class TripRequestPatch(BaseModel):
     scope: RequestScope | None = None
     locale: str | None = None
     origin_country: str | None = None
+    passport_country: str | None = None
     origin_city: str | None = None
     origin_airport: str | None = None
     destinations: list[str] | None = None
     requested_capabilities: list[RequestedCapability] | None = None
+    readiness_topics: list[ReadinessTopic] | None = None
     date_window: DateWindowPatch | None = None
     travelers: TravelerPartyPatch | None = None
     travel_style: str | None = None
     budget_amount: float | None = Field(default=None, ge=0)
     budget_currency: str | None = None
+    known_costs: list[KnownTripCost] | None = None
+    contingency_percent: float | None = Field(default=None, ge=0, le=100)
     interests: list[str] | None = None
     dietary_restrictions: list[str] | None = None
     accessibility_needs: list[str] | None = None

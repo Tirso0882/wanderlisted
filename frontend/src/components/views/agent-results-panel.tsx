@@ -14,12 +14,12 @@ import { BudgetChart } from "@/components/results/budget-chart";
 import { DestinationTab } from "@/components/results/destination-tab";
 import { ItineraryTab } from "@/components/results/itinerary-tab";
 import { useChatStore, type ViewMode } from "@/stores/chat-store";
-import type { AgentName } from "@/lib/types";
+import type { AgentName, TravelReadinessReport } from "@/lib/types";
 
 const VIEW_AGENT_MAP: Partial<Record<ViewMode, AgentName>> = {
   flights: "FlightsAgent",
   hotels: "HotelsAgent",
-  destination: "DestinationAgent",
+  destination: "TravelReadinessAgent",
   activities: "ActivitiesAgent",
   restaurants: "RestaurantsAgent",
   transport: "TransportationAgent",
@@ -53,6 +53,7 @@ export function AgentResultsPanel({ view }: { view: ViewMode }) {
   const handbook = useChatStore((s) => s.handbook);
   const budget = useChatStore((s) => s.budget);
   const agents = useChatStore((s) => s.agents);
+  const components = useChatStore((s) => s.components);
 
   const agentName = VIEW_AGENT_MAP[view];
   const isLoading = agentName ? agents[agentName] === "running" : false;
@@ -60,8 +61,17 @@ export function AgentResultsPanel({ view }: { view: ViewMode }) {
   const flights = handbook?.flights ?? [];
   const hotels = handbook?.hotels ?? [];
   const days = handbook?.days ?? [];
-  const safety = handbook?.safety ?? null;
-  const culture = handbook?.culture ?? null;
+  const readiness =
+    (components?.readiness as { data?: TravelReadinessReport } | undefined)
+      ?.data ??
+    (components?.readiness_preflight as
+      | { data?: TravelReadinessReport }
+      | undefined)?.data;
+  const safety = readiness?.safety ?? handbook?.safety ?? null;
+  const culture = readiness?.culture ?? handbook?.culture ?? null;
+  const weather =
+    readiness?.weather ??
+    days.flatMap((day) => (day.weather ? [day.weather] : []));
 
   const allActivities = days.flatMap((d) =>
     d.time_blocks.flatMap((tb) => tb.activities),
@@ -110,8 +120,17 @@ export function AgentResultsPanel({ view }: { view: ViewMode }) {
         );
 
       case "destination":
-        if (!safety && !culture) return <EmptyState isLoading={isLoading} />;
-        return <DestinationTab safety={safety} culture={culture} />;
+        if (!safety && !culture && weather.length === 0) {
+          return <EmptyState isLoading={isLoading} />;
+        }
+        return (
+          <DestinationTab
+            safety={safety}
+            culture={culture}
+            weather={weather}
+            readiness={readiness}
+          />
+        );
 
       case "activities":
         if (allActivities.length === 0) return <EmptyState isLoading={isLoading} />;

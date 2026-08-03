@@ -23,6 +23,10 @@ from edd.rubrics import (  # noqa: E402
 _SPEC = AGENT_SPECS["restaurants"]
 
 # These Melbourne anchors are deliberately disjoint from l2_judge_cases.py.
+# These distinctive anchor identifiers are checked against the calibration corpus
+# in tests/test_judge_prompt_holdouts.py. Change them if these examples change.
+CALIBRATION_HOLDOUT_MARKERS = ("Harbour Table", "18 Flinders Lane", "Melbourne")
+
 _FAITH_EXAMPLES = """EXAMPLES (illustrative anchors - do NOT treat as evidence for the case you score):
   - RESULTS: "Harbour Table, 18 Flinders Lane, Melbourne; Rating 4.6/5
     (340 reviews); Price MODERATE; Summary: modern Australian seafood;
@@ -72,6 +76,7 @@ HELPFULNESS_RUBRIC = helpfulness_rubric(_SPEC) + "\n\n" + _RESTAURANT_HELPFULNES
 __all__ = [
     "FAITHFULNESS_RUBRIC",
     "HELPFULNESS_RUBRIC",
+    "CALIBRATION_HOLDOUT_MARKERS",
     "JUDGES",
     "build_judge",
     "judge_faithfulness",

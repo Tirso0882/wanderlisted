@@ -28,7 +28,7 @@ You design, refine, and review the prompts that drive the AI travel agent's beha
 
 ### Content
 - Be **specific and concrete** — say "always include price per night in USD" not "include pricing information".
-- Reference the **exact tool names** the agent has access to (e.g., `search_flights`, `get_weather`, `calculate_budget`).
+- Reference the **exact tool names** the agent has access to (e.g., `search_flights`, `search_destination_web`, `calculate_budget`).
 - Include **examples** of expected output format when the format matters (itinerary layout, budget tables, etc.).
 - Anticipate **edge cases** — what should the agent do when a tool returns no results? When the user's dates are in the past?
 
@@ -42,12 +42,10 @@ The agent has these tools — prompts should instruct the agent on **when and ho
 - `lookup_iata_code` — resolve city names to airport codes
 - `search_flights` — find flights between airports
 - `search_hotels` — find accommodation options
-- `get_weather` — weather forecast for a city
 - `convert_currency` — exchange rate conversion
 - `search_activities` — find things to do
-- `get_safety_info` — travel safety advisories
 - `calculate_budget` — compute trip cost breakdown
-- `search_destination_guides` — RAG search over knowledge base
+- `search_destination_web` — normalized Tavily destination evidence
 
 ## Workflow
 

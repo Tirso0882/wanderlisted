@@ -31,10 +31,11 @@ class TestActivitiesAgent:
         tool_names = {t.name for t in self.agent.tools}
         assert "search_places_nearby" in tool_names
         assert "search_places_text" in tool_names
+        assert "search_dated_events_web" in tool_names
 
     def test_tool_count(self):
-        assert len(self.agent.tools) == 2
+        assert len(self.agent.tools) == 3
 
     def test_repr(self):
         assert "ActivitiesAgent" in repr(self.agent)
-        assert "tools=2" in repr(self.agent)
+        assert "tools=3" in repr(self.agent)
