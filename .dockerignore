@@ -15,7 +15,6 @@ htmlcov/
 .pytest_cache/
 .ruff_cache/
 *.md
-!knowledge_base/**/*.md
 notes.txt
 Makefile
 docker-compose.yml

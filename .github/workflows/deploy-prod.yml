@@ -84,7 +84,6 @@ jobs:
               azure-openai-endpoint=${{ secrets.AZURE_OPENAI_ENDPOINT }} \
               duffel-token=${{ secrets.DUFFEL_ACCESS_TOKEN }} \
               google-maps-key=${{ secrets.GOOGLE_MAPS_API_KEY }} \
-              pinecone-key=${{ secrets.PINECONE_API_KEY }} \
               tavily-key=${{ secrets.TAVILY_API_KEY }} \
               hotelbeds-key=${{ secrets.HOTELBEDS_API_KEY }} \
               hotelbeds-secret=${{ secrets.HOTELBEDS_API_SECRET }}
@@ -101,8 +100,6 @@ jobs:
               AZURE_OPENAI_API_VERSION=${{ vars.AZURE_OPENAI_API_VERSION }} \
               DUFFEL_ACCESS_TOKEN=secretref:duffel-token \
               GOOGLE_MAPS_API_KEY=secretref:google-maps-key \
-              PINECONE_API_KEY=secretref:pinecone-key \
-              PINECONE_INDEX_NAME=${{ vars.PINECONE_INDEX_NAME }} \
               TAVILY_API_KEY=secretref:tavily-key \
               HOTELBEDS_API_KEY=secretref:hotelbeds-key \
               HOTELBEDS_API_SECRET=secretref:hotelbeds-secret \
