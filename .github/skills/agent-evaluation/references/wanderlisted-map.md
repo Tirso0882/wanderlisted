@@ -1,7 +1,7 @@
 # Wanderlisted Evaluation Map
 
 This reference maps the general metric framework to Wanderlisted's Stage 4
-supervisor graph, specialized travel agents, RAG pipeline, HITL gates, and
+supervisor graph, specialized travel agents, readiness evidence pipeline, HITL gates, and
 handbook output.
 
 ## Evaluation Pyramid
@@ -76,8 +76,8 @@ Keep dimensions visible rather than producing one weighted total.
 | `routing_satisfies_intent` | Integration | Boolean/categorical | Diagnostic/test |
 | `trajectory_valid` | Integration/end-to-end | Boolean invariants plus category | Diagnostic/test |
 | `constraints_preserved` | End-to-end/thread | Boolean per critical constraint | Diagnostic/test |
-| `faithfulness` | Component/RAG/end-to-end | Anchored ordinal | Quality metric |
-| `answer_relevance` | Component/RAG/end-to-end | Anchored ordinal | Quality metric |
+| `faithfulness` | Component/destination/end-to-end | Anchored ordinal | Quality metric |
+| `answer_relevance` | Component/destination/end-to-end | Anchored ordinal | Quality metric |
 | `personalization` | End-to-end | Anchored ordinal | Quality metric |
 | `safety_policy_correct` | Integration/end-to-end | Boolean/categorical | Critical gate |
 | `handbook_rendered` | End-to-end | Boolean | Release gate |
@@ -93,7 +93,7 @@ Derive Layer 1 checks from each tool signature and prompt contract. Examples:
 |---|---|---|
 | Flights | route, dates, passengers, cabin, non-stop when requested | Fare/airline claims match Duffel output; options answer request |
 | Hotels | destination, stay dates, occupancy/paxes, filters, rate handling | Price/board/cancellation claims match Hotelbeds output |
-| Destination | research query, destination, relevant source/tool choice | Claims grounded in RAG/web/safety/weather evidence |
+| Destination | canonical request, intent, query cap, official-source policy | Claims cite returned Tavily evidence; unsupported sensitive facts are unverified |
 | Restaurants | place, cuisine, diet, price/location constraints | Recommendations satisfy diet and match place evidence |
 | Activities | location, dates/hours, interests, accessibility | Suggested activities are evidence-backed and practical |
 | Transportation | endpoints, mode, date/time, route parameters | Route/duration/fare claims match tool output |
@@ -183,23 +183,13 @@ Create multi-turn examples for at least:
 Score final outcome, context retention, contradiction, trajectory, and whether
 the system asked for missing information at the right time.
 
-## RAG Mapping
+## Readiness Evidence Mapping
 
-Maintain two datasets or clearly separated splits:
-
-1. **Retrieval:** query plus expected guides, sections, claims, or entities.
-2. **Generation:** query plus captured contexts and generated response.
-
-Evaluate context precision/recall before faithfulness/relevance. This preserves
-failure localization:
-
-- poor recall: query decomposition, namespace fallback, indexing, or top-k issue;
-- poor precision: retrieval/reranking or chunking issue;
-- good retrieval plus poor faithfulness: prompt/generator issue;
-- grounded but incomplete response: retrieval recall or answer synthesis issue.
-
-Do not use a generated reference answer as the only truth without verifying it
-against destination guides or authoritative sources.
+Use the focused 24-case readiness dataset to evaluate planning, provider
+behavior, normalization, synthesis, and graph integration separately. Preserve
+the returned `ReadinessSource` records when judging a report so every citation
+can be resolved. Safety, weather, health, visa, and emergency cases must verify
+the official-domain policy in addition to ordinary grounding and relevance.
 
 ## Dataset Layout
 
@@ -214,7 +204,7 @@ src/evaluation/
   integration_dataset.py  # routing, merge, HITL scenarios
   e2e_dataset.py           # full trip outcomes
   thread_dataset.py        # multi-turn and resume scenarios
-  rag_dataset.py           # retrieval/generation cases or loaders
+  readiness_dataset.py     # focused readiness evidence and failure cases
   evaluators.py            # shared evaluator implementations
 ```
 
@@ -240,8 +230,8 @@ Existing strengths:
 - EDD pairwise evaluation swaps positions;
 - EDD Layer 4 includes ordinal human calibration;
 - shared evaluators already expose structured `key`, `score`, and `comment`;
-- RAG evaluation already separates precision, recall, faithfulness, relevance,
-  entity recall, and noise sensitivity;
+- destination evaluation covers intent, citation integrity, official-source
+  policy, conflicts, prompt injection, and provider failures;
 - LangSmith datasets and offline experiment runners already exist.
 
 Priorities when evaluation work next touches each area:

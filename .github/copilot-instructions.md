@@ -7,7 +7,7 @@ Wanderlisted is a **multi-agent AI travel itinerary planner** (v0.2.0) built wit
 
 ### Backend (Python)
 - `src/agent/` — LangGraph graphs, agent definitions, state, prompts, rendering
-  - `src/agent/agents/` — 10 specialized agents (one file each, extends `SpecializedAgent`)
+  - `src/agent/agents/` — specialist agents; TravelReadinessAgent is a thin pipeline adapter
   - `src/agent/prompts/` — 16 system prompts in `agent_prompt.py`, exported via `__init__.py`
   - `src/agent/templates/` — Jinja2 templates (`handbook_template.html.j2`)
   - `src/agent/stage4_graph.py` — **Primary graph**: multi-agent supervisor with parallel fan-out (1500+ lines)
@@ -17,11 +17,12 @@ Wanderlisted is a **multi-agent AI travel itinerary planner** (v0.2.0) built wit
   - `src/agent/concurrency.py` — Per-tier semaphore gating (`_SemaphoreLLM`)
   - `src/agent/renderer.py` — Handbook rendering (HTML/Markdown/JSON via Jinja2 + Pydantic)
   - `src/agent/state.py` — `TravelAgentState` TypedDict with custom reducers
-- `src/tools/` — 13 LangChain `@tool` functions (flights, hotels, weather, RAG, Google Maps, currency, safety, web search, IATA)
-- `src/rag/` — Pinecone-backed RAG pipeline: chunker, embeddings, indexer, query decomposer, Cohere reranker
+- `src/tools/` — LangChain tools for flights, hotels, Google Maps, currency, destination web search, and IATA
+- `src/readiness/` — bounded readiness planning, retrieval, synthesis, grounding, assembly, and rendering
+- `src/tools/tavily.py` — shared Tavily HTTP, cache, retry, and failure-isolation behavior
 - `src/models/` — Pydantic data models (`TripHandbook`, `FlightOption`, `HotelOption`, `DayPlan`, etc.) and 8 StrEnums
 - `src/api/` — FastAPI server with async SSE streaming, rate limiting, CORS, HITL interrupts
-- `src/evaluation/` — Four-layer evaluation: code-based, LLM-as-judge, RAG metrics + 30+ golden dataset cases
+- `src/evaluation/` — Shared evaluators plus travel-planning and 24-case destination datasets
 - `src/data/` — Static data files (`iata_codes.csv` — ~9,000 airports)
 
 ### Frontend (TypeScript)
@@ -32,13 +33,12 @@ Wanderlisted is a **multi-agent AI travel itinerary planner** (v0.2.0) built wit
   - `frontend/src/lib/` — API client, types, utilities (React Query for data fetching)
 
 ### Infrastructure & Config
-- `config/config.yaml` — Logging, RAG, routing, timeouts configuration
+- `config/config.yaml` — Logging, travel-readiness research, routing, and timeouts
 - `docker-compose.yml`, `Dockerfile` — Docker containerization
-- `knowledge_base/destination_guides/` — Markdown travel guides (Wikivoyage-style)
 - `tests/` — 28 test files, pytest with `respx` mocking and `asyncio_mode = "auto"`
 - `scripts/` — Utility scripts (eval, download, debug, live API testing)
 - `docs/` — Architecture, tools, reference, getting-started, operations documentation
-- `.github/agents/` — 4 custom Copilot agents (knowledge-base-writer, prompt-engineer, reviewer, test-writer)
+- `.github/agents/` — Custom Copilot agents for prompts, review, and tests
 - `.github/prompts/` — Reusable prompt templates (system design, PR generation)
 - `.github/workflows/ci.yml` — CI/CD pipeline
 
@@ -49,7 +49,7 @@ Wanderlisted is a **multi-agent AI travel itinerary planner** (v0.2.0) built wit
 - Use `from __future__ import annotations` only if needed for forward refs
 - Imports: stdlib → third-party → local, separated by blank lines
 - All tools are decorated with `@tool` from `langchain_core.tools`
-- All agents extend `SpecializedAgent` from `src/agent/agents/base.py`
+- ReAct specialists extend `SpecializedAgent`; TravelReadinessAgent intentionally wraps the fixed pipeline instead
 - Prompts live in `src/agent/prompts/agent_prompt.py` and are exported via `__init__.py`
 - Use `custom_logging.AppLogger` for logging, not `print()` or bare `logging`
 - Response content extraction must handle both Chat Completions (str) and Responses API (list of blocks) formats
@@ -69,14 +69,14 @@ Wanderlisted is a **multi-agent AI travel itinerary planner** (v0.2.0) built wit
 - Use `monkeypatch.setenv()` for API keys in tests
 - One test file per module: `test_{module}.py` (28 test files currently)
 - Integration tests use `@pytest.mark.integration` and `@pytest.mark.skipif` on missing API keys
-- conftest.py disables LangSmith tracing and defines skip markers: `skip_no_openweather`, `skip_no_exchangerate`, `skip_no_duffel`, `skip_no_google_maps`, `skip_no_hotelbeds`, `skip_no_azure_openai`
+- conftest.py disables LangSmith tracing and defines skip markers for live configured providers
 - Coverage target: 80% (`fail_under: 80`); excludes: `src/api`, legacy agents, `llm.py`, `renderer.py`, `golden_dataset.py`
 - Run: `make test` (all), `make test-unit` (unit only), `make coverage` (with report)
 
 ### Git
 - Conventional commits: `<type>(<scope>): <summary>`
 - Types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `style`, `perf`
-- Scope: module name (`agent`, `tools`, `rag`, `graph`, `prompts`, `api`, `frontend`)
+- Scope: module name (`agent`, `destination`, `tools`, `graph`, `prompts`, `api`, `frontend`)
 - Group commits by category when multiple changes exist
 
 ## Architecture
@@ -126,12 +126,12 @@ All gpt-5.4 family models are **reasoning models**. Key constraints:
 - Access state fields with `.get("field", default)` — never attribute access
 
 ### HITL Gates (Human-in-the-Loop)
-- **safety_review**: Interrupts on "do not travel" / "red" advisory
+- **safety_review**: Interrupts only on typed orange/red advisories backed by official evidence
 - **budget_review**: Interrupts if budget overspends >$500
 - **human_review**: User reviews itinerary before rendering
 - Uses LangGraph `interrupt()` to pause + `Command(resume=...)` to continue
 
-### Tools (13 `@tool` functions)
+### Tools
 | Tool | API | Module |
 |------|-----|--------|
 | `search_flights` | Duffel | `tools/flights_duffel.py` |
@@ -140,23 +140,17 @@ All gpt-5.4 family models are **reasoning models**. Key constraints:
 | `search_activities` | Google Places (New) | `tools/activities.py` |
 | `search_places_nearby`, `search_places_text` | Google Places | `tools/google_maps.py` |
 | `compute_route`, `optimize_day_route` | Google Routes | `tools/google_maps.py` |
-| `search_destination_guides` | Pinecone RAG | `tools/destination_rag.py` |
-| `research_destination` | RAG + Tavily + Cohere reranking | `tools/destination_research.py` |
-| `search_web`, `search_hidden_gems` | Tavily Search | `tools/web_search.py` |
-| `get_weather` | OpenWeatherMap | `tools/weather.py` |
-| `get_safety_info` | REST Countries | `tools/safety.py` |
+| `search_destination_web` | Tavily Search | `tools/web_search.py` |
 | `calculate_budget` | Pure Python (region baselines × style multipliers) | `tools/budget.py` |
 | `convert_currency` | ExchangeRate API | `tools/currency.py` |
 | `lookup_iata_code` | Local CSV (~9,000 airports) | `tools/iata.py` |
 
-### RAG Pipeline
-- **Chunking**: Section-level (24 travel sections) + `RecursiveCharacterTextSplitter` fallback (2000 chars, 200 overlap)
-- **Embeddings**: Azure OpenAI (3072 dimensions), batch embedding with retry
-- **Vector store**: Pinecone serverless, cosine similarity
-- **Multi-tenant**: Client namespace first (e.g., `acme_travel/destination_guides`), falls back to `wikivoyage/destination_guides`
-- **Query decomposition**: LLM decomposes broad queries into 1–4 focused sub-queries
-- **Reranking**: Cohere `rerank-v3.5` cross-encoder (optional, degrades gracefully)
-- **Staleness detection**: SHA-256 manifest hashing; re-index only when guides change
+### Travel-Readiness Pipeline
+- **Plan**: deterministic topic planning and request fingerprinting, capped at six searches
+- **Retrieve**: direct Tavily HTTP calls, at most four concurrently, with bounded cache and transient retries
+- **Normalize**: canonical URL deduplication and typed topic/official-source classification
+- **Synthesize**: separate preflight/detail reasoning-model schemas using snippets only
+- **Ground and assemble**: every factual field cites returned source IDs; stage ownership is merged immutably
 
 ### API Layer (FastAPI)
 - `POST /api/v1/chat` — Synchronous response
@@ -167,7 +161,7 @@ All gpt-5.4 family models are **reasoning models**. Key constraints:
 
 ### Handbook Rendering
 - `HandbookRenderer` produces HTML (Jinja2), Markdown, JSON
-- Per-section LLM extraction with retry and batched parallel processing
+- Typed destination safety, culture, and packing data is projected without re-extraction
 - Season palettes (40+ destination × season combinations) for themed HTML output
 - Google Maps embeds for hotels and route maps
 
@@ -177,7 +171,6 @@ All gpt-5.4 family models are **reasoning models**. Key constraints:
 - `make frontend` — Start Next.js dev on :3000
 - `make test` / `make test-unit` / `make coverage` — Testing
 - `make lint` / `make fmt` — Ruff linting and formatting
-- `make reindex` — Re-index knowledge base into Pinecone
 - `make docker-up` / `make docker-down` — Docker Compose
 
 ## MCP Servers
