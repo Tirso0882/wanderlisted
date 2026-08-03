@@ -39,7 +39,8 @@ You review code changes for correctness, adherence to project conventions, and p
   - Supervisor prompt in `agent_prompt.py`
   - The graph in `stage4_graph.py`
 - Tools must have timeout and error handling for network calls
-- RAG queries should use metadata filtering via the `destinations` parameter
+- Destination facts must cite IDs from returned Tavily evidence; sensitive claims
+  must use permitted official sources or be explicitly unverified.
 
 ### 4. Security
 - No secrets, API keys, or `.env` content in code or commits

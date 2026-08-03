@@ -31,15 +31,15 @@ Group files into categories. Each category becomes one commit:
 | Type | Matches | Example |
 |------|---------|---------|
 | `feat` | New functionality, agents, tools, endpoints | `feat(tools): add currency conversion tool` |
-| `fix` | Bug fixes, error corrections | `fix(rag): handle empty query decomposition` |
+| `fix` | Bug fixes, error corrections | `fix(destination): handle empty Tavily results` |
 | `refactor` | Restructured code, no new behavior | `refactor(graph): extract helper for user profiling` |
 | `docs` | Markdown, prompts, README, docstrings-only | `docs(prompts): update system prompt for budget agent` |
 | `test` | Test files only | `test(tools): add hotel search unit tests` |
 | `chore` | Config, deps, CI, Makefile, .gitignore | `chore(deps): bump langchain to 0.3` |
 | `style` | Formatting-only changes (no logic) | `style: run ruff format` |
-| `perf` | Performance improvements | `perf(rag): batch embedding calls` |
+| `perf` | Performance improvements | `perf(destination): improve bounded cache reuse` |
 
-**Scope** = most relevant module: `agent`, `tools`, `rag`, `graph`, `prompts`, `api`, `frontend`, `eval`, `models`
+**Scope** = most relevant module: `agent`, `destination`, `tools`, `graph`, `prompts`, `api`, `frontend`, `eval`, `models`
 
 - If a file fits multiple categories, assign to the most impactful one.
 - If only 1–3 files total, a single commit is fine — don't over-split.
