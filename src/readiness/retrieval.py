@@ -149,9 +149,7 @@ def official_domains_for(
     topic = ReadinessEvidenceTopic(topic)
     policy = build_official_source_policy(official_sources)
     if topic == ReadinessEvidenceTopic.SAFETY:
-        origin_domain = policy["safety_by_origin"].get(
-            origin_country.strip().lower()
-        )
+        origin_domain = policy["safety_by_origin"].get(origin_country.strip().lower())
         return [origin_domain] if origin_domain else list(policy["safety_fallback"])
     if topic == ReadinessEvidenceTopic.CULTURE:
         return []
@@ -194,9 +192,7 @@ class ReadinessEvidenceProvider:
     async def aclose(self) -> None:
         await self.transport.aclose()
 
-    async def search_many(
-        self, queries: list[ReadinessQuery]
-    ) -> ReadinessRetrieval:
+    async def search_many(self, queries: list[ReadinessQuery]) -> ReadinessRetrieval:
         tavily_queries = [
             TavilyQuery(
                 query=query.query,
@@ -240,9 +236,7 @@ class ReadinessEvidenceProvider:
                     topic=query.topic,
                     is_official=(
                         bool(allowed_official_domains)
-                        and is_official_domain(
-                            item.domain, allowed_official_domains
-                        )
+                        and is_official_domain(item.domain, allowed_official_domains)
                     ),
                     published_at=item.published_at,
                 )
@@ -251,12 +245,12 @@ class ReadinessEvidenceProvider:
                     by_url[item.url] = source
                 elif source.relevance > current.relevance:
                     by_url[item.url] = source.model_copy(
-                        update={"is_official": current.is_official or source.is_official}
+                        update={
+                            "is_official": current.is_official or source.is_official
+                        }
                     )
                 elif source.is_official and not current.is_official:
-                    by_url[item.url] = current.model_copy(
-                        update={"is_official": True}
-                    )
+                    by_url[item.url] = current.model_copy(update={"is_official": True})
                 scopes_by_url.setdefault(item.url, set()).add(scope)
                 if source.is_official:
                     official_scopes_by_url.setdefault(item.url, set()).add(scope)

@@ -71,10 +71,11 @@ def _golden_calls(expected: dict) -> list[dict]:
             }
         )
 
-    if len(calls) < expected.get("min_search_calls", 2) or "max_radius_meters" in expected:
-        location = _choice(
-            expected.get("proximity_location", expected["locations"][0])
-        )
+    if (
+        len(calls) < expected.get("min_search_calls", 2)
+        or "max_radius_meters" in expected
+    ):
+        location = _choice(expected.get("proximity_location", expected["locations"][0]))
         calls.append(
             {
                 "name": "search_places_nearby",
@@ -247,9 +248,12 @@ def test_correct_accessibility_normalizes_hyphens_and_case():
         }
     ]
 
-    assert correct_accessibility(calls, {"accessibility": [{"wheelchair accessible"}]})[
-        "score"
-    ] == 1
+    assert (
+        correct_accessibility(calls, {"accessibility": [{"wheelchair accessible"}]})[
+            "score"
+        ]
+        == 1
+    )
 
 
 def test_correct_proximity_accepts_requested_nearby_radius():

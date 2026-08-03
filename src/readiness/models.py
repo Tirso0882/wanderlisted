@@ -147,9 +147,7 @@ class TravelReadinessReport(BaseModel):
             raise ValueError("readiness source IDs must be unique")
         known = set(source_ids)
         referenced = {
-            source_id
-            for ids in self.citations.values()
-            for source_id in ids
+            source_id for ids in self.citations.values() for source_id in ids
         } | {
             source_id
             for constraint in self.planning_constraints

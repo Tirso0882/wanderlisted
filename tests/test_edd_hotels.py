@@ -120,9 +120,7 @@ def test_every_hotels_golden_call_satisfies_its_evaluator_contract():
         for evaluator in EVALUATORS:
             result = evaluator(calls, case["expected"])
             if result["score"] == 0:
-                failures.append(
-                    f"{case['name']}/{result['key']}: {result['comment']}"
-                )
+                failures.append(f"{case['name']}/{result['key']}: {result['comment']}")
 
     assert not failures, failures
 
@@ -176,9 +174,7 @@ def test_no_unrequested_filters_rejects_restrictive_inventions():
         "children": 0,
     }
     call = _golden_search_call(expected)[0]
-    call["args"].update(
-        {"min_category": 4, "board_codes": "BB", "max_rate": 500}
-    )
+    call["args"].update({"min_category": 4, "board_codes": "BB", "max_rate": 500})
 
     result = no_unrequested_filters([call], expected)
 

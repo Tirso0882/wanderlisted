@@ -12,9 +12,7 @@ def test_legacy_destination_target_is_rejected():
     with pytest.raises(ValueError):
         ChatRequest(message="Is Tokyo safe?", target_agent="DestinationAgent")
 
-    request = ChatRequest(
-        message="Is Tokyo safe?", target_agent="TravelReadinessAgent"
-    )
+    request = ChatRequest(message="Is Tokyo safe?", target_agent="TravelReadinessAgent")
     assert request.target_agent == "TravelReadinessAgent"
 
 

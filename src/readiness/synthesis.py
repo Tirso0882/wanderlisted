@@ -32,24 +32,33 @@ or required preparation. Put source IDs on every constraint. Packing constraints
 only reflect cited weather, health, entry, or cultural requirements.
 """
 
-_PREFLIGHT_PROMPT = _BASE_PROMPT + """
+_PREFLIGHT_PROMPT = (
+    _BASE_PROMPT
+    + """
 This is the safety preflight. Populate only advisory level and summary, current risks,
 hazards, safety tips, and safety planning constraints. Do not provide visa, health,
 emergency, practical, culture, weather, or packing fields.
 """
+)
 
-_DETAILS_PROMPT = _BASE_PROMPT + """
+_DETAILS_PROMPT = (
+    _BASE_PROMPT
+    + """
 This is readiness detail synthesis. Populate visa, health, emergency and practical
 facts, culture, seasonal weather, packing, and detail constraints. Advisory level,
 advisory summary, hazards, risks, and safety tips are owned by preflight and are not
 part of this schema.
 """
+)
 
-_COMBINED_PROMPT = _BASE_PROMPT + """
+_COMBINED_PROMPT = (
+    _BASE_PROMPT
+    + """
 This is a one-call focused readiness response. Keep preflight-owned safety facts only
 inside `preflight`, and put visa, health, practical, culture, weather, and packing
 facts only inside `details`. The sections are assembled immutably after grounding.
 """
+)
 
 
 class ReadinessSynthesizer:

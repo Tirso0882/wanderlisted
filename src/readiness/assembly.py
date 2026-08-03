@@ -145,9 +145,7 @@ def finalize_readiness_report(
         if _path_has_value(finalized, path) and _known_unique(ids, known_ids)
     }
     used_ids = {
-        source_id
-        for ids in finalized.citations.values()
-        for source_id in ids
+        source_id for ids in finalized.citations.values() for source_id in ids
     } | {
         source_id
         for constraint in finalized.planning_constraints
@@ -176,9 +174,7 @@ def _merge_sources(
             normalized_url = normalize_url(source.url)
             previous_url = id_to_url.get(source.id)
             if previous_url is not None and previous_url != normalized_url:
-                raise ValueError(
-                    f"source ID {source.id!r} refers to conflicting URLs"
-                )
+                raise ValueError(f"source ID {source.id!r} refers to conflicting URLs")
             canonical_id = url_to_id.get(normalized_url)
             if canonical_id is None:
                 canonical_id = source.id
@@ -258,13 +254,17 @@ def _copy_owned_citations(
 
 
 def _preflight_owns(path: str) -> bool:
-    return any(path == f"safety.{field}" or path.startswith(f"safety.{field}[")
-               for field in _PREFLIGHT_SAFETY_FIELDS)
+    return any(
+        path == f"safety.{field}" or path.startswith(f"safety.{field}[")
+        for field in _PREFLIGHT_SAFETY_FIELDS
+    )
 
 
 def _details_owns(path: str) -> bool:
-    if any(path == f"safety.{field}" or path.startswith(f"safety.{field}")
-           for field in _DETAIL_SAFETY_FIELDS):
+    if any(
+        path == f"safety.{field}" or path.startswith(f"safety.{field}")
+        for field in _DETAIL_SAFETY_FIELDS
+    ):
         return True
     return path == "weather" or path.startswith(
         ("weather[", "weather_summary", "culture.", "packing_constraints")
@@ -276,7 +276,9 @@ def _remap_ids(source_ids: Iterable[str], mapping: dict[str, str]) -> list[str]:
 
 
 def _known_unique(source_ids: Iterable[str], known_ids: set[str]) -> list[str]:
-    return list(dict.fromkeys(source_id for source_id in source_ids if source_id in known_ids))
+    return list(
+        dict.fromkeys(source_id for source_id in source_ids if source_id in known_ids)
+    )
 
 
 def _unique_nonempty(values: Iterable[str]) -> list[str]:

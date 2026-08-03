@@ -289,12 +289,8 @@ async def test_readiness_provider_tracks_official_status_per_topic_scope():
 
 
 async def test_readiness_provider_isolates_one_failed_query():
-    first = ReadinessQuery(
-        destination="tokyo", query="Tokyo health", topic="health"
-    )
-    second = ReadinessQuery(
-        destination="kyoto", query="Kyoto health", topic="health"
-    )
+    first = ReadinessQuery(destination="tokyo", query="Tokyo health", topic="health")
+    second = ReadinessQuery(destination="kyoto", query="Kyoto health", topic="health")
     transport = AsyncMock()
     transport.search_many_isolated.return_value = [
         TavilyAttempt(

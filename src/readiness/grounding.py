@@ -56,9 +56,7 @@ class _GroundingContext:
                 dict.fromkeys([*self.citations.get(path, []), *source_ids])
             )
 
-    def official(
-        self, source_ids: list[str], allowed: list[str] | None = None
-    ) -> bool:
+    def official(self, source_ids: list[str], allowed: list[str] | None = None) -> bool:
         if not source_ids:
             return False
         cited = [self.source_by_id[source_id] for source_id in source_ids]

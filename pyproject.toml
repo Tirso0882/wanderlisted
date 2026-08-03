@@ -32,7 +32,11 @@ show_missing = true
 skip_empty = true
 fail_under = 80
 
+[tool.ruff]
+required-version = "==0.15.10"
+
 [tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
 ignore = ["E501"]                 # Line length handled by formatter, not linter
 
 [tool.ruff.lint.per-file-ignores]

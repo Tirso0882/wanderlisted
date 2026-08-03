@@ -72,8 +72,7 @@ def _llm_for(
     values = {
         TravelReadinessPreflightSynthesis: preflight
         or TravelReadinessPreflightSynthesis(),
-        TravelReadinessDetailsSynthesis: details
-        or TravelReadinessDetailsSynthesis(),
+        TravelReadinessDetailsSynthesis: details or TravelReadinessDetailsSynthesis(),
         TravelReadinessCombinedSynthesis: combined
         or TravelReadinessCombinedSynthesis(),
     }
@@ -133,9 +132,7 @@ async def test_missing_passport_for_entry_returns_needs_user_input_without_searc
     provider = AsyncMock()
     result = await _pipeline(provider=provider).run(
         question="Entry rules",
-        trip_request=TripRequest(
-            destinations=["japan"], readiness_topics=["entry"]
-        ),
+        trip_request=TripRequest(destinations=["japan"], readiness_topics=["entry"]),
     )
     assert result.status == ComponentStatus.NEEDS_USER_INPUT
     assert result.missing_fields == ["passport_country"]
@@ -180,9 +177,7 @@ async def test_source_without_grounded_official_advisory_cannot_pass_preflight()
     )
     result = await _pipeline(provider=provider).preflight(
         question="Is Tokyo safe?",
-        trip_request=TripRequest(
-            destinations=["tokyo"], readiness_topics=["safety"]
-        ),
+        trip_request=TripRequest(destinations=["tokyo"], readiness_topics=["safety"]),
     )
     assert result.status == ComponentStatus.NO_INVENTORY
     assert result.report is not None
@@ -206,9 +201,7 @@ async def test_nonofficial_advisory_is_removed_and_fails_closed():
     )
     result = await _pipeline(preflight=synthesis, provider=provider).preflight(
         question="Safety",
-        trip_request=TripRequest(
-            destinations=["tokyo"], readiness_topics=["safety"]
-        ),
+        trip_request=TripRequest(destinations=["tokyo"], readiness_topics=["safety"]),
     )
     assert result.status == ComponentStatus.NO_INVENTORY
     assert result.report.safety.advisory_level == "unknown"
@@ -257,9 +250,7 @@ async def test_requested_health_requires_a_grounded_official_field():
 
     result = await _pipeline(provider=provider).run(
         question="Official health requirements for Tokyo",
-        trip_request=TripRequest(
-            destinations=["tokyo"], readiness_topics=["health"]
-        ),
+        trip_request=TripRequest(destinations=["tokyo"], readiness_topics=["health"]),
     )
 
     assert result.status == ComponentStatus.NO_INVENTORY
@@ -302,40 +293,48 @@ def test_request_fingerprint_covers_destinations_passport_dates_and_topics():
     request = TripRequest(
         destinations=["tokyo"],
         passport_country="Poland",
-        date_window=DateWindow(
-            exact_start="2026-08-01", exact_end="2026-08-07"
-        ),
+        date_window=DateWindow(exact_start="2026-08-01", exact_end="2026-08-07"),
     )
     topics = {ReadinessTopic.SAFETY, ReadinessTopic.ENTRY}
     baseline = readiness_request_fingerprint(request, topics)
 
-    assert readiness_request_fingerprint(
-        request.model_copy(update={"destinations": ["kyoto"]}), topics
-    ) != baseline
-    assert readiness_request_fingerprint(
-        request.model_copy(update={"passport_country": "Germany"}), topics
-    ) != baseline
-    assert readiness_request_fingerprint(
-        request.model_copy(
-            update={
-                "date_window": DateWindow(
-                    exact_start="2026-09-01", exact_end="2026-09-07"
-                )
-            }
-        ),
-        topics,
-    ) != baseline
-    assert readiness_request_fingerprint(
-        request, {ReadinessTopic.SAFETY, ReadinessTopic.HEALTH}
-    ) != baseline
+    assert (
+        readiness_request_fingerprint(
+            request.model_copy(update={"destinations": ["kyoto"]}), topics
+        )
+        != baseline
+    )
+    assert (
+        readiness_request_fingerprint(
+            request.model_copy(update={"passport_country": "Germany"}), topics
+        )
+        != baseline
+    )
+    assert (
+        readiness_request_fingerprint(
+            request.model_copy(
+                update={
+                    "date_window": DateWindow(
+                        exact_start="2026-09-01", exact_end="2026-09-07"
+                    )
+                }
+            ),
+            topics,
+        )
+        != baseline
+    )
+    assert (
+        readiness_request_fingerprint(
+            request, {ReadinessTopic.SAFETY, ReadinessTopic.HEALTH}
+        )
+        != baseline
+    )
 
 
 def test_query_plan_contains_no_place_discovery_topics():
     plan = ReadinessPlanBuilder(max_queries=6).build(
         question="Everything",
-        trip_request=TripRequest(
-            destinations=["tokyo"], passport_country="Poland"
-        ),
+        trip_request=TripRequest(destinations=["tokyo"], passport_country="Poland"),
         topics=set(ReadinessTopic),
         seasonal_weather={"tokyo"},
     )
@@ -385,16 +384,12 @@ async def test_open_meteo_forecast_is_typed_and_cited_without_tavily():
         ],
         source=_source(topic="weather", domain="open-meteo.com"),
     )
-    result = await _pipeline(
-        provider=provider, weather_provider=weather_provider
-    ).run(
+    result = await _pipeline(provider=provider, weather_provider=weather_provider).run(
         question="Tokyo weather",
         trip_request=TripRequest(
             destinations=["tokyo"],
             readiness_topics=["weather"],
-            date_window=DateWindow(
-                exact_start="2026-08-01", exact_end="2026-08-01"
-            ),
+            date_window=DateWindow(exact_start="2026-08-01", exact_end="2026-08-01"),
         ),
     )
     assert result.status == ComponentStatus.COMPLETED
@@ -431,12 +426,8 @@ def test_configured_official_entry_source_is_retained():
         safety=DetailSafetySynthesis(visa_requirements="Electronic visa required."),
         citations={"safety.visa_requirements": ["S1"]},
     )
-    source = _source(
-        official=True, topic="visa", domain="immigration.example.gov"
-    )
-    report = ReadinessGrounder(
-        {"visa": ["immigration.example.gov"]}
-    ).ground_details(
+    source = _source(official=True, topic="visa", domain="immigration.example.gov")
+    report = ReadinessGrounder({"visa": ["immigration.example.gov"]}).ground_details(
         plan,
         synthesis,
         [source],
@@ -516,9 +507,7 @@ async def test_details_synthesis_uses_function_calling_and_untrusted_evidence():
     pipeline = _pipeline(provider=provider)
     await pipeline.run(
         question="Tokyo etiquette",
-        trip_request=TripRequest(
-            destinations=["tokyo"], readiness_topics=["culture"]
-        ),
+        trip_request=TripRequest(destinations=["tokyo"], readiness_topics=["culture"]),
     )
     llm = pipeline.synthesizer.llm
     llm.with_structured_output.assert_called_once_with(
@@ -543,9 +532,7 @@ async def test_optional_provider_failure_completes_partial_report():
     )
     result = await _pipeline(provider=provider).run(
         question="Tokyo etiquette",
-        trip_request=TripRequest(
-            destinations=["tokyo"], readiness_topics=["culture"]
-        ),
+        trip_request=TripRequest(destinations=["tokyo"], readiness_topics=["culture"]),
     )
     assert result.status == ComponentStatus.COMPLETED
     assert result.coverage.missing_optional
@@ -565,9 +552,7 @@ async def test_critical_provider_failure_blocks_external():
     )
     result = await _pipeline(provider=provider).preflight(
         question="Tokyo safety",
-        trip_request=TripRequest(
-            destinations=["tokyo"], readiness_topics=["safety"]
-        ),
+        trip_request=TripRequest(destinations=["tokyo"], readiness_topics=["safety"]),
     )
     assert result.status == ComponentStatus.BLOCKED_EXTERNAL
     assert result.error_category == "timeout"
@@ -734,9 +719,7 @@ def test_assembly_reindexes_constraints_and_prunes_orphans():
     preflight = TravelReadinessReport(
         destinations=["tokyo"],
         planning_constraints=[
-            PlanningConstraint(
-                category="safety", summary="Alert.", source_ids=["S1"]
-            )
+            PlanningConstraint(category="safety", summary="Alert.", source_ids=["S1"])
         ],
         sources=[_source("S1", official=True, topic="safety")],
         citations={"planning_constraints[0]": ["S1"], "culture.phrases[9]": ["S1"]},
@@ -744,9 +727,7 @@ def test_assembly_reindexes_constraints_and_prunes_orphans():
     details = TravelReadinessReport(
         destinations=["tokyo"],
         planning_constraints=[
-            PlanningConstraint(
-                category="entry", summary="Passport.", source_ids=["S2"]
-            )
+            PlanningConstraint(category="entry", summary="Passport.", source_ids=["S2"])
         ],
         sources=[_source("S2", official=True, topic="visa", domain="gov.pl")],
         citations={"planning_constraints[0]": ["S2"], "summary": ["S2"]},
@@ -793,9 +774,7 @@ async def test_multi_destination_preflight_requires_each_destination():
         ),
     )
     assert result.status == ComponentStatus.NO_INVENTORY
-    assert [item.destination for item in result.coverage.missing_critical] == [
-        "kyoto"
-    ]
+    assert [item.destination for item in result.coverage.missing_critical] == ["kyoto"]
 
 
 async def test_combined_focused_run_uses_one_llm_call():

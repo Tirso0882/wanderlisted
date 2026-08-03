@@ -1404,9 +1404,7 @@ class TestSafetyReviewInterrupt:
                     "messages": [AIMessage(content=summary)],
                     "data": report.model_dump(mode="json"),
                     "coverage": (
-                        _verified_safety_coverage("test")
-                        if official
-                        else {"items": []}
+                        _verified_safety_coverage("test") if official else {"items": []}
                     ),
                 }
             },

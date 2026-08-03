@@ -255,7 +255,11 @@ class TavilySearchProvider:
         attempts: list[TavilyAttempt] = []
         for query, result in zip(queries, results, strict=True):
             if isinstance(result, BaseException):
-                error = result if isinstance(result, Exception) else RuntimeError(str(result))
+                error = (
+                    result
+                    if isinstance(result, Exception)
+                    else RuntimeError(str(result))
+                )
                 attempts.append(TavilyAttempt(query=query, error=error))
             else:
                 attempts.append(TavilyAttempt(query=query, sources=result))

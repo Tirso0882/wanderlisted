@@ -39,9 +39,10 @@ def build_coverage(
 
     for destination in destinations:
         for topic in sorted(topics, key=lambda item: item.value):
-            candidates = _candidate_ids(
-                retrieval, destination, topic, weather_source_ids
-            ) & report_ids
+            candidates = (
+                _candidate_ids(retrieval, destination, topic, weather_source_ids)
+                & report_ids
+            )
             cited = _cited_ids(report, topic)
             grounded_ids = sorted(candidates & cited)
             verified = _has_grounded_value(report, topic) and bool(grounded_ids)
@@ -171,14 +172,11 @@ def _cited_ids(report: TravelReadinessReport, topic: ReadinessTopic) -> set[str]
     }
 
 
-def _has_grounded_value(
-    report: TravelReadinessReport, topic: ReadinessTopic
-) -> bool:
+def _has_grounded_value(report: TravelReadinessReport, topic: ReadinessTopic) -> bool:
     safety = report.safety
     if topic == ReadinessTopic.SAFETY:
-        return (
-            safety.advisory_level != AdvisoryLevel.UNKNOWN
-            and bool(safety.advisory_summary)
+        return safety.advisory_level != AdvisoryLevel.UNKNOWN and bool(
+            safety.advisory_summary
         )
     if topic == ReadinessTopic.ENTRY:
         return bool(safety.visa_requirements)

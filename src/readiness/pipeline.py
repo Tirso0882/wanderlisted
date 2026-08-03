@@ -71,9 +71,7 @@ class TravelReadinessPipeline:
         fingerprint_topics = requested_topics(question, trip_request) | {
             ReadinessTopic.SAFETY
         }
-        fingerprint = readiness_request_fingerprint(
-            trip_request, fingerprint_topics
-        )
+        fingerprint = readiness_request_fingerprint(trip_request, fingerprint_topics)
         if (
             ReadinessTopic.ENTRY in fingerprint_topics
             and not trip_request.passport_country
@@ -90,9 +88,7 @@ class TravelReadinessPipeline:
             synthesis = await self.synthesizer.preflight(
                 plan, question, trip_request, retrieval.sources
             )
-            report = self.grounder.ground_preflight(
-                plan, synthesis, retrieval.sources
-            )
+            report = self.grounder.ground_preflight(plan, synthesis, retrieval.sources)
         else:
             report = TravelReadinessReport(
                 destinations=plan.destinations,
@@ -129,9 +125,7 @@ class TravelReadinessPipeline:
                     "and hidden-gem discovery; no readiness search was run."
                 ],
             )
-            return self._complete_run(
-                report, TravelReadinessCoverage(), fingerprint
-            )
+            return self._complete_run(report, TravelReadinessCoverage(), fingerprint)
 
         weather = await self._weather(trip_request, topics)
         plan = self._plan(
@@ -208,9 +202,7 @@ class TravelReadinessPipeline:
         """Run post-gate details and immutably assemble the preflight report."""
         if not trip_request.destinations:
             return self._clarification("destinations")
-        all_topics = requested_topics(question, trip_request) | {
-            ReadinessTopic.SAFETY
-        }
+        all_topics = requested_topics(question, trip_request) | {ReadinessTopic.SAFETY}
         fingerprint = readiness_request_fingerprint(trip_request, all_topics)
         topics = all_topics - {ReadinessTopic.SAFETY}
         if ReadinessTopic.ENTRY in topics and not trip_request.passport_country:
@@ -229,9 +221,7 @@ class TravelReadinessPipeline:
         if not topics:
             if preflight_report is None:
                 empty = TravelReadinessReport(destinations=trip_request.destinations)
-                return self._complete_run(
-                    empty, TravelReadinessCoverage(), fingerprint
-                )
+                return self._complete_run(empty, TravelReadinessCoverage(), fingerprint)
             return self._complete_run(
                 preflight_report, TravelReadinessCoverage(), fingerprint
             )
@@ -244,9 +234,11 @@ class TravelReadinessPipeline:
             seasonal_weather=weather.seasonal_destinations,
         )
         retrieval = await self._search(plan)
-        reserved_ids = {
-            source.id for source in preflight_report.sources
-        } if preflight_report else set()
+        reserved_ids = (
+            {source.id for source in preflight_report.sources}
+            if preflight_report
+            else set()
+        )
         retrieval = _reserve_source_ids(retrieval, reserved_ids)
         weather.assign_ids(reserved_ids | {source.id for source in retrieval.sources})
 
@@ -346,17 +338,13 @@ class TravelReadinessPipeline:
             return _WeatherBatch()
         values = await asyncio.gather(
             *(
-                self.weather_provider.forecast(
-                    destination, trip_request.date_window
-                )
+                self.weather_provider.forecast(destination, trip_request.date_window)
                 for destination in trip_request.destinations
             ),
             return_exceptions=True,
         )
         batch = _WeatherBatch()
-        for destination, value in zip(
-            trip_request.destinations, values, strict=True
-        ):
+        for destination, value in zip(trip_request.destinations, values, strict=True):
             if isinstance(value, BaseException):
                 batch.seasonal_destinations.add(destination)
                 batch.failures[destination] = (
@@ -395,9 +383,7 @@ class TravelReadinessPipeline:
                 },
                 deep=True,
             )
-        report = TravelReadinessReport.model_validate(
-            report.model_dump(mode="json")
-        )
+        report = TravelReadinessReport.model_validate(report.model_dump(mode="json"))
         status, error_category = coverage_outcome(coverage)
         with trace(
             "readiness_render",
@@ -416,9 +402,7 @@ class TravelReadinessPipeline:
         )
 
     @staticmethod
-    def _clarification(
-        field: str, *, fingerprint: str = ""
-    ) -> TravelReadinessRun:
+    def _clarification(field: str, *, fingerprint: str = "") -> TravelReadinessRun:
         if field == "passport_country":
             text = "Which country issued the passport you will use for this trip?"
         else:
@@ -476,17 +460,11 @@ class _WeatherBatch:
             deep=True,
         )
 
-    def aligned_source_ids(
-        self, report: TravelReadinessReport
-    ) -> dict[str, list[str]]:
-        mapping = _canonical_id_map(
-            [source for _, source in self.sources], report
-        )
+    def aligned_source_ids(self, report: TravelReadinessReport) -> dict[str, list[str]]:
+        mapping = _canonical_id_map([source for _, source in self.sources], report)
         return {
             destination: [
-                mapping[source_id]
-                for source_id in source_ids
-                if source_id in mapping
+                mapping[source_id] for source_id in source_ids if source_id in mapping
             ]
             for destination, source_ids in self.source_ids.items()
         }
@@ -554,9 +532,7 @@ def _align_retrieval_to_report(
         update={
             "sources": aligned_sources,
             "evidence_by_scope": remap(retrieval.evidence_by_scope),
-            "official_evidence_by_scope": remap(
-                retrieval.official_evidence_by_scope
-            ),
+            "official_evidence_by_scope": remap(retrieval.official_evidence_by_scope),
         },
         deep=True,
     )
