@@ -7,11 +7,13 @@ individual retry on failure, dedicated traces in LangGraph Studio, and
 native per-agent streaming. A typed draft selects exact places after fan-in;
 Transportation, Budget, and Itinerary then consume those artifacts sequentially.
 
-Flow (intake → Send() fan-out → completion gate → sequential phase):
-    START → triage → intake → supervisor ──Send──┬── flights ────┐
-                                        ├── destination ┤
-                                        ├── restaurants ┤ → component_gate
-                                        └── activities ─┘   → safety_review (HITL)
+Flow (intake → safety preflight → Send() fan-out → sequential phase):
+    START → triage → intake → supervisor → readiness_preflight
+                                        → safety_review (HITL when high risk)
+                                        → readiness details
+                                        ──Send──┬── flights ─────┐
+                                                ├── restaurants ─┤ → component_gate
+                                                └── activities ──┘
                                                                → trip_skeleton
                                                                → hotel_stay Send fan-out
                                                                → hotel_gate → draft_itinerary
@@ -22,7 +24,7 @@ Flow (intake → Send() fan-out → completion gate → sequential phase):
 
 HITL gates:
     - safety_review: interrupts when advisory is "do not travel" / "red"
-    - budget_review: interrupts when budget overspent by >$500
+    - budget_review: interrupts on a reliable material target-budget overage
     - human_review: interrupts to let user review/edit day plans before rendering
 
 Usage:
@@ -58,20 +60,45 @@ from src.agent.policies import classify_component_result, requested_agents
 from src.agent.state import TravelAgentState
 from src.agent.prompts import (
     DRAFT_ITINERARY_SYSTEM_PROMPT,
+    HANDBOOK_DAYS_EXTRACTION_PROMPT,
+    HANDBOOK_EXTRACTION_RETRY_SUFFIX,
+    HANDBOOK_FLIGHTS_EXTRACTION_PROMPT,
+    HANDBOOK_HOTELS_EXTRACTION_PROMPT,
+    HANDBOOK_METADATA_EXTRACTION_PROMPT,
+    HANDBOOK_MISSING_DAYS_EXTRACTION_PROMPT,
+    HANDBOOK_PACKING_EXTRACTION_PROMPT,
+    HOTEL_STAY_SEARCH_PROMPT,
+    READINESS_CONSTRAINTS_CONTEXT_PROMPT,
+    SHALLOW_REPLY_SYSTEM_PROMPT,
+    SPECIALIST_RESULTS_CONTEXT_PROMPT,
+    SUPERVISOR_EXISTING_DATA_PROMPT,
+    SUPERVISOR_ROUTING_QUERY_PROMPT,
     SYNTHESIZE_SYSTEM_PROMPT,
+    TRIP_REQUEST_CONTEXT_PROMPT,
     TRIAGE_SYSTEM_PROMPT,
+    USER_PROFILE_CONTEXT_PROMPT,
 )
 from src.models import (
+    AdvisoryLevel,
     BudgetBreakdown,
+    BudgetCoverageStatus,
+    BudgetReviewAction,
+    BudgetReviewDecision,
+    BudgetVerdict,
     CityStay,
     ComponentResult,
     ComponentStatus,
     ErrorCategory,
+    ConversionRateRecord,
+    ConversionStatus,
+    PriceEvidence,
+    ReadinessTopic,
+    RequestScope,
     TripRequest,
     TripSkeleton,
 )
+from src.budget import BudgetContext
 from src.models.itinerary import (
-    CultureGuide,
     DayRoute,
     DayPlan,
     DraftItinerary,
@@ -81,15 +108,19 @@ from src.models.itinerary import (
     PlaceRef,
     RouteLeg,
     RoutePlan,
-    SafetyInfo,
     TripHandbook,
 )
 from src.agent.renderer import HandbookRenderer
+from src.readiness import TravelReadinessReport
+from src.readiness.planning import (
+    readiness_request_fingerprint,
+    requested_topics,
+)
 from src.agent.agents import (
     SupervisorAgent,
     FlightsAgent,
     HotelsAgent,
-    DestinationAgent,
+    TravelReadinessAgent,
     BudgetAgent,
     RestaurantsAgent,
     ActivitiesAgent,
@@ -113,7 +144,7 @@ PARALLEL_AGENTS = [
         [
             "FlightsAgent",
             "HotelsAgent",
-            "DestinationAgent",
+            "TravelReadinessAgent",
             "RestaurantsAgent",
             "ActivitiesAgent",
         ],
@@ -135,7 +166,7 @@ ALL_AGENTS = PARALLEL_AGENTS + SEQUENTIAL_AGENTS
 AGENT_TO_NODE = {
     "FlightsAgent": "flights",
     "HotelsAgent": "hotels",
-    "DestinationAgent": "destination",
+    "TravelReadinessAgent": "readiness",
     "BudgetAgent": "budget",
     "RestaurantsAgent": "restaurants",
     "ActivitiesAgent": "activities",
@@ -182,7 +213,7 @@ def build_user_profile_context(state: TravelAgentState) -> str:
         )
     if not parts:
         return ""
-    return "USER PROFILE:\n" + "\n".join(parts)
+    return USER_PROFILE_CONTEXT_PROMPT.format(profile="\n".join(parts))
 
 
 def build_trip_request_context(state: TravelAgentState) -> str:
@@ -191,13 +222,41 @@ def build_trip_request_context(state: TravelAgentState) -> str:
     if not request_data:
         return ""
     request = TripRequest.model_validate(request_data)
-    return (
-        "CANONICAL TRIP REQUEST (authoritative; do not invent missing values):\n"
-        + json.dumps(request.model_dump(mode="json"), ensure_ascii=False)
+    return TRIP_REQUEST_CONTEXT_PROMPT.format(
+        canonical_request=json.dumps(
+            request.model_dump(mode="json"), ensure_ascii=False
+        )
     )
 
 
-def build_context_messages(state: TravelAgentState) -> list:
+def build_readiness_constraints_context(state: TravelAgentState) -> str:
+    """Serialize only grounded constraints intended for downstream operations."""
+    components = state.get("itinerary_components", {})
+    raw_report = components.get("readiness", {}).get("data") or components.get(
+        "readiness_preflight", {}
+    ).get("data")
+    if not raw_report:
+        return ""
+    try:
+        report = TravelReadinessReport.model_validate(raw_report)
+    except Exception:
+        _log.warning("Ignoring invalid readiness data in downstream context")
+        return ""
+    if not report.planning_constraints:
+        return ""
+    payload = [
+        constraint.model_dump(mode="json") for constraint in report.planning_constraints
+    ]
+    return READINESS_CONSTRAINTS_CONTEXT_PROMPT.format(
+        constraints=json.dumps(payload, ensure_ascii=False)
+    )
+
+
+def build_context_messages(
+    state: TravelAgentState,
+    *,
+    readiness_context: str = "full",
+) -> list:
     """Build message list enriched with results from prior agents and user profile.
 
     Checks for data keys directly rather than the per-invocation
@@ -208,7 +267,7 @@ def build_context_messages(state: TravelAgentState) -> list:
     label_map = {
         "flights": "Flights results",
         "hotels": "Hotels results",
-        "destination": "Destination info",
+        "readiness": "Travel readiness results",
         "budget": "Budget results",
         "restaurants": "Restaurants results",
         "activities": "Activities results",
@@ -220,6 +279,8 @@ def build_context_messages(state: TravelAgentState) -> list:
 
     parts = []
     for key, label in label_map.items():
+        if readiness_context != "full" and key == "readiness":
+            continue
         if key in components:
             agent_msgs = components[key].get("messages", [])
             summary = " ".join(
@@ -241,11 +302,13 @@ def build_context_messages(state: TravelAgentState) -> list:
     if profile:
         msgs.insert(0, SystemMessage(content=profile))
 
+    if readiness_context == "constraints":
+        constraint_context = build_readiness_constraints_context(state)
+        if constraint_context:
+            msgs.insert(0, SystemMessage(content=constraint_context))
+
     if parts:
-        context = (
-            "Here is what specialist agents found. "
-            "Use this context to give a more informed answer.\n\n" + "\n\n".join(parts)
-        )
+        context = SPECIALIST_RESULTS_CONTEXT_PROMPT.format(results="\n\n".join(parts))
         msgs.insert(0, SystemMessage(content=context))
     return msgs
 
@@ -283,6 +346,13 @@ def _normalize_hitl_decision(decision) -> dict:
     ensures the HITL gate nodes always see a consistent dict.
     """
     if isinstance(decision, dict):
+        action = str(decision.get("action", "")).strip().lower()
+        if action in {"approved", "proceed"}:
+            return {**decision, "approved": True}
+        if action == "edited":
+            return {**decision, "approved": True}
+        if action in {"rejected", "cancel"}:
+            return {**decision, "approved": False}
         return decision
     if isinstance(decision, bool):
         return {"approved": decision}
@@ -318,56 +388,155 @@ def _normalize_hitl_decision(decision) -> dict:
 async def safety_review_node(state: TravelAgentState) -> dict:
     """HITL gate: interrupt when safety advisory is 'do not travel' or 'red'.
 
-    Checks destination agent results for dangerous advisory levels.
+    Checks the completed readiness preflight for dangerous advisory levels.
     If dangerous, pauses execution so the user can acknowledge the risk
     or cancel the trip.
 
-    Disabled when hitl.safety_review = false (webapp mode).
+    Can be disabled explicitly for non-interactive clients.
     """
-    if not is_hitl_enabled("safety_review"):
-        return {"current_agent": "safety_review"}
-
     components = state.get("itinerary_components", {})
-    destination_data = components.get("destination", {})
+    preflight_component = components.get("readiness_preflight")
 
-    # Extract safety/advisory text from destination agent output (messages + tool results)
-    safety_text = ""
-    for m in destination_data.get("messages", []):
-        if isinstance(m, (AIMessage, ToolMessage)) and m.content:
-            content = _extract_text_content(m.content)
-            safety_text += content.lower() + "\n"
+    def approved_update(**extra) -> dict:
+        """Expose verified preflight data under the canonical readiness key."""
+        result = {
+            "current_agent": "safety_review",
+            "hitl_action": "approved",
+            **extra,
+        }
+        if preflight_component:
+            result["itinerary_components"] = {"readiness": preflight_component}
+            preflight_outcome = state.get("component_results", {}).get(
+                "readiness_preflight"
+            )
+            if preflight_outcome:
+                readiness_outcome = dict(preflight_outcome)
+                readiness_outcome["component"] = "readiness"
+                result["component_results"] = {"readiness": readiness_outcome}
+        return result
 
-    # Check for dangerous advisory levels — both structured patterns and
-    # natural language phrases that destination/web tools may return
-    danger_keywords = [
-        "do not travel",
-        "level 4",
-        "advisory level: red",
-        "reconsider travel",
-        "level 3",
-        "avoid all travel",
-        "avoid non-essential travel",
-        "extreme risk",
-        "war zone",
-        "armed conflict",
-        "active conflict",
-    ]
-    is_dangerous = any(kw in safety_text for kw in danger_keywords)
+    destination_data = (
+        components.get("readiness_preflight") or components.get("readiness") or {}
+    )
+
+    report_data = destination_data.get("data")
+    if not report_data:
+        return {
+            "messages": [
+                AIMessage(
+                    content="Official safety evidence could not be validated, so discovery was not started."
+                )
+            ],
+            "current_agent": "safety_review",
+            "hitl_action": "rejected",
+        }
+    try:
+        report = TravelReadinessReport.model_validate(report_data)
+    except Exception:
+        _log.warning("Ignoring invalid structured readiness report at safety gate")
+        return {
+            "messages": [
+                AIMessage(
+                    content="Official safety evidence could not be validated, so discovery was not started."
+                )
+            ],
+            "current_agent": "safety_review",
+            "hitl_action": "rejected",
+        }
+
+    request_data = state.get("trip_request")
+    if request_data:
+        request = TripRequest.model_validate(request_data)
+        expected_fingerprint = readiness_request_fingerprint(
+            request,
+            requested_topics(_latest_human_question(state), request)
+            | {ReadinessTopic.SAFETY},
+        )
+        outcomes = state.get("component_results", {})
+        preflight_outcome = outcomes.get("readiness_preflight") or outcomes.get(
+            "readiness", {}
+        )
+        if preflight_outcome.get("request_fingerprint") != expected_fingerprint:
+            return {
+                "messages": [
+                    AIMessage(
+                        content=(
+                            "The saved safety preflight no longer matches the current "
+                            "destinations, passport, dates, or topics, so discovery "
+                            "was not started."
+                        )
+                    )
+                ],
+                "current_agent": "safety_review",
+                "hitl_action": "rejected",
+            }
+
+    coverage_items = destination_data.get("coverage", {}).get("items", [])
+    verified_destinations = {
+        str(item.get("destination", "")).strip().lower()
+        for item in coverage_items
+        if item.get("topic") == ReadinessTopic.SAFETY
+        and item.get("state") == "verified"
+    }
+    if verified_destinations != set(report.destinations):
+        return {
+            "messages": [
+                AIMessage(
+                    content=(
+                        "An officially grounded advisory was not verified for every "
+                        "destination, so discovery was not started."
+                    )
+                )
+            ],
+            "current_agent": "safety_review",
+            "hitl_action": "rejected",
+        }
+
+    advisory_source_ids = report.citations.get("safety.advisory_level", [])
+    source_by_id = {source.id: source for source in report.sources}
+    has_official_advisory = (
+        bool(advisory_source_ids)
+        and all(
+            source_by_id[source_id].is_official
+            for source_id in advisory_source_ids
+            if source_id in source_by_id
+        )
+        and all(source_id in source_by_id for source_id in advisory_source_ids)
+    )
+    if not has_official_advisory:
+        return {
+            "messages": [
+                AIMessage(
+                    content=(
+                        "An officially cited advisory was not verified for every "
+                        "destination, so discovery was not started."
+                    )
+                )
+            ],
+            "current_agent": "safety_review",
+            "hitl_action": "rejected",
+        }
+
+    # Disabling HITL disables only the user interrupt. Evidence validation is
+    # still mandatory before readiness data can reach discovery agents.
+    if not is_hitl_enabled("safety_review"):
+        return approved_update()
+
+    # Only a typed dangerous level with cited official evidence may interrupt.
+    is_dangerous = has_official_advisory and report.safety.advisory_level in {
+        AdvisoryLevel.ORANGE,
+        AdvisoryLevel.RED,
+    }
 
     if is_dangerous and not state.get("safety_acknowledged"):
-        # Extract the most relevant safety snippet for the user
-        safety_snippet = ""
-        for kw in danger_keywords:
-            idx = safety_text.find(kw)
-            if idx >= 0:
-                start = max(0, idx - 100)
-                end = min(len(safety_text), idx + 200)
-                safety_snippet = safety_text[start:end].strip()
-                break
+        safety_snippet = report.safety.advisory_summary[:500]
 
         raw_decision = interrupt(
             {
                 "type": "safety_warning",
+                "gate": "safety_review",
+                "advisory_level": str(report.safety.advisory_level),
+                "summary": safety_snippet,
                 "message": (
                     "⚠️ SAFETY ADVISORY: The destination has a high-risk travel advisory. "
                     "Review the safety information and decide whether to proceed."
@@ -392,107 +561,114 @@ async def safety_review_node(state: TravelAgentState) -> dict:
                 "hitl_action": "rejected",
             }
 
-        return {
-            "current_agent": "safety_review",
-            "safety_acknowledged": True,
-            "hitl_action": "approved",
-        }
+        return approved_update(safety_acknowledged=True)
 
     # No safety concern — pass through
-    return {"current_agent": "safety_review"}
+    return approved_update()
 
 
 async def budget_review_node(state: TravelAgentState) -> dict:
-    """HITL gate: interrupt when estimated budget exceeds target by >$500.
-
-    Checks budget_structured for overspend and offers adjustment options.
-
-    Disabled when hitl.budget_review = false (webapp mode).
-    """
+    """Pause only for a sufficiently covered, material target-budget overage."""
     if not is_hitl_enabled("budget_review"):
-        return {"current_agent": "budget_review"}
+        return {"current_agent": "budget_review", "hitl_action": "proceed"}
 
     components = state.get("itinerary_components", {})
     budget_data = components.get("budget_structured", {})
-
     if not budget_data:
-        return {"current_agent": "budget_review"}
+        return {"current_agent": "budget_review", "hitl_action": "proceed"}
+    try:
+        budget = BudgetBreakdown.model_validate(budget_data)
+    except ValueError:
+        return {"current_agent": "budget_review", "hitl_action": "proceed"}
 
-    total_estimated = budget_data.get("total", 0)
-
-    # Get target from structured extraction (BudgetBreakdown.target_budget)
-    target_budget = budget_data.get("target_budget", 0)
-
-    # Fallback: try to parse target from user messages if extraction missed it
-    if not target_budget:
-        for m in state.get("messages", []):
-            if isinstance(m, HumanMessage) and m.content:
-                text = _extract_text_content(m.content)
-                # Match patterns like "$2000", "budget 2000", "budget of $3,000"
-                match = re.search(
-                    r"budget[:\s]*(?:of\s*)?\$?([\d,]+)", text, re.IGNORECASE
-                )
-                if match:
-                    try:
-                        target_budget = float(match.group(1).replace(",", ""))
-                    except ValueError:
-                        pass
-                    break
-
-    if not target_budget:
-        # No explicit target — skip review
-        return {"current_agent": "budget_review"}
-
-    overspend = total_estimated - target_budget
-    if overspend > 500 and not state.get("budget_adjustment_accepted"):
+    reliable = (
+        budget.coverage_status != BudgetCoverageStatus.PARTIAL
+        and budget.conversion_status != ConversionStatus.UNAVAILABLE
+        and budget.display_conversion_available
+        and budget.verdict == BudgetVerdict.OVER_BUDGET
+        and budget.target_budget > 0
+        and abs(budget.reconciliation_delta) < 0.01
+    )
+    overspend = budget.total - budget.target_budget
+    threshold = max(
+        budget.target_budget
+        * float(app_config.get("budget", "review_overage_percent", 10))
+        / 100,
+        float(app_config.get("budget", "review_overage_floor_usd", 100)),
+    )
+    if (
+        reliable
+        and overspend >= threshold
+        and not state.get("budget_adjustment_accepted")
+    ):
         raw_decision = interrupt(
             {
                 "type": "budget_warning",
+                "gate": "budget_review",
                 "message": (
-                    f"💰 BUDGET ALERT: Your estimated trip cost (${total_estimated:,.0f}) "
-                    f"exceeds your target budget (${target_budget:,.0f}) by ${overspend:,.0f}."
+                    f"Estimated trip cost (USD {budget.total:,.2f}) exceeds the "
+                    f"target (USD {budget.target_budget:,.2f}) by USD {overspend:,.2f}."
                 ),
-                "estimated_total": total_estimated,
-                "target_budget": target_budget,
+                "summary": budget.summary,
+                "estimated_total": budget.total,
+                "target_budget": budget.target_budget,
                 "overspend": overspend,
-                "suggestions": [
-                    "Switch to budget hotels to save ~20%",
-                    "Reduce trip by 1-2 days",
-                    "Choose economy flights",
-                    "Cut optional activities",
-                ],
-                "action_required": (
-                    "Respond with true to proceed as-is, "
-                    "or provide feedback text to adjust."
+                "threshold": threshold,
+                "currency": "USD",
+                "display_breakdown": (
+                    budget.display_breakdown.model_dump(mode="json")
+                    if budget.display_breakdown
+                    else None
                 ),
+                "display_currency": budget.display_currency,
+                "display_conversion_available": budget.display_conversion_available,
+                "suggestions": [
+                    "Review the selected flight and hotel rates",
+                    "Reduce trip duration or optional paid activities",
+                    "Set a higher target only if that reflects your actual limit",
+                ],
+                "action_required": "Proceed, adjust the target, or cancel.",
             }
         )
-        decision = _normalize_hitl_decision(raw_decision)
+        normalised = _normalize_hitl_decision(raw_decision)
+        if "action" not in normalised:
+            normalised = {
+                "gate": "budget_review",
+                "action": (
+                    "proceed" if normalised.get("approved", False) else "cancel"
+                ),
+            }
+        try:
+            decision = BudgetReviewDecision.model_validate(normalised)
+        except ValueError:
+            decision = BudgetReviewDecision(action=BudgetReviewAction.CANCEL)
 
-        if not decision.get("approved", False):
+        if decision.action == BudgetReviewAction.CANCEL:
             return {
                 "messages": [
                     AIMessage(
-                        content=(
-                            "🔄 Budget adjustment requested. Please provide updated "
-                            "budget preferences and I'll re-plan accordingly."
-                        )
+                        content="Budget review cancelled the remaining planning workflow."
                     )
                 ],
                 "current_agent": "budget_review",
-                "hitl_action": "rejected",
-                "human_feedback": decision.get("feedback", ""),
+                "hitl_action": "cancel",
             }
-
-        feedback = decision.get("feedback", "")
+        if decision.action == BudgetReviewAction.ADJUST_TARGET:
+            request = TripRequest.model_validate(state.get("trip_request", {}))
+            adjusted = request.model_copy(update={"budget_amount": decision.new_budget})
+            return {
+                "current_agent": "budget_review",
+                "trip_request": adjusted.model_dump(mode="json"),
+                "budget_adjustment_accepted": False,
+                "hitl_action": "adjust_target",
+            }
         return {
             "current_agent": "budget_review",
             "budget_adjustment_accepted": True,
-            "hitl_action": "approved",
-            "human_feedback": feedback,
+            "hitl_action": "proceed",
         }
 
-    return {"current_agent": "budget_review"}
+    return {"current_agent": "budget_review", "hitl_action": "proceed"}
 
 
 async def human_review_node(state: TravelAgentState) -> dict:
@@ -519,8 +695,8 @@ async def human_review_node(state: TravelAgentState) -> dict:
         summary_parts.append("🍽️ Restaurants: found")
     if "activities" in components:
         summary_parts.append("🎯 Activities: found")
-    if "destination" in components:
-        summary_parts.append("🗺️ Destination info: found")
+    if "readiness" in components:
+        summary_parts.append("🛡️ Travel essentials: found")
     if "transportation" in components:
         summary_parts.append("🚃 Transportation: found")
     if "budget" in components:
@@ -677,14 +853,7 @@ async def shallow_reply_node(state: TravelAgentState, *, llm) -> dict:
     enriched = build_context_messages(state)
     response = await llm.ainvoke(
         [
-            SystemMessage(
-                content=(
-                    "You are a friendly travel planning assistant called Wanderlisted. "
-                    "Answer the user's casual message briefly. If they seem to want "
-                    "travel planning help, invite them to ask about destinations, "
-                    "flights, hotels, activities, or budgets."
-                ),
-            ),
+            SystemMessage(content=SHALLOW_REPLY_SYSTEM_PROMPT),
             *enriched,
         ]
     )
@@ -703,7 +872,7 @@ async def supervisor_node(state: TravelAgentState, *, supervisor_agent) -> dict:
     label_map = {
         "flights": "FlightsAgent: flight search results",
         "hotels": "HotelsAgent: hotel results",
-        "destination": "DestinationAgent: destination / weather / safety info",
+        "readiness": "TravelReadinessAgent: safety, weather, entry, health, and culture",
         "budget": "BudgetAgent: budget breakdown",
         "restaurants": "RestaurantsAgent: restaurant recommendations",
         "activities": "ActivitiesAgent: activity and attraction results",
@@ -720,12 +889,8 @@ async def supervisor_node(state: TravelAgentState, *, supervisor_agent) -> dict:
 
     existing_summary = ""
     if data_parts:
-        existing_summary = (
-            "DATA ALREADY COLLECTED in this conversation (do NOT re-run "
-            "these agents unless the user explicitly asks for new data):\n"
-            + "\n".join(data_parts)
-            + "\n\nIf the user's request can be answered from this existing "
-            "data, return agents: [] so the synthesizer handles it."
+        existing_summary = SUPERVISOR_EXISTING_DATA_PROMPT.format(
+            data_summary="\n".join(data_parts)
         )
 
     # Single-agent isolation: skip LLM routing, force to target agent only
@@ -747,10 +912,11 @@ async def supervisor_node(state: TravelAgentState, *, supervisor_agent) -> dict:
     canonical_request = TripRequest.model_validate(canonical_data)
     routing_query = latest_text
     if canonical_data:
-        routing_query = (
-            f"Latest user message: {latest_text}\n\n"
-            "Canonical trip request accumulated across turns:\n"
-            f"{json.dumps(canonical_request.model_dump(mode='json'), ensure_ascii=False)}"
+        routing_query = SUPERVISOR_ROUTING_QUERY_PROMPT.format(
+            latest_message=latest_text,
+            canonical_request=json.dumps(
+                canonical_request.model_dump(mode="json"), ensure_ascii=False
+            ),
         )
     decision = await supervisor_agent.aget_routing_decision(
         routing_query,
@@ -816,7 +982,19 @@ async def _run_parallel_agent(
     If the agent fails (e.g. external API down), log the error and return a
     graceful degradation message instead of crashing the whole graph.
     """
-    enriched = build_context_messages(state)
+    downstream_specialists = {
+        "flights",
+        "hotels",
+        "restaurants",
+        "activities",
+        "transportation",
+    }
+    enriched = build_context_messages(
+        state,
+        readiness_context=(
+            "constraints" if agent_name in downstream_specialists else "full"
+        ),
+    )
     try:
         result = await executor.ainvoke({"messages": enriched})
         new_msgs = result["messages"][len(enriched) :]
@@ -905,18 +1083,20 @@ async def hotel_stay_node(state: TravelAgentState, *, executor) -> dict:
     travelers = request.travelers
     children_ages = ",".join(str(age) for age in travelers.child_ages)
     instruction = SystemMessage(
-        content=(
-            "MANDATORY HOTEL STAY SEARCH. Call search_hotels_hotelbeds for exactly "
-            f"this stay before responding: city={stay.city!r}, city_code={city_code}, "
-            f"check_in_date={stay.check_in.isoformat()}, "
-            f"check_out_date={stay.check_out.isoformat()}, "
-            f"adults={travelers.adults}, children={travelers.children}, "
-            f"children_ages={children_ages!r}. Do not search another city or change "
-            "the dates. Apply the user's travel style when choosing filters. Verify "
-            "every RECHECK rate before recommending it."
+        content=HOTEL_STAY_SEARCH_PROMPT.format(
+            city=stay.city,
+            city_code=city_code,
+            check_in_date=stay.check_in.isoformat(),
+            check_out_date=stay.check_out.isoformat(),
+            adults=travelers.adults,
+            children=travelers.children,
+            children_ages=children_ages,
         )
     )
-    input_messages = [instruction, *build_context_messages(state)]
+    input_messages = [
+        instruction,
+        *build_context_messages(state, readiness_context="constraints"),
+    ]
     try:
         result = await executor.ainvoke({"messages": input_messages})
         new_msgs = result["messages"][len(input_messages) :]
@@ -1017,12 +1197,142 @@ async def hotel_fan_in_node(state: TravelAgentState) -> dict:
     }
 
 
+def _latest_human_question(state: TravelAgentState) -> str:
+    return next(
+        (
+            _extract_text_content(message.content)
+            for message in reversed(state.get("messages", []))
+            if isinstance(message, HumanMessage) and message.content
+        ),
+        "",
+    )
+
+
+def _readiness_component_result(
+    run, component_name: str
+) -> tuple[ComponentResult, dict]:
+    message = AIMessage(content=run.message)
+    if run.report is None:
+        outcome = ComponentResult(
+            component=component_name,
+            status=run.status,
+            missing_fields=run.missing_fields,
+            message=run.message,
+            error_category=run.error_category,
+            request_fingerprint=run.request_fingerprint,
+        )
+        return outcome, {
+            "messages": [message],
+            "data": None,
+            "coverage": run.coverage.model_dump(mode="json"),
+        }
+    report_data = run.report.model_dump(mode="json")
+    tools = []
+    if any(source.domain == "open-meteo.com" for source in run.report.sources):
+        tools.append("open_meteo_forecast")
+    if any(source.domain != "open-meteo.com" for source in run.report.sources):
+        tools.append("tavily_search")
+    outcome = ComponentResult(
+        component=component_name,
+        status=run.status,
+        data=report_data,
+        message=run.message,
+        error_category=run.error_category,
+        tools_called=tools,
+        evidence_count=len(run.report.sources),
+        request_fingerprint=run.request_fingerprint,
+    )
+    return outcome, {
+        "messages": [message],
+        "data": report_data,
+        "coverage": run.coverage.model_dump(mode="json"),
+    }
+
+
 @traceable(
-    run_type="chain", name="destination_node", tags=["wanderlisted", "destination"]
+    run_type="chain",
+    name="readiness_preflight_node",
+    tags=["wanderlisted", "readiness", "safety"],
 )
-async def destination_node(state: TravelAgentState, *, executor) -> dict:
-    """Fan-out worker: run DestinationAgent as an independent graph node."""
-    return await _run_parallel_agent(state, executor=executor, agent_name="destination")
+async def readiness_preflight_node(state: TravelAgentState, *, executor) -> dict:
+    """Run official advisory research before any paid discovery fan-out."""
+    latest = _latest_human_question(state)
+    request = TripRequest.model_validate(state.get("trip_request", {}))
+    try:
+        run = await executor.preflight(question=latest, trip_request=request)
+        outcome, component = _readiness_component_result(run, "readiness_preflight")
+        return {
+            "messages": component["messages"],
+            "current_agent": "readiness_preflight",
+            "itinerary_components": {"readiness_preflight": component},
+            "component_results": {
+                "readiness_preflight": outcome.model_dump(mode="json")
+            },
+        }
+    except Exception as exc:
+        _log.warning("Readiness preflight failed: %s: %s", type(exc).__name__, exc)
+        outcome = classify_component_result("readiness_preflight", [], error=exc)
+        message = AIMessage(
+            content="I could not verify official safety advisories, so discovery was not started."
+        )
+        return {
+            "messages": [message],
+            "current_agent": "readiness_preflight",
+            "itinerary_components": {
+                "readiness_preflight": {"messages": [message], "data": None}
+            },
+            "component_results": {
+                "readiness_preflight": outcome.model_dump(mode="json")
+            },
+        }
+
+
+@traceable(run_type="chain", name="readiness_node", tags=["wanderlisted", "readiness"])
+async def readiness_node(state: TravelAgentState, *, executor) -> dict:
+    """Run focused or post-preflight readiness details without place discovery."""
+    latest = _latest_human_question(state)
+    request = TripRequest.model_validate(state.get("trip_request", {}))
+    try:
+        preflight_data = (
+            state.get("itinerary_components", {})
+            .get("readiness_preflight", {})
+            .get("data")
+        )
+        if preflight_data:
+            preflight_fingerprint = (
+                state.get("component_results", {})
+                .get("readiness_preflight", {})
+                .get("request_fingerprint", "")
+            )
+            run = await executor.research_details(
+                question=latest,
+                trip_request=request,
+                preflight_report=TravelReadinessReport.model_validate(preflight_data),
+                preflight_fingerprint=preflight_fingerprint,
+            )
+        else:
+            run = await executor.research(question=latest, trip_request=request)
+        outcome, component = _readiness_component_result(run, "readiness")
+        return {
+            "messages": component["messages"],
+            "current_agent": "readiness",
+            "itinerary_components": {"readiness": component},
+            "component_results": {"readiness": outcome.model_dump(mode="json")},
+        }
+    except Exception as exc:
+        _log.warning("Readiness pipeline failed: %s: %s", type(exc).__name__, exc)
+        outcome = classify_component_result("readiness", [], error=exc)
+        message = AIMessage(
+            content="I could not complete travel-readiness research because a provider is unavailable."
+        )
+        return {
+            "messages": [message],
+            "current_agent": "readiness",
+            "itinerary_components": {
+                "readiness": {"messages": [message], "data": None}
+            },
+            "component_results": {"readiness": outcome.model_dump(mode="json")},
+        }
 
 
 @traceable(
@@ -1163,9 +1473,19 @@ async def draft_itinerary_node(state: TravelAgentState, *, llm) -> dict:
 
     evidence = "\n\n".join(
         f"[{key.upper()}]\n{text}"
-        for key in ("hotels", "activities", "restaurants", "destination")
+        for key in ("trip_skeleton", "hotels", "activities", "restaurants")
         if (text := _component_text(key))
     )
+    readiness_constraints = build_readiness_constraints_context(state)
+    if readiness_constraints:
+        evidence = "\n\n".join(
+            part
+            for part in (
+                evidence,
+                f"[READINESS CONSTRAINTS]\n{readiness_constraints}",
+            )
+            if part
+        )
     if not evidence:
         draft = DraftItinerary(selection_notes=["No routable discovery data found."])
     else:
@@ -1200,58 +1520,77 @@ async def draft_itinerary_node(state: TravelAgentState, *, llm) -> dict:
 
 
 @traceable(run_type="chain", name="budget_node", tags=["wanderlisted", "budget"])
-async def budget_node(state: TravelAgentState, *, llm, executor) -> dict:
-    """Sequential budget node — runs budget agent and extracts structured data."""
-    enriched = build_context_messages(state)
-    result = await executor.ainvoke({"messages": enriched})
-    new_msgs = result["messages"][len(enriched) :]
+async def budget_node(state: TravelAgentState, *, agent: BudgetAgent) -> dict:
+    """Run the fixed typed Budget pipeline from canonical graph artifacts."""
     components = state.get("itinerary_components", {})
-
-    # Extract structured budget from the agent's free-text output
-    budget_data = None
-    budget_text = " ".join(
-        _extract_text_content(m.content)
-        for m in new_msgs
-        if isinstance(m, AIMessage) and m.content
+    request = TripRequest.model_validate(state.get("trip_request", {}))
+    skeleton_data = components.get("trip_skeleton_structured")
+    draft_data = components.get("draft_itinerary_structured")
+    skeleton = TripSkeleton.model_validate(skeleton_data) if skeleton_data else None
+    draft = DraftItinerary.model_validate(draft_data) if draft_data else None
+    prior_evidence = tuple(
+        PriceEvidence.model_validate(item)
+        for item in components.get("budget_evidence_structured", [])
     )
-    # Also extract target budget from user messages for the extraction context
-    user_budget_context = ""
-    for m in state.get("messages", []):
-        if isinstance(m, HumanMessage) and m.content:
-            text = _extract_text_content(m.content)
-            if re.search(r"budget|spend|\$[\d,]+", text, re.IGNORECASE):
-                user_budget_context = f"\n\nUser's original request: {text}"
-                break
-
-    if budget_text:
-        try:
-            structured_llm = llm.with_structured_output(BudgetBreakdown)
-            budget_data = await structured_llm.ainvoke(
-                [
-                    SystemMessage(
-                        content="Extract the budget breakdown from the following text. "
-                        "Return all monetary amounts in the currency mentioned. "
-                        "If a field is not mentioned, leave it as 0. "
-                        "IMPORTANT: Set target_budget to the user's stated maximum/target "
-                        "budget from their request. If they said 'budget $2000', set "
-                        "target_budget to 2000. If no budget was mentioned, leave it as 0."
-                    ),
-                    HumanMessage(content=budget_text + user_budget_context),
-                ]
+    prior_report = components.get("budget_structured", {})
+    stored_rates = tuple(
+        ConversionRateRecord.model_validate(item)
+        for item in prior_report.get("conversion_rates", [])
+    )
+    try:
+        run = await agent.run(
+            BudgetContext(
+                request=request,
+                skeleton=skeleton,
+                draft=draft,
+                components=components,
+                additional_evidence=prior_evidence,
+                stored_rates=stored_rates,
             )
-        except Exception:
-            pass  # Fall back to unstructured — budget_data stays None
+        )
+    except Exception as exc:
+        _log.warning("Budget pipeline failed: %s: %s", type(exc).__name__, exc)
+        message = AIMessage(content="Budget calculation failed validation.")
+        outcome = classify_component_result("budget", [], error=exc)
+        return {
+            "messages": [message],
+            "current_agent": "budget:failed",
+            "hitl_action": "",
+            "itinerary_components": {
+                "budget": {"messages": [message]},
+                "budget_structured": None,
+            },
+            "component_results": {"budget": outcome.model_dump(mode="json")},
+        }
 
+    message = AIMessage(content=run.message)
+    report = run.report.model_dump(mode="json")
+    outcome = ComponentResult(
+        component="budget",
+        status=ComponentStatus.COMPLETED,
+        data=report,
+        message=run.message,
+        missing_fields=[category.value for category in run.report.missing_categories],
+        evidence_count=len(run.report.line_items),
+        request_fingerprint=run.report.request_fingerprint,
+    )
+    completed_agents = list(components.get("completed_agents", []))
+    if "BudgetAgent" not in completed_agents:
+        completed_agents.append("BudgetAgent")
     return {
-        "messages": new_msgs,
+        "messages": [message],
         "current_agent": "budget",
+        "hitl_action": "",
+        "budget_adjustment_accepted": False,
         "itinerary_components": {
-            **components,
-            "budget": result,
-            **({"budget_structured": budget_data.model_dump()} if budget_data else {}),
-            "completed_agents": components.get("completed_agents", [])
-            + ["BudgetAgent"],
+            "budget": {"messages": [message]},
+            "budget_structured": report,
+            "budget_evidence_structured": [
+                item.model_dump(mode="json") for item in run.evidence
+            ],
+            "completed_agents": completed_agents,
         },
+        "component_results": {"budget": outcome.model_dump(mode="json")},
     }
 
 
@@ -1278,9 +1617,7 @@ async def itinerary_node(state: TravelAgentState, *, executor) -> dict:
     run_type="chain", name="render_handbook_node", tags=["wanderlisted", "render"]
 )
 async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
-    """Extract structured data from all agent outputs via per-section LLM
-    extractions, post-process photo URLs and route maps, then render the
-    travel handbook to HTML, Markdown, and JSON."""
+    """Render the handbook, consuming structured readiness data directly."""
     from datetime import datetime
     from pydantic import BaseModel, Field as PydanticField
     from src.agent.renderer import _pick_palette, _get_season
@@ -1291,6 +1628,15 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
     )
 
     components = state.get("itinerary_components", {})
+    readiness_report = TravelReadinessReport()
+    raw_readiness_report = components.get("readiness", {}).get("data")
+    if raw_readiness_report:
+        try:
+            readiness_report = TravelReadinessReport.model_validate(
+                raw_readiness_report
+            )
+        except Exception:
+            _log.warning("render_handbook: invalid structured readiness data")
 
     # ── Collect per-agent text ────────────────────────────────────────
     def _agent_text(key: str) -> str:
@@ -1306,7 +1652,7 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
 
     flights_text = _agent_text("flights")
     hotels_text = _agent_text("hotels")
-    destination_text = _agent_text("destination")
+    readiness_text = _agent_text("readiness")
     restaurants_text = _agent_text("restaurants")
     activities_text = _agent_text("activities")
     transportation_text = _agent_text("transportation")
@@ -1319,7 +1665,7 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
             [
                 f"[FLIGHTS]\n{flights_text}" if flights_text else "",
                 f"[HOTELS]\n{hotels_text}" if hotels_text else "",
-                f"[DESTINATION]\n{destination_text}" if destination_text else "",
+                f"[TRAVEL READINESS]\n{readiness_text}" if readiness_text else "",
                 f"[RESTAURANTS]\n{restaurants_text}" if restaurants_text else "",
                 f"[ACTIVITIES]\n{activities_text}" if activities_text else "",
                 f"[TRANSPORTATION]\n{transportation_text}"
@@ -1335,7 +1681,7 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
     for _sec_name, _sec_text in [
         ("flights", flights_text),
         ("hotels", hotels_text),
-        ("destination", destination_text),
+        ("readiness", readiness_text),
         ("restaurants", restaurants_text),
         ("activities", activities_text),
         ("transportation", transportation_text),
@@ -1362,12 +1708,6 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
 
     class ExtractedDays(BaseModel):
         days: list[DayPlan] = PydanticField(default_factory=list)
-
-    class ExtractedSafety(BaseModel):
-        safety: SafetyInfo = PydanticField(default_factory=SafetyInfo)
-
-    class ExtractedCulture(BaseModel):
-        culture: CultureGuide = PydanticField(default_factory=CultureGuide)
 
     class ExtractedPacking(BaseModel):
         packing: list[PackingItem] = PydanticField(default_factory=list)
@@ -1416,7 +1756,7 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
                                 [
                                     SystemMessage(
                                         content=instruction
-                                        + "\nIMPORTANT: Extract ALL items. Do NOT return an empty list."
+                                        + HANDBOOK_EXTRACTION_RETRY_SUFFIX
                                     ),
                                     HumanMessage(content=truncated),
                                 ]
@@ -1437,65 +1777,37 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
         return model_cls()
 
     # Batch 1: smaller/faster extractions
-    flights_ex, hotels_ex, safety_ex, meta_ex = await asyncio.gather(
+    flights_ex, hotels_ex, meta_ex = await asyncio.gather(
         _extract(
             ExtractedFlights,
             flights_text,
-            "Extract every flight option from the text. Include carrier, flight number, airports, times, duration, stops, cabin class, price. Parse outbound and inbound/return segments separately.",
+            HANDBOOK_FLIGHTS_EXTRACTION_PROMPT,
         ),
         _extract(
             ExtractedHotels,
             hotels_text,
-            "Extract every hotel from the text. Include name, star rating, neighbourhood, price per night, total price, room type, check-in/check-out, amenities, photo URLs, Google Maps URL, website URL, description. If photo URLs from Google Places are mentioned (https://places.googleapis.com/...), include them in photo_urls.",
-        ),
-        _extract(
-            ExtractedSafety,
-            f"{destination_text}\n\n{budget_text}",
-            "Extract safety and practical info from the destination research. Include: "
-            "advisory level (green/yellow/orange/red), advisory summary, visa requirements, "
-            "health requirements (vaccinations, health risks), emergency numbers (police, ambulance, fire, "
-            "tourist police — use known defaults for the country if not in text), "
-            "languages spoken, currency name/symbol/code, timezones, seasonal risks, safety tips. "
-            "If the text doesn't explicitly state emergency numbers, use the standard ones for the country "
-            "(e.g. 112 for EU countries).",
+            HANDBOOK_HOTELS_EXTRACTION_PROMPT,
         ),
         _extract(
             ExtractedMeta,
             all_text,
-            "Extract trip metadata: trip title, origin city, start/end dates, route cities in order, transport between cities, total budget, exchange rate, local currency code.",
+            HANDBOOK_METADATA_EXTRACTION_PROMPT,
         ),
     )
 
     # Batch 2: heavier extractions (days is the biggest)
     days_combined_text = f"{itinerary_text}\n\n{restaurants_text}\n\n{activities_text}\n\n{transportation_text}"
-    _days_instruction = (
-        "Build a COMPLETE day-by-day itinerary covering EVERY day in the trip. "
-        "For each day, set day_number, date, city. "
-        "Assign activities and restaurants to morning/afternoon/evening time blocks. "
-        "Each place needs: name, category, rating, review_count, price_level, address, description, "
-        "google_maps_url, website_url, photo_urls (use any Google Places photo URLs mentioned), "
-        "latitude, longitude, estimated_cost_usd, estimated_duration_minutes. "
-        "Include transit steps between places. Set daily_cost_usd. "
-        "Include any cultural tips mentioned for relevant days. "
-        "IMPORTANT: You MUST extract ALL days. Do NOT stop early or truncate."
-    )
-    days_ex, culture_ex, packing_ex = await asyncio.gather(
+    packing_text = f"{readiness_text}\n\n{activities_text}\n\n{itinerary_text}"
+    days_ex, packing_ex = await asyncio.gather(
         _extract(
             ExtractedDays,
             days_combined_text,
-            _days_instruction,
-        ),
-        _extract(
-            ExtractedCulture,
-            destination_text,
-            "Extract cultural info. "
-            "For phrases: find all 'Phrase: English → local (romanized)' lines and extract into a list of dicts with keys 'english', 'local', 'romanized'. "
-            "Also extract: etiquette tips, tipping guide, dining customs, dress code notes, food specialties, local customs.",
+            HANDBOOK_DAYS_EXTRACTION_PROMPT,
         ),
         _extract(
             ExtractedPacking,
-            f"{destination_text}\n\n{itinerary_text}\n\n{activities_text}",
-            "Generate a packing list based on the weather, activities, and destination. Each item needs: item name, reason, category (clothing/documents/tech/health/money/activities), essential (bool), weather context, activity context.",
+            packing_text,
+            HANDBOOK_PACKING_EXTRACTION_PROMPT,
         ),
     )
 
@@ -1518,15 +1830,9 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
             days_retry = await _extract(
                 ExtractedDays,
                 days_combined_text,
-                (
-                    f"Extract ONLY the following days from the itinerary: days {missing}. "
-                    f"The trip has {expected_day_count} total days. "
-                    "For each day, set day_number, date, city. "
-                    "Assign activities and restaurants to morning/afternoon/evening time blocks. "
-                    "Each place needs: name, category, rating, review_count, price_level, "
-                    "address, description, google_maps_url, website_url, photo_urls, "
-                    "latitude, longitude, estimated_cost_usd, estimated_duration_minutes. "
-                    "Include transit steps between places. Set daily_cost_usd."
+                HANDBOOK_MISSING_DAYS_EXTRACTION_PROMPT.format(
+                    missing_days=missing,
+                    expected_day_count=expected_day_count,
                 ),
             )
             days_ex.days.extend(days_retry.days)
@@ -1547,6 +1853,15 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
         for h in hotels_ex.hotels
         if h.name and not any(p in h.name.lower() for p in _PLACEHOLDER_PATTERNS)
     ]
+
+    # Attach typed provider forecasts by date; never ask an LLM to recreate them.
+    weather_by_date = {item.date: item for item in readiness_report.weather}
+    for day in days_ex.days:
+        if day.date in weather_by_date:
+            day.weather = weather_by_date[day.date]
+
+    if not packing_ex.packing:
+        packing_ex.packing = list(readiness_report.packing_constraints)
 
     # ── Assemble TripHandbook ─────────────────────────────────────────
     destinations = state.get("destinations", [])
@@ -1579,8 +1894,8 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
         hotels=hotels_ex.hotels,
         days=days_ex.days,
         # Info sections
-        safety=safety_ex.safety,
-        culture=culture_ex.culture,
+        safety=readiness_report.safety,
+        culture=readiness_report.culture,
         packing=packing_ex.packing,
         # Theme
         theme_accent_color=palette.accent,
@@ -1594,6 +1909,8 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
     # Budget overlay from structured extraction
     budget_data = components.get("budget_structured")
     if budget_data and isinstance(budget_data, dict):
+        # Legacy handbook fields remain explicitly USD; display values are
+        # additive metadata and must never overwrite the arithmetic base.
         handbook.budget_flights = budget_data.get("flights", 0)
         handbook.budget_accommodation = budget_data.get("accommodation", 0)
         handbook.budget_transport = budget_data.get("transport", 0)
@@ -1603,6 +1920,26 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
         handbook.budget_total = budget_data.get("total", 0)
         handbook.budget_per_person = budget_data.get("per_person", 0)
         handbook.budget_summary = budget_data.get("summary", "")
+        handbook.budget_base_currency = budget_data.get("base_currency", "USD")
+        handbook.budget_display_currency = budget_data.get(
+            "display_currency", handbook.budget_base_currency
+        )
+        handbook.budget_display_breakdown = budget_data.get("display_breakdown")
+        handbook.budget_coverage_status = budget_data.get("coverage_status", "partial")
+        handbook.budget_missing_categories = budget_data.get("missing_categories", [])
+        handbook.budget_estimated_categories = budget_data.get(
+            "estimated_categories", []
+        )
+        handbook.budget_assumptions = budget_data.get("assumptions", [])
+        handbook.budget_reserve_recommendation = budget_data.get(
+            "reserve_recommendation", 0
+        )
+        handbook.budget_display_reserve_recommendation = budget_data.get(
+            "display_reserve_recommendation"
+        )
+        handbook.budget_contingency_included = budget_data.get(
+            "contingency_included", False
+        )
 
     # ── Post-process: photo URLs ──────────────────────────────────────
     # Convert any raw Places photo refs to displayable URLs
@@ -1628,7 +1965,7 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
     )
     _name_to_photo: dict[str, str] = {}
     _all_photo_urls: list[str] = []
-    for m_text in [restaurants_text, activities_text, hotels_text, destination_text]:
+    for m_text in [restaurants_text, activities_text, hotels_text, readiness_text]:
         for m in _photo_pattern.finditer(m_text):
             _name_to_photo[m.group(1).strip().lower()] = m.group(2).strip()
         for m in _standalone_photo.finditer(m_text):
@@ -1745,7 +2082,7 @@ async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
             "restaurants",
             "activities",
             "transportation",
-            "destination",
+            "readiness",
             "budget",
             "itinerary",
         ]
@@ -1802,11 +2139,11 @@ async def synthesize_node(state: TravelAgentState, *, llm) -> dict:
 def route_after_triage(state: TravelAgentState) -> str:
     """Route shallow queries directly and all planning turns through intake.
 
-    When target_agent is set, always route to supervisor (which will
-    short-circuit to only that one agent).
+    A target_agent still passes through intake so required specialist inputs
+    cannot be bypassed.
     """
     if state.get("target_agent"):
-        return "supervisor"
+        return "intake"
     if state.get("pending_questions"):
         return "intake"
     agent = state.get("current_agent", "")
@@ -1824,9 +2161,61 @@ def route_after_intake(state: TravelAgentState) -> str:
 
 def route_after_component_gate(state: TravelAgentState) -> str:
     """Continue only when requested discovery components actually completed."""
-    if state.get("workflow_status") == "planning":
-        return "safety_review"
+    if state.get("workflow_status") != "planning":
+        return END
+    return _route_to_dependent_stage(state)
+
+
+def _route_to_dependent_stage(state: TravelAgentState) -> str:
+    components = state.get("itinerary_components", {})
+    routing = components.get("routing", [])
+    if (
+        "HotelsAgent" in routing
+        or DEPENDENT_TRANSPORTATION_AGENT in routing
+        or "ItineraryAgent" in routing
+    ):
+        return "trip_skeleton"
+    if "BudgetAgent" in routing:
+        return "budget"
     return END
+
+
+def _needs_safety_preflight(state: TravelAgentState) -> bool:
+    routing = state.get("itinerary_components", {}).get("routing", [])
+    if "TravelReadinessAgent" not in routing:
+        return False
+    request = TripRequest.model_validate(state.get("trip_request", {}))
+    question = _latest_human_question(state)
+    required = (
+        request.scope == RequestScope.FULL_ITINERARY
+        or ReadinessTopic.SAFETY in request.readiness_topics
+        or any(
+            word in question.lower() for word in ("safe", "safety", "advisory", "risk")
+        )
+    )
+    if not required:
+        return False
+    expected = readiness_request_fingerprint(
+        request,
+        requested_topics(question, request) | {ReadinessTopic.SAFETY},
+    )
+    outcomes = state.get("component_results", {})
+    return not any(
+        outcomes.get(name, {}).get("status") == ComponentStatus.COMPLETED
+        and outcomes.get(name, {}).get("request_fingerprint") == expected
+        for name in ("readiness_preflight", "readiness")
+    )
+
+
+def _readiness_result_is_current(state: TravelAgentState) -> bool:
+    request = TripRequest.model_validate(state.get("trip_request", {}))
+    topics = requested_topics(_latest_human_question(state), request)
+    expected = readiness_request_fingerprint(request, topics)
+    outcome = state.get("component_results", {}).get("readiness", {})
+    return (
+        outcome.get("status") == ComponentStatus.COMPLETED
+        and outcome.get("request_fingerprint") == expected
+    )
 
 
 def route_after_supervisor(state: TravelAgentState):
@@ -1847,9 +2236,24 @@ def route_after_supervisor(state: TravelAgentState):
             return "synthesize"
         return END
 
+    if _needs_safety_preflight(state):
+        return "readiness_preflight"
+
+    # Readiness must finish before discovery so downstream specialists receive
+    # grounded planning constraints instead of running from the same stale state.
+    if "TravelReadinessAgent" in routing and not _readiness_result_is_current(state):
+        return "readiness"
+
     # Fan-out: one Send per requested discovery agent. LangGraph runs them
     # concurrently and fans-in automatically before safety_review fires.
-    parallel_requested = [a for a in routing if a in PARALLEL_AGENTS]
+    parallel_requested = [
+        agent
+        for agent in routing
+        if agent in PARALLEL_AGENTS
+        and not (
+            agent == "TravelReadinessAgent" and _readiness_result_is_current(state)
+        )
+    ]
     if parallel_requested:
         return [Send(AGENT_TO_NODE[a], state) for a in parallel_requested]
 
@@ -1866,23 +2270,56 @@ def route_after_supervisor(state: TravelAgentState):
     return END
 
 
-def route_after_safety_review(state: TravelAgentState) -> str:
-    """Route after safety review: select exact dates/stays before inventory."""
+def route_after_readiness_preflight(state: TravelAgentState) -> str:
+    """Fail closed when official advisory evidence could not be collected."""
+    outcome = state.get("component_results", {}).get("readiness_preflight", {})
+    if outcome.get("status") == ComponentStatus.COMPLETED:
+        return "safety_review"
+    return END
+
+
+def route_after_safety_review(state: TravelAgentState):
+    """After acknowledgement, dispatch discovery without repeating preflight."""
     if state.get("hitl_action") == "rejected":
         return END
 
     components = state.get("itinerary_components", {})
     routing = components.get("routing", [])
-
-    if (
-        "HotelsAgent" in routing
-        or DEPENDENT_TRANSPORTATION_AGENT in routing
-        or "ItineraryAgent" in routing
+    request = TripRequest.model_validate(state.get("trip_request", {}))
+    readiness_details_needed = request.scope == RequestScope.FULL_ITINERARY or any(
+        topic != ReadinessTopic.SAFETY for topic in request.readiness_topics
+    )
+    if readiness_details_needed and (
+        state.get("component_results", {}).get("readiness", {}).get("status")
+        != ComponentStatus.COMPLETED
+        or "readiness_preflight" in components
     ):
-        return "trip_skeleton"
-    if "BudgetAgent" in routing:
-        return "budget"
-    return END
+        return "readiness"
+    parallel_requested = [
+        agent
+        for agent in routing
+        if agent in PARALLEL_AGENTS and agent != "TravelReadinessAgent"
+    ]
+    if parallel_requested:
+        return [Send(AGENT_TO_NODE[agent], state) for agent in parallel_requested]
+    return _route_to_dependent_stage(state)
+
+
+def route_after_readiness(state: TravelAgentState):
+    """Dispatch discovery only after grounded readiness details are available."""
+    outcome = state.get("component_results", {}).get("readiness", {})
+    if outcome.get("status") != ComponentStatus.COMPLETED:
+        return "component_gate"
+
+    routing = state.get("itinerary_components", {}).get("routing", [])
+    parallel_requested = [
+        agent
+        for agent in routing
+        if agent in PARALLEL_AGENTS and agent != "TravelReadinessAgent"
+    ]
+    if parallel_requested:
+        return [Send(AGENT_TO_NODE[agent], state) for agent in parallel_requested]
+    return "component_gate"
 
 
 def route_after_trip_skeleton(state: TravelAgentState):
@@ -1956,8 +2393,10 @@ def route_after_budget(state: TravelAgentState) -> str:
 
 
 def route_after_budget_review(state: TravelAgentState) -> str:
-    """Route after budget review: rejected -> END, otherwise -> itinerary."""
-    if state.get("hitl_action") == "rejected":
+    """Route target edits to local recompute; never repeat discovery."""
+    if state.get("hitl_action") == "adjust_target":
+        return "budget"
+    if state.get("hitl_action") in {"cancel", "rejected"}:
         return END
 
     components = state.get("itinerary_components", {})
@@ -2012,16 +2451,12 @@ def create_multiagent_travel_graph(checkpointer=None):
         "RestaurantsAgent": llm_fast,  # Google Maps API call + format
         "ActivitiesAgent": llm_fast,  # Google Maps API call + format
         "TransportationAgent": llm_fast,  # Google Maps API call + format
-        "BudgetAgent": llm_fast,  # arithmetic + format
-        "DestinationAgent": llm,  # 7 tools — deep synthesis via RAG + web search
         "ItineraryAgent": llm,  # 2 tools — day-plan synthesis across destinations
     }
 
     agent_classes = {
         "FlightsAgent": FlightsAgent,
         "HotelsAgent": HotelsAgent,
-        "DestinationAgent": DestinationAgent,
-        "BudgetAgent": BudgetAgent,
         "RestaurantsAgent": RestaurantsAgent,
         "ActivitiesAgent": ActivitiesAgent,
         "TransportationAgent": TransportationAgent,
@@ -2038,6 +2473,11 @@ def create_multiagent_travel_graph(checkpointer=None):
             system_prompt=agent.system_prompt,
         )
 
+    # Readiness is a fixed Tavily + Open-Meteo pipeline, not a ReAct loop.
+    _readiness_agent = TravelReadinessAgent(llm)
+    # Budget is a typed extraction + deterministic arithmetic pipeline.
+    _budget_agent = BudgetAgent(llm_utility)
+
     # --- graph wiring ---------------------------------------------------------
 
     builder = StateGraph(TravelAgentState)
@@ -2046,7 +2486,7 @@ def create_multiagent_travel_graph(checkpointer=None):
     #
     # Utility tier (gpt-5.4-nano): triage, shallow_reply, supervisor, render_handbook, synthesize
     # Fast tier (gpt-5.4-mini): discovery workers plus standalone transportation
-    # Reasoning tier (gpt-5.4): destination, draft selection, final itinerary
+    # Reasoning tier (gpt-5.4): readiness synthesis, draft selection, final itinerary
     builder.add_node("triage", functools.partial(triage_node, llm=llm_utility))
     builder.add_node("intake", functools.partial(intake_node, llm=llm_utility))
     builder.add_node(
@@ -2066,8 +2506,12 @@ def create_multiagent_travel_graph(checkpointer=None):
     )
     builder.add_node("hotel_fan_in", hotel_fan_in_node)
     builder.add_node(
-        "destination",
-        functools.partial(destination_node, executor=_executors["DestinationAgent"]),
+        "readiness_preflight",
+        functools.partial(readiness_preflight_node, executor=_readiness_agent),
+    )
+    builder.add_node(
+        "readiness",
+        functools.partial(readiness_node, executor=_readiness_agent),
     )
     builder.add_node(
         "restaurants",
@@ -2090,7 +2534,7 @@ def create_multiagent_travel_graph(checkpointer=None):
             component_gate_node,
             eligible_components={
                 "flights",
-                "destination",
+                "readiness",
                 "restaurants",
                 "activities",
             },
@@ -2110,9 +2554,7 @@ def create_multiagent_travel_graph(checkpointer=None):
     )
     builder.add_node(
         "budget",
-        functools.partial(
-            budget_node, llm=llm_utility, executor=_executors["BudgetAgent"]
-        ),
+        functools.partial(budget_node, agent=_budget_agent),
     )
     builder.add_node("budget_review", budget_review_node)
     builder.add_node(
@@ -2162,7 +2604,8 @@ def create_multiagent_travel_graph(checkpointer=None):
         [
             "flights",
             "hotel_stay",
-            "destination",
+            "readiness_preflight",
+            "readiness",
             "restaurants",
             "activities",
             "trip_skeleton",
@@ -2174,11 +2617,49 @@ def create_multiagent_travel_graph(checkpointer=None):
         ],
     )
 
+    # Safety preflight is a separate checkpoint so interrupt resume cannot
+    # repeat provider calls.
+    builder.add_conditional_edges(
+        "readiness_preflight",
+        route_after_readiness_preflight,
+        {
+            "safety_review": "safety_review",
+            END: END,
+        },
+    )
+
+    # safety_review dispatches discovery only after acknowledgement.
+    builder.add_conditional_edges(
+        "safety_review",
+        route_after_safety_review,
+        [
+            "flights",
+            "readiness",
+            "restaurants",
+            "activities",
+            "trip_skeleton",
+            "budget",
+            END,
+        ],
+    )
+
+    # Readiness completes before discovery and dispatches the remaining workers
+    # with its grounded planning constraints in their input state.
+    builder.add_conditional_edges(
+        "readiness",
+        route_after_readiness,
+        [
+            "flights",
+            "restaurants",
+            "activities",
+            "component_gate",
+        ],
+    )
+
     # Fan-in: every discovery worker → component completion gate.
     # LangGraph waits for ALL Send() instances before evaluating outcomes.
     for _worker in [
         "flights",
-        "destination",
         "restaurants",
         "activities",
     ]:
@@ -2188,16 +2669,6 @@ def create_multiagent_travel_graph(checkpointer=None):
     builder.add_conditional_edges(
         "component_gate",
         route_after_component_gate,
-        {
-            "safety_review": "safety_review",
-            END: END,
-        },
-    )
-
-    # safety_review -> exact trip skeleton | budget | END
-    builder.add_conditional_edges(
-        "safety_review",
-        route_after_safety_review,
         {
             "trip_skeleton": "trip_skeleton",
             "budget": "budget",
@@ -2264,10 +2735,7 @@ def create_multiagent_travel_graph(checkpointer=None):
     builder.add_conditional_edges(
         "budget_review",
         route_after_budget_review,
-        {
-            "itinerary": "itinerary",
-            END: END,
-        },
+        {"budget": "budget", "itinerary": "itinerary", END: END},
     )
 
     # itinerary -> human_review -> render_handbook -> END

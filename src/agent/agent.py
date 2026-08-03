@@ -3,14 +3,10 @@ from langgraph.checkpoint.memory import InMemorySaver
 
 from src.agent.llm import get_llm
 from src.tools.activities import search_activities
-from src.tools.budget import calculate_budget
-from src.tools.currency import convert_currency
 from src.tools.flights_duffel import search_flights
 from src.tools.hotels_hotelbeds import search_hotels_hotelbeds
 from src.tools.iata import lookup_iata_code
-from src.tools.destination_rag import search_destination_guides
-from src.tools.safety import get_safety_info
-from src.tools.weather import get_weather
+from src.tools.web_search import search_destination_web
 from src.agent.prompts import TRAVEL_AGENT_SYSTEM_PROMPT
 
 
@@ -22,12 +18,8 @@ def create_travel_agent():
         lookup_iata_code,
         search_flights,
         search_hotels_hotelbeds,
-        get_weather,
-        convert_currency,
         search_activities,
-        get_safety_info,
-        calculate_budget,
-        search_destination_guides,
+        search_destination_web,
     ]
     checkpointer = InMemorySaver()
 

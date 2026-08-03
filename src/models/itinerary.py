@@ -19,6 +19,8 @@ from src.models.enums import (
     TransitMode,
     TravelStyle,
 )
+from src.models.pricing import BudgetCategory, PriceEvidence, SelectionStatus
+from src.models.budget import BudgetAmounts, BudgetCoverageStatus
 
 
 # ── Flights ──────────────────────────────────────────────────────────────
@@ -170,6 +172,8 @@ class PlaceRef(BaseModel):
     latitude: float = 0.0
     longitude: float = 0.0
     category: str = ""
+    price_level: str = ""
+    price_evidence: PriceEvidence | None = None
 
     def route_location(self) -> str:
         """Return the most precise location accepted by Google Routes."""
@@ -192,12 +196,43 @@ class DraftDay(BaseModel):
     preferred_mode: TransitMode = TransitMode.TRANSIT
 
 
+class SelectedAccommodation(BaseModel):
+    """One explicitly selected hotel rate for a TripSkeleton city stay."""
+
+    stay_sequence: int = Field(ge=1)
+    name: str
+    rate_key: str = Field(min_length=1)
+    price_evidence: PriceEvidence | None = None
+
+    @model_validator(mode="after")
+    def _validate_selected_price(self) -> "SelectedAccommodation":
+        if self.price_evidence is None:
+            return self
+        if self.price_evidence.category != BudgetCategory.ACCOMMODATION:
+            raise ValueError("selected accommodation must use accommodation pricing")
+        if self.price_evidence.source_id != self.rate_key:
+            raise ValueError(
+                "selected accommodation rate key must match price source ID"
+            )
+        if self.price_evidence.selection_status != SelectionStatus.SELECTED:
+            raise ValueError("selected accommodation price must be marked selected")
+        return self
+
+
 class DraftItinerary(BaseModel):
     """Exact hotel and stop selections that Transportation must route."""
 
     days: list[DraftDay] = Field(default_factory=list)
+    selected_accommodations: list[SelectedAccommodation] = Field(default_factory=list)
     selection_notes: list[str] = Field(default_factory=list)
     mobility_notes: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _unique_accommodation_stays(self) -> "DraftItinerary":
+        sequences = [item.stay_sequence for item in self.selected_accommodations]
+        if len(sequences) != len(set(sequences)):
+            raise ValueError("only one selected accommodation is allowed per city stay")
+        return self
 
 
 class RouteLeg(BaseModel):
@@ -314,14 +349,20 @@ class DayPlan(BaseModel):
 # ── Safety ───────────────────────────────────────────────────────────────
 
 
-_ADVISORY_NUM_MAP: dict[str, int] = {"green": 1, "yellow": 2, "orange": 3, "red": 4}
+_ADVISORY_NUM_MAP: dict[str, int] = {
+    "unknown": 0,
+    "green": 1,
+    "yellow": 2,
+    "orange": 3,
+    "red": 4,
+}
 
 
 class SafetyInfo(BaseModel):
     model_config = ConfigDict(use_enum_values=True)
 
-    advisory_level: AdvisoryLevel = AdvisoryLevel.GREEN
-    advisory_level_num: int = Field(default=1, ge=1, le=4)
+    advisory_level: AdvisoryLevel = AdvisoryLevel.UNKNOWN
+    advisory_level_num: int = Field(default=0, ge=0, le=4)
     advisory_summary: str = ""
     visa_requirements: str = ""
     health_requirements: list[str] = Field(default_factory=list)
@@ -340,7 +381,7 @@ class SafetyInfo(BaseModel):
     @classmethod
     def _clamp_advisory_num(cls, v: int) -> int:
         if isinstance(v, (int, float)):
-            return max(1, min(4, int(v)))
+            return max(0, min(4, int(v)))
         return v
 
     @field_validator("currency_code", mode="before")
@@ -351,7 +392,7 @@ class SafetyInfo(BaseModel):
     @model_validator(mode="after")
     def _sync_advisory_level_num(self) -> SafetyInfo:
         """Keep advisory_level_num consistent with advisory_level."""
-        expected = _ADVISORY_NUM_MAP.get(self.advisory_level, 1)
+        expected = _ADVISORY_NUM_MAP.get(self.advisory_level, 0)
         if self.advisory_level_num != expected:
             self.advisory_level_num = expected
         return self
@@ -495,6 +536,16 @@ class TripHandbook(BaseModel):
     budget_total: float = 0
     budget_per_person: float = 0
     budget_summary: str = ""
+    budget_base_currency: str = "USD"
+    budget_display_currency: str = "USD"
+    budget_display_breakdown: BudgetAmounts | None = None
+    budget_coverage_status: BudgetCoverageStatus = BudgetCoverageStatus.PARTIAL
+    budget_missing_categories: list[BudgetCategory] = Field(default_factory=list)
+    budget_estimated_categories: list[BudgetCategory] = Field(default_factory=list)
+    budget_assumptions: list[str] = Field(default_factory=list)
+    budget_reserve_recommendation: float = 0
+    budget_display_reserve_recommendation: float | None = None
+    budget_contingency_included: bool = False
 
     # Info sections
     safety: SafetyInfo = Field(default_factory=SafetyInfo)
@@ -539,6 +590,7 @@ class TripHandbook(BaseModel):
         "budget_misc",
         "budget_total",
         "budget_per_person",
+        "budget_reserve_recommendation",
         "exchange_rate",
         mode="after",
     )

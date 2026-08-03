@@ -41,6 +41,8 @@ def test_shared_registry_covers_every_component_with_complete_configuration():
         "restaurants",
         "activities",
         "transportation",
+        "readiness",
+        "budget",
     }
     for component, config in BASELINE_CONFIGS.items():
         assert get_baseline_config(component) is config

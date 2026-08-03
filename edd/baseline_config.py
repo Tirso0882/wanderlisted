@@ -6,7 +6,9 @@ from pathlib import Path
 from types import MappingProxyType
 
 from edd.activities.l1_dataset import DATASET_VERSION as ACTIVITIES_DATASET_VERSION
+from edd.budget.l1_dataset import DATASET_VERSION as BUDGET_DATASET_VERSION
 from edd.baseline_store import BaselineConfig
+from edd.readiness.l1_dataset import DATASET_VERSION as READINESS_DATASET_VERSION
 from edd.flights.l1_dataset import DATASET_VERSION as FLIGHTS_DATASET_VERSION
 from edd.hotels.l1_dataset import DATASET_VERSION as HOTELS_DATASET_VERSION
 from edd.restaurants.l1_dataset import DATASET_VERSION as RESTAURANTS_DATASET_VERSION
@@ -116,6 +118,43 @@ BASELINE_CONFIGS = MappingProxyType(
             sources=(
                 _ROOT / "src" / "agent" / "agents" / "transportation_agent.py",
                 _ROOT / "src" / "tools" / "google_maps.py",
+            ),
+        ),
+        "readiness": _component_config(
+            "readiness",
+            dataset_version=READINESS_DATASET_VERSION,
+            cache_env_var="EDD_READINESS_CACHE_DIR",
+            display_name="Travel readiness",
+            secret_env_vars=("TAVILY_API_KEY",),
+            sources=(
+                _ROOT / "src" / "agent" / "agents" / "travel_readiness_agent.py",
+                _ROOT / "src" / "readiness" / "models.py",
+                _ROOT / "src" / "readiness" / "planning.py",
+                _ROOT / "src" / "readiness" / "retrieval.py",
+                _ROOT / "src" / "readiness" / "synthesis.py",
+                _ROOT / "src" / "readiness" / "grounding.py",
+                _ROOT / "src" / "readiness" / "assembly.py",
+                _ROOT / "src" / "readiness" / "pipeline.py",
+                _ROOT / "src" / "readiness" / "weather.py",
+                _ROOT / "src" / "tools" / "tavily.py",
+                _ROOT / "config" / "config.yaml",
+            ),
+        ),
+        "budget": _component_config(
+            "budget",
+            dataset_version=BUDGET_DATASET_VERSION,
+            cache_env_var="EDD_BUDGET_CACHE_DIR",
+            display_name="Budget",
+            secret_env_vars=("EXCHANGERATE_API_KEY",),
+            sources=(
+                _ROOT / "src" / "agent" / "agents" / "budget_agent.py",
+                _ROOT / "src" / "budget" / "currency.py",
+                _ROOT / "src" / "budget" / "estimates.py",
+                _ROOT / "src" / "budget" / "evidence.py",
+                _ROOT / "src" / "budget" / "pipeline.py",
+                _ROOT / "src" / "models" / "budget.py",
+                _ROOT / "src" / "models" / "pricing.py",
+                _ROOT / "config" / "config.yaml",
             ),
         ),
     }

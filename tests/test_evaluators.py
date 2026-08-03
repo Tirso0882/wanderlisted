@@ -1,7 +1,5 @@
 """Tests for LangSmith evaluators in src/evaluation/evaluators.py."""
 
-from unittest.mock import patch
-
 from src.evaluation.evaluators import (
     correct_destination,
     correct_tool_routing,
@@ -10,13 +8,6 @@ from src.evaluation.evaluators import (
     non_empty_response,
     handbook_section_completeness,
     calibration_report,
-    # RAG evaluators
-    context_precision,
-    context_recall,
-    context_entity_recall,
-    noise_sensitivity,
-    response_relevancy,
-    faithfulness,
 )
 
 
@@ -51,7 +42,7 @@ async def test_correct_tool_routing_restaurants():
 async def test_correct_tool_routing_weather():
     result = correct_tool_routing(
         inputs={"question": "What's the weather like in Bangkok in April?"},
-        outputs={"agents_routed": ["DestinationAgent"]},
+        outputs={"agents_routed": ["TravelReadinessAgent"]},
     )
     assert result["score"] == 1
 
@@ -68,7 +59,7 @@ async def test_correct_tool_routing_generic():
     """Generic queries should pass (score 1) since any routing works."""
     result = correct_tool_routing(
         inputs={"question": "Plan a trip to Barcelona"},
-        outputs={"agents_routed": ["DestinationAgent", "HotelsAgent"]},
+        outputs={"agents_routed": ["TravelReadinessAgent", "HotelsAgent"]},
     )
     assert result["score"] == 1
 
@@ -88,7 +79,9 @@ async def test_correct_tool_routing_wrong_route():
 async def test_valid_routing_decision_valid():
     result = valid_routing_decision(
         inputs={},
-        outputs={"agents_routed": ["FlightsAgent", "HotelsAgent", "DestinationAgent"]},
+        outputs={
+            "agents_routed": ["FlightsAgent", "HotelsAgent", "TravelReadinessAgent"]
+        },
     )
     assert result["key"] == "valid_routing_decision"
     assert result["score"] == 1
@@ -294,104 +287,3 @@ async def test_calibration_report_mixed():
     report = calibration_report(human, judge)
     assert 0 < report["exact_match_pct"] < 1.0
     assert report["within_one_pct"] < 1.0
-
-
-# ── RAG Evaluators (mock LLM calls) ─────────────────────────────────────────
-
-
-def _mock_rag_judge(score: float, reasoning: str = "test"):
-    """Create a mock for _ask_rag_judge returning a fixed score."""
-    return patch(
-        "src.evaluation.evaluators._ask_rag_judge",
-        return_value={"score": score, "reasoning": reasoning},
-    )
-
-
-async def test_context_precision_returns_correct_key():
-    with _mock_rag_judge(0.85):
-        result = context_precision(
-            inputs={"question": "Best temples in Bangkok?"},
-            reference_outputs={"reference": "Wat Pho, Wat Arun"},
-            outputs={"retrieved_contexts": ["Wat Pho is famous.", "Unrelated text."]},
-        )
-    assert result["key"] == "context_precision"
-    assert result["score"] == 0.85
-    assert "comment" in result
-
-
-async def test_context_recall_returns_correct_key():
-    with _mock_rag_judge(0.70):
-        result = context_recall(
-            inputs={"question": "How to get to Bangkok airport?"},
-            reference_outputs={"reference": "Airport Rail Link to Phaya Thai."},
-            outputs={"retrieved_contexts": ["Airport Rail Link info."]},
-        )
-    assert result["key"] == "context_recall"
-    assert result["score"] == 0.70
-
-
-async def test_context_entity_recall_returns_correct_key():
-    with _mock_rag_judge(1.0):
-        result = context_entity_recall(
-            inputs={},
-            reference_outputs={"reference": "Wat Pho and Wat Arun are top temples."},
-            outputs={
-                "retrieved_contexts": [
-                    "Wat Pho is the oldest temple.",
-                    "Wat Arun overlooks the river.",
-                ]
-            },
-        )
-    assert result["key"] == "context_entity_recall"
-    assert result["score"] == 1.0
-
-
-async def test_noise_sensitivity_returns_correct_key():
-    with _mock_rag_judge(0.90):
-        result = noise_sensitivity(
-            inputs={"question": "Best food in Tokyo?"},
-            reference_outputs={"reference": "Sushi, ramen, tempura."},
-            outputs={
-                "output": "Top foods include sushi and ramen.",
-                "retrieved_contexts": [
-                    "Tokyo ramen is famous.",
-                    "Paris has the Eiffel Tower.",
-                ],
-            },
-        )
-    assert result["key"] == "noise_sensitivity"
-    assert result["score"] == 0.90
-
-
-async def test_response_relevancy_returns_correct_key():
-    with _mock_rag_judge(0.95):
-        result = response_relevancy(
-            inputs={"question": "Best area to stay in Bangkok?"},
-            outputs={"output": "Sukhumvit and Silom are great areas to stay."},
-        )
-    assert result["key"] == "response_relevancy"
-    assert result["score"] == 0.95
-
-
-async def test_faithfulness_returns_correct_key():
-    with _mock_rag_judge(0.80):
-        result = faithfulness(
-            inputs={},
-            outputs={
-                "output": "Pad Thai costs 40-60 baht from street vendors.",
-                "retrieved_contexts": [
-                    "Pad Thai costs 40-60 baht at street stalls in Bangkok."
-                ],
-            },
-        )
-    assert result["key"] == "faithfulness"
-    assert result["score"] == 0.80
-
-
-async def test_rag_evaluators_handle_empty_contexts():
-    with _mock_rag_judge(0.0, "No contexts provided"):
-        result = faithfulness(
-            inputs={},
-            outputs={"output": "Some answer", "retrieved_contexts": []},
-        )
-    assert result["score"] == 0.0

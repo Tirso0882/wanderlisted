@@ -9,8 +9,16 @@ constraint the traveler actually stated. Provider results remain outside Layer
 from __future__ import annotations
 
 import json
+import os
 import re
+import sys
 import unicodedata
+
+sys.path.insert(
+    0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
+
+from src.tools.google_maps import UNSUPPORTED_NEARBY_PLACE_TYPES
 
 _PLACE_TOOLS = {"search_places_text", "search_places_nearby"}
 _LODGING_PLACE_TYPES = {"bed_and_breakfast", "hostel", "hotel", "lodging", "motel", "resort"}
@@ -68,6 +76,32 @@ def _contains_any(text: str, expected_terms: object) -> bool:
         variant for term in _terms(expected_terms) for variant in _plural_variants(term)
     }
     return any(f" {variant} " in normalized for variant in variants)
+
+
+_PLACE_REFERENCE_STOPWORDS = {
+    "de",
+    "del",
+    "museum",
+    "museo",
+    "nacional",
+    "national",
+    "the",
+}
+
+
+def _matches_place_reference(actual: object, expected_terms: object) -> bool:
+    """Match an official/geocodable place name without demanding exact wording.
+
+    Agents often send Google's official name (for example, "Museo Nacional del
+    Prado") when the request says "Museo del Prado". Compare the meaningful
+    identity tokens while ignoring generic museum and language connector words.
+    """
+    actual_tokens = set(_normalize(actual).split()) - _PLACE_REFERENCE_STOPWORDS
+    for expected in _terms(expected_terms):
+        expected_tokens = set(expected.split()) - _PLACE_REFERENCE_STOPWORDS
+        if expected_tokens and expected_tokens <= actual_tokens:
+            return True
+    return False
 
 
 def _term_check(
@@ -140,6 +174,8 @@ def valid_nearby_place_types(trajectory: list[dict], expected: dict) -> dict:
                 r"[a-z][a-z0-9_]*",
                 str(call.get("args", {}).get("place_type") or ""),
             )
+            or str(call.get("args", {}).get("place_type") or "")
+            in UNSUPPORTED_NEARBY_PLACE_TYPES
         }
     )
     return {
@@ -147,7 +183,10 @@ def valid_nearby_place_types(trajectory: list[dict], expected: dict) -> dict:
         "score": int(not invalid),
         "comment": ""
         if not invalid
-        else f"Nearby Search place_type must be a lowercase identifier: {invalid}",
+        else (
+            "Nearby Search place_type must be a supported Google Table-A "
+            f"lowercase identifier; use Text Search for specific concepts: {invalid}"
+        ),
     }
 
 
@@ -245,8 +284,8 @@ def correct_proximity(trajectory: list[dict], expected: dict) -> dict:
     for call in nearby_calls:
         args = call.get("args", {})
         radius = args.get("radius_meters", 1500)
-        location_ok = "proximity_location" not in expected or _contains_any(
-            _normalize(args.get("location") or ""), expected["proximity_location"]
+        location_ok = "proximity_location" not in expected or _matches_place_reference(
+            args.get("location") or "", expected["proximity_location"]
         )
         valid.append(
             isinstance(radius, (int, float)) and radius == max_radius and location_ok

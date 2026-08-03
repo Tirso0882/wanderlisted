@@ -19,7 +19,6 @@ def _key_is_set(name: str) -> bool:
     return bool(val) and not val.startswith("your-")
 
 
-HAS_OPENWEATHER = _key_is_set("OPENWEATHER_API_KEY")
 HAS_EXCHANGERATE = _key_is_set("EXCHANGERATE_API_KEY")
 HAS_GOOGLE_MAPS = _key_is_set("GOOGLE_MAPS_API_KEY")
 HAS_HOTELBEDS = _key_is_set("HOTELBEDS_API_KEY") and _key_is_set("HOTELBEDS_API_SECRET")
@@ -28,9 +27,6 @@ HAS_AZURE_OPENAI = _key_is_set("AZURE_OPENAI_API_KEY") and _key_is_set(
 )
 HAS_DUFFEL = _key_is_set("DUFFEL_ACCESS_TOKEN")
 
-skip_no_openweather = pytest.mark.skipif(
-    not HAS_OPENWEATHER, reason="OPENWEATHER_API_KEY not set"
-)
 skip_no_exchangerate = pytest.mark.skipif(
     not HAS_EXCHANGERATE, reason="EXCHANGERATE_API_KEY not set"
 )

@@ -7,6 +7,7 @@ from edd.activities.l1_dataset import DATASET, DATASET_SIZE, DATASET_VERSION
 from edd.activities.l1_evaluate import (
     EVALUATORS,
     correct_accessibility,
+    correct_activity_type,
     correct_locations,
     correct_proximity,
     minimum_search_calls,
@@ -88,7 +89,7 @@ def _golden_calls(expected: dict) -> list[dict]:
 
 
 def test_activities_dataset_has_40_unique_well_formed_cases():
-    assert DATASET_VERSION == "1.0.0"
+    assert DATASET_VERSION == "1.0.1"
     assert len(DATASET) == DATASET_SIZE == 40
     assert len({case["name"] for case in DATASET}) == DATASET_SIZE
     assert len({case["query"] for case in DATASET}) == DATASET_SIZE
@@ -173,6 +174,21 @@ def test_valid_nearby_place_types_rejects_free_text():
     assert "art museum" in result["comment"]
 
 
+def test_valid_nearby_place_types_rejects_unsupported_snake_case_type():
+    calls = [
+        {
+            "name": "search_places_nearby",
+            "args": {"location": "Tokyo", "place_type": "comic_book_store"},
+        }
+    ]
+
+    result = valid_nearby_place_types(calls, {})
+
+    assert result["score"] == 0
+    assert "comic_book_store" in result["comment"]
+    assert "Text Search" in result["comment"]
+
+
 def test_no_lodging_nearby_types_enforces_agent_ownership_boundary():
     calls = [
         {
@@ -208,6 +224,21 @@ def test_correct_locations_accepts_one_search_per_requested_city():
     assert correct_locations(calls, {"locations": [{"tokyo"}, {"osaka"}]})["score"] == 1
 
 
+def test_activity_type_accepts_request_grounded_experience_and_venue_wording():
+    examples = (
+        ("samba music and dance experiences Rio", {"dance experience"}),
+        ("Thai cooking classes Bangkok", {"cooking class"}),
+        ("tango shows Buenos Aires", {"tango show"}),
+        ("event room rental Prague", {"event room"}),
+        ("escape rooms Dublin", {"escape room"}),
+    )
+
+    for query, accepted_types in examples:
+        calls = [{"name": "search_places_text", "args": {"query": query}}]
+        expected = {"activity_type": [accepted_types]}
+        assert correct_activity_type(calls, expected)["score"] == 1
+
+
 def test_correct_accessibility_normalizes_hyphens_and_case():
     calls = [
         {
@@ -238,6 +269,44 @@ def test_correct_proximity_accepts_requested_nearby_radius():
     }
 
     assert correct_proximity(calls, expected)["score"] == 1
+
+
+def test_correct_proximity_accepts_official_landmark_name_variant():
+    calls = [
+        {
+            "name": "search_places_nearby",
+            "args": {
+                "location": "Museo Nacional del Prado, Madrid",
+                "place_type": "museum",
+                "radius_meters": 600,
+            },
+        }
+    ]
+    expected = {
+        "max_radius_meters": 600,
+        "proximity_location": {"museo del prado", "prado museum"},
+    }
+
+    assert correct_proximity(calls, expected)["score"] == 1
+
+
+def test_correct_proximity_rejects_wrong_landmark_at_requested_radius():
+    calls = [
+        {
+            "name": "search_places_nearby",
+            "args": {
+                "location": "Reina Sofia Museum, Madrid",
+                "place_type": "museum",
+                "radius_meters": 600,
+            },
+        }
+    ]
+    expected = {
+        "max_radius_meters": 600,
+        "proximity_location": {"museo del prado", "prado museum"},
+    }
+
+    assert correct_proximity(calls, expected)["score"] == 0
 
 
 def test_correct_proximity_rejects_text_only_search():

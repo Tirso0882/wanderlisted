@@ -30,7 +30,7 @@ from src.agent.agents import ActivitiesAgent  # noqa: E402
 
 
 async def main() -> None:
-    query = "Find wheelchair-accessible museums and cultural activities in Kyoto."
+    query = "Find wheelchair-accessible museums and cultural activities in Wrocław."
     print(f"\nQUERY: {query}")
     print("=" * 70)
 

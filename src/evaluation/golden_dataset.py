@@ -91,12 +91,12 @@ GOLDEN_DATASET = [
             "must_contain": ["hostel", "Barcelona"],
         },
     },
-    # ── Destination / RAG queries (4) ───────────────────────────────────
+    # ── Destination research queries (4) ────────────────────────────────
     {
         "inputs": {"question": "What temples should I visit in Bangkok?"},
         "outputs": {
             "destinations": ["bangkok"],
-            "expected_agents": ["DestinationAgent"],
+            "expected_agents": ["ActivitiesAgent"],
             "must_contain": ["Wat Pho", "temple"],
         },
     },
@@ -104,7 +104,7 @@ GOLDEN_DATASET = [
         "inputs": {"question": "Is it safe to travel to Cairo right now?"},
         "outputs": {
             "destinations": ["cairo"],
-            "expected_agents": ["DestinationAgent"],
+            "expected_agents": ["TravelReadinessAgent"],
             "must_contain": ["safety"],
         },
     },
@@ -112,7 +112,7 @@ GOLDEN_DATASET = [
         "inputs": {"question": "What's the best time of year to visit Kraków?"},
         "outputs": {
             "destinations": ["krakow"],
-            "expected_agents": ["DestinationAgent"],
+            "expected_agents": ["TravelReadinessAgent"],
             "must_contain": ["season", "weather"],
         },
     },
@@ -120,7 +120,7 @@ GOLDEN_DATASET = [
         "inputs": {"question": "What scams should I watch out for in Paris?"},
         "outputs": {
             "destinations": ["paris"],
-            "expected_agents": ["DestinationAgent"],
+            "expected_agents": ["TravelReadinessAgent"],
             "must_contain": ["scam", "pickpocket"],
         },
     },
@@ -222,7 +222,7 @@ GOLDEN_DATASET = [
             "expected_agents": [
                 "FlightsAgent",
                 "HotelsAgent",
-                "DestinationAgent",
+                "TravelReadinessAgent",
                 "RestaurantsAgent",
                 "ActivitiesAgent",
                 "TransportationAgent",
@@ -245,7 +245,7 @@ GOLDEN_DATASET = [
             "expected_agents": [
                 "FlightsAgent",
                 "HotelsAgent",
-                "DestinationAgent",
+                "TravelReadinessAgent",
                 "RestaurantsAgent",
                 "ActivitiesAgent",
                 "TransportationAgent",
@@ -269,7 +269,7 @@ GOLDEN_DATASET = [
             "expected_agents": [
                 "FlightsAgent",
                 "HotelsAgent",
-                "DestinationAgent",
+                "TravelReadinessAgent",
                 "RestaurantsAgent",
                 "ActivitiesAgent",
                 "TransportationAgent",
@@ -292,7 +292,7 @@ GOLDEN_DATASET = [
             "expected_agents": [
                 "FlightsAgent",
                 "HotelsAgent",
-                "DestinationAgent",
+                "TravelReadinessAgent",
                 "RestaurantsAgent",
                 "ActivitiesAgent",
                 "TransportationAgent",
@@ -315,7 +315,7 @@ GOLDEN_DATASET = [
             "expected_agents": [
                 "FlightsAgent",
                 "HotelsAgent",
-                "DestinationAgent",
+                "TravelReadinessAgent",
                 "RestaurantsAgent",
                 "ActivitiesAgent",
                 "TransportationAgent",
@@ -339,7 +339,7 @@ GOLDEN_DATASET = [
             "expected_agents": [
                 "FlightsAgent",
                 "HotelsAgent",
-                "DestinationAgent",
+                "TravelReadinessAgent",
                 "RestaurantsAgent",
                 "ActivitiesAgent",
                 "TransportationAgent",

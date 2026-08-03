@@ -119,7 +119,7 @@ class TestBudgetBreakdownModel:
     def test_model_dump_keys(self):
         b = BudgetBreakdown()
         keys = set(b.model_dump().keys())
-        expected = {
+        legacy_keys = {
             "flights",
             "accommodation",
             "transport",
@@ -132,7 +132,8 @@ class TestBudgetBreakdownModel:
             "currency",
             "summary",
         }
-        assert keys == expected
+        assert legacy_keys <= keys
+        assert b.schema_version == 2
 
 
 # ══════════════════════════════════════════════════════════════
@@ -208,8 +209,8 @@ class TestAdvisoryLevelEnum:
     def test_case_insensitive(self):
         assert AdvisoryLevel("RED") == AdvisoryLevel.RED
 
-    def test_unknown_defaults_to_green(self):
-        assert AdvisoryLevel("purple") == AdvisoryLevel.GREEN
+    def test_unknown_defaults_to_unknown(self):
+        assert AdvisoryLevel("purple") == AdvisoryLevel.UNKNOWN
 
 
 class TestPackingCategoryEnum:
@@ -266,25 +267,9 @@ class TestSeasonEnum:
 
 
 class TestBudgetBreakdownValidation:
-    def test_negative_values_clamped_to_zero(self):
-        b = BudgetBreakdown(
-            flights=-100,
-            accommodation=-50,
-            transport=-10,
-            meals=-20,
-            activities=-30,
-            misc=-5,
-            total=-999,
-            per_person=-200,
-        )
-        assert b.flights == 0.0
-        assert b.accommodation == 0.0
-        assert b.transport == 0.0
-        assert b.meals == 0.0
-        assert b.activities == 0.0
-        assert b.misc == 0.0
-        assert b.total == 0.0
-        assert b.per_person == 0.0
+    def test_negative_values_are_rejected(self):
+        with pytest.raises(ValueError):
+            BudgetBreakdown(flights=-100)
 
     def test_currency_normalised_uppercase(self):
         assert BudgetBreakdown(currency="eur").currency == "EUR"
@@ -529,18 +514,18 @@ class TestSafetyInfoValidation:
     def test_advisory_level_case_insensitive(self):
         assert SafetyInfo(advisory_level="RED").advisory_level == "red"
 
-    def test_advisory_level_unknown_defaults_green(self):
-        assert SafetyInfo(advisory_level="purple").advisory_level == "green"
+    def test_advisory_level_unknown_defaults_unknown(self):
+        assert SafetyInfo(advisory_level="purple").advisory_level == "unknown"
 
     def test_advisory_num_clamped_high(self):
         s = SafetyInfo(advisory_level_num=10)
-        # Model validator syncs to advisory_level ("green" → 1)
-        assert s.advisory_level_num >= 1
+        # Model validator syncs to the default advisory level (unknown → 0)
+        assert s.advisory_level_num >= 0
         assert s.advisory_level_num <= 4
 
     def test_advisory_num_clamped_low(self):
         s = SafetyInfo(advisory_level_num=-1)
-        assert s.advisory_level_num >= 1
+        assert s.advisory_level_num >= 0
 
     def test_currency_code_normalised(self):
         assert SafetyInfo(currency_code="  jpy  ").currency_code == "JPY"

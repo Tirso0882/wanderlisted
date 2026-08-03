@@ -7,10 +7,6 @@ Set LLM_PROVIDER to choose the chat model backend:
     google        — ChatGoogleGenerativeAI
     ollama        — ChatOllama (local)
 
-Set EMBEDDINGS_PROVIDER to choose the embeddings backend:
-    azure_openai  — AzureOpenAIEmbeddings (default)
-    openai        — OpenAIEmbeddings
-
 Three-tier model pyramid (TPM / cost optimization):
     "reasoning" (default) — heavy model for complex multi-source synthesis,
                             tool-calling agents that require judgment
@@ -44,14 +40,12 @@ from typing import Literal, get_args
 
 from dotenv import load_dotenv
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.embeddings import Embeddings
 from src.agent.concurrency import _SemaphoreLLM, _get_llm_semaphore
 
 # Shells and entry points own runtime overrides such as EDD tracing policy.
 load_dotenv()
 
 _SUPPORTED_CHAT = ("azure_openai", "openai", "anthropic", "google", "ollama")
-_SUPPORTED_EMBEDDINGS = ("azure_openai", "openai")
 
 ModelTier = Literal["reasoning", "fast", "utility"]
 
@@ -230,32 +224,3 @@ def get_llm(tier: ModelTier = "reasoning", **overrides) -> BaseChatModel:
         )
 
     return _SemaphoreLLM(raw, _get_llm_semaphore(tier))
-
-
-def get_embeddings(**overrides) -> Embeddings:
-    """Create an embeddings model based on ``EMBEDDINGS_PROVIDER`` env var."""
-    provider = os.environ.get("EMBEDDINGS_PROVIDER", "azure_openai")
-
-    if provider == "azure_openai":
-        from langchain_openai import AzureOpenAIEmbeddings
-
-        defaults = dict(
-            azure_deployment=os.environ["AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT"],
-            azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
-            api_key=os.environ["AZURE_OPENAI_API_KEY"],
-            api_version=os.environ["AZURE_OPENAI_API_VERSION"],
-        )
-        return AzureOpenAIEmbeddings(**(defaults | overrides))
-
-    if provider == "openai":
-        from langchain_openai import OpenAIEmbeddings
-
-        defaults = dict(
-            model=os.environ["OPENAI_EMBEDDINGS_MODEL"],
-            api_key=os.environ["OPENAI_API_KEY"],
-        )
-        return OpenAIEmbeddings(**(defaults | overrides))
-
-    raise ValueError(
-        f"Unknown EMBEDDINGS_PROVIDER: {provider!r}. Supported: {_SUPPORTED_EMBEDDINGS}"
-    )

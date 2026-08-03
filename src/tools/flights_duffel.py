@@ -26,7 +26,7 @@ import asyncio
 import calendar
 import json
 import os
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 import httpx
 from langchain_core.tools import tool
@@ -536,6 +536,31 @@ async def search_flights(
     for i, offer in enumerate(top_offers, 1):
         results.extend(_format_offer(offer, i))
 
+    observed_at = datetime.now(timezone.utc).isoformat()
+    pricing = {
+        "options": [
+            {
+                "offer_id": offer.get("id", ""),
+                "money": {
+                    "amount": str(offer.get("total_amount", "0")),
+                    "currency": offer.get("total_currency", "USD"),
+                },
+                "origin": origin.upper().strip(),
+                "destination": destination.upper().strip(),
+                "departure_date": departure_date,
+                "return_date": return_date,
+                "airline_name": offer.get("owner", {}).get("name", ""),
+                "observed_at": observed_at,
+            }
+            for offer in top_offers
+            if offer.get("id") and offer.get("total_amount") is not None
+        ]
+    }
+    results.append(
+        "FLIGHT_PRICING_JSON:\n"
+        + json.dumps(pricing, ensure_ascii=False, sort_keys=True)
+    )
+
     return "\n".join(results)
 
 
@@ -807,6 +832,7 @@ async def search_cheapest_round_trip_in_window(
                 airline_name=owner.get("name", ""),
                 origin=origin.upper().strip(),
                 destination=destination.upper().strip(),
+                observed_at=datetime.now(timezone.utc),
             )
         )
 

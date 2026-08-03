@@ -21,12 +21,12 @@ def _outcome(status: str, message: str = "") -> dict:
 async def test_all_requested_discovery_components_continue_to_safety():
     state = {
         "itinerary_components": {
-            "routing": ["FlightsAgent", "HotelsAgent", "DestinationAgent"]
+            "routing": ["FlightsAgent", "HotelsAgent", "TravelReadinessAgent"]
         },
         "component_results": {
             "flights": _outcome("completed"),
             "hotels": _outcome("completed"),
-            "destination": _outcome("completed"),
+            "readiness": _outcome("completed"),
         },
     }
 
@@ -40,17 +40,17 @@ async def test_all_requested_discovery_components_continue_to_safety():
 async def test_initial_gate_ignores_hotels_until_exact_stays_exist():
     state = {
         "itinerary_components": {
-            "routing": ["FlightsAgent", "HotelsAgent", "DestinationAgent"]
+            "routing": ["FlightsAgent", "HotelsAgent", "TravelReadinessAgent"]
         },
         "component_results": {
             "flights": _outcome("completed"),
-            "destination": _outcome("completed"),
+            "readiness": _outcome("completed"),
         },
     }
 
     result = await component_gate_node(
         state,
-        eligible_components={"flights", "destination"},
+        eligible_components={"flights", "readiness"},
     )
 
     assert result["workflow_status"] == "planning"
@@ -63,7 +63,7 @@ async def test_poland_trace_failures_stop_before_dependent_planning():
             "routing": [
                 "FlightsAgent",
                 "HotelsAgent",
-                "DestinationAgent",
+                "TravelReadinessAgent",
                 "ItineraryAgent",
             ]
         },
@@ -76,7 +76,7 @@ async def test_poland_trace_failures_stop_before_dependent_planning():
                 "needs_user_input",
                 "Ile osób dorosłych podróżuje?",
             ),
-            "destination": _outcome("blocked_external"),
+            "readiness": _outcome("blocked_external"),
         },
     }
 
@@ -89,7 +89,7 @@ async def test_poland_trace_failures_stop_before_dependent_planning():
     assert "Nie mogę jeszcze" in message
     assert "flights" in message
     assert "hotels" in message
-    assert "destination" in message
+    assert "readiness" in message
 
 
 async def test_missing_outcome_is_failed_instead_of_implicitly_successful():

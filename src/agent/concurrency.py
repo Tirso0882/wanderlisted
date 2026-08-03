@@ -1,8 +1,8 @@
 """LLM concurrency guardrails — per-tier asyncio semaphores.
 
   reasoning (gpt-5.4, 300K TPM):
-      Destination agent: ~5 ReAct tool calls × 3 K tokens ≈ 15 K tokens/run.
-      300K TPM / 15 K = ~20 reasoning runs/min.
+      Destination synthesis: one structured call at roughly 10 K tokens/run.
+      300K TPM / 10 K = ~30 reasoning runs/min.
       Cap: 4 concurrent ainvokes — leaves headroom for spikes.
 
   fast (gpt-5.4-mini, 500K TPM):

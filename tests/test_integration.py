@@ -7,24 +7,11 @@ Skipped automatically when API keys are missing.
 import pytest
 
 from tests.conftest import (
-    skip_no_azure_openai,
     skip_no_duffel,
     skip_no_exchangerate,
     skip_no_google_maps,
     skip_no_hotelbeds,
-    skip_no_openweather,
 )
-
-
-@pytest.mark.integration
-class TestWeatherIntegration:
-    @skip_no_openweather
-    async def test_live_weather_tokyo(self):
-        from src.tools.weather import get_weather
-
-        result = await get_weather.ainvoke({"city": "Tokyo", "days": 2})
-        assert "Weather forecast for Tokyo" in result
-        assert "°C" in result
 
 
 @pytest.mark.integration
@@ -43,18 +30,6 @@ class TestCurrencyIntegration:
         assert "USD" in result
         assert "JPY" in result
         assert "Exchange rate" in result
-
-
-@pytest.mark.integration
-class TestSafetyIntegration:
-    async def test_live_country_info(self):
-        """REST Countries API requires no key — always runs."""
-        from src.tools.safety import get_safety_info
-
-        result = await get_safety_info.ainvoke({"country_name": "France"})
-        assert "France" in result
-        assert "Paris" in result
-        assert "EUR" in result
 
 
 @pytest.mark.integration
@@ -110,24 +85,3 @@ class TestActivitiesIntegration:
             }
         )
         assert "Food in Tokyo" in result or "No food activities" in result
-
-
-@pytest.mark.integration
-class TestRAGIntegration:
-    @skip_no_azure_openai
-    async def test_live_destination_guide_search(self):
-        """Build real FAISS index with Azure OpenAI embeddings and search."""
-        import src.tools.destination_rag as mod
-
-        # Reset lazy init so this test gets a fresh store
-        mod._vectorstore = None
-        mod._initialised = False
-
-        from src.tools.destination_rag import search_destination_guides
-
-        result = await search_destination_guides.ainvoke("Tokyo temples etiquette")
-        assert "tokyo.md" in result or "No destination guides" in result
-
-        # Clean up
-        mod._vectorstore = None
-        mod._initialised = False

@@ -1,17 +1,17 @@
 # EDD — Evaluation-Driven Development for Agents
 
-> A step-by-step, **copy-me playbook** for evaluating LLM agents so you can ship
+> A step-by-step, **copy-me playbook** for evaluating LLM agents so users can ship
 > them to production and keep improving them — offline and online — over time.
 >
 > If you're building an agent and don't know how to prove it works, start here
 > and follow the steps in order. Every step maps to a real file in this folder.
 
 _Status: Layers 1–4 complete for **Flights** (the worked example), **Hotels**,
-**Restaurants**, **Activities**, and **Transportation**.
+**Restaurants**, **Activities**, **Transportation**, and **Destination**.
 The rubrics and the calibration math are now shared, parameterized modules
 ([`rubrics.py`](./rubrics.py), [`calibration.py`](./calibration.py)) covering all
 8 agents' specs, so a new agent's judge stack is a ~20-line binding rather than a
-copied rubric. Last updated: 2026-07-20._
+copied rubric. Last updated: 2026-07-26._
 
 ### Flights: complete execution loop
 
@@ -20,7 +20,7 @@ copied rubric. Last updated: 2026-07-20._
 .venv/bin/python edd/flights/l1_evaluate.py
 EDD_REFRESH=1 .venv/bin/python edd/flights/l1_run.py
 
-# L2 reuses the same cached trajectories; it does not consume Duffel again
+# L2 reuses the same cached trajectories
 .venv/bin/python edd/flights/l2_judge_run.py
 
 # L3 fixed control, then cached/fresh Terra-vs-Luna tournament
@@ -45,7 +45,7 @@ and infrastructure-error batches are not cached or counted as model quality.
 .venv/bin/python edd/hotels/l1_evaluate.py
 EDD_REFRESH=1 .venv/bin/python edd/hotels/l1_run.py
 
-# L2 reuses the same cached trajectories; it does not consume Hotelbeds again
+# L2 reuses the same cached trajectories
 .venv/bin/python edd/hotels/l2_judge_run.py
 
 # L3 fixed control, then Terra-vs-Luna live tournament (when provider is healthy)
@@ -120,7 +120,7 @@ they are not cached or counted as model quality failures.
 .venv/bin/python edd/transportation/l1_evaluate.py
 EDD_REFRESH=1 .venv/bin/python edd/transportation/l1_run.py
 
-# L2 reuses the same cached trajectories; it does not consume Google Routes again
+# L2 reuses the same cached trajectories
 .venv/bin/python edd/transportation/l2_judge_run.py
 
 # L3 fixed control, then Terra-vs-Luna live tournament
@@ -137,6 +137,57 @@ LLM factory, cache implementation, or harness source changing. Google Maps keys
 are redacted before persistence. Missing credentials, quota/auth failures, and
 network failures are `blocked_external`: they are not cached or counted as model
 quality failures.
+
+### Travel readiness: complete execution loop
+
+```bash
+# L1: deterministic fixture, then fixed-pipeline planning baseline (24 cases)
+.venv/bin/python edd/readiness/l1_evaluate.py
+EDD_REFRESH=1 .venv/bin/python edd/readiness/l1_run.py
+
+# L2 reuses the exact normalized Tavily evidence captured by L1
+.venv/bin/python edd/readiness/l2_judge_run.py
+
+# L3 fixed control, then Terra-vs-Luna synthesis tournament
+.venv/bin/python edd/readiness/l3_pairwise.py
+.venv/bin/python edd/readiness/l3_pairwise_run.py
+
+# L4: faithfulness-judge calibration against 24 balanced human-labeled cases
+.venv/bin/python edd/readiness/l4_calibrate.py
+```
+
+Historical travel-readiness trajectories remain in `edd/destination/.cache/`.
+New runs and baselines use `edd/readiness/.cache/` and are invalidated by the
+dataset, fixed-pipeline
+adapter, synthesis prompt, Tavily/Open-Meteo providers, official-source configuration, LLM factory, or shared cache
+implementation changing. The adapter preserves the shared `Trajectory` schema:
+the structured plan is a `readiness_plan` decision, bounded provider requests
+are `tavily_search` decisions, and only normalized Tavily sources are evidence.
+Query planning is deterministic while the selected model controls structured
+synthesis. Tavily credentials are redacted; provider/auth/rate-limit/network
+failures are `blocked_external` and never become model-quality baselines.
+
+### Budget: production contract loop
+
+```bash
+# L1 is hermetic, deterministic, and free (16 cases).
+.venv/bin/python -m edd.budget.l1_run
+
+# L2/L3 require pre-existing cache snapshots and explicit judge-spend approval.
+EDD_LIVE_JUDGE_APPROVED=1 .venv/bin/python -m edd.budget.l2_judge_run
+EDD_LIVE_JUDGE_APPROVED=1 .venv/bin/python -m edd.budget.l3_pairwise_run
+
+# L4 uses held-out local trajectories but still makes judge-model calls.
+EDD_LIVE_JUDGE_APPROVED=1 .venv/bin/python -m edd.budget.l4_calibrate
+```
+
+Budget has no live-capture fallback: a cache miss fails closed, and
+`EDD_REFRESH=1` is rejected. Before enabling any future capture path, disclose
+the exact provider requests, model calls, expected credits, and budget cap and
+obtain explicit approval. Layer 1 covers reconciliation, party/duration/style,
+selection boundaries, missing flight/lodging, conversion, regional estimates,
+target verdicts, Places/Routes non-numeric signals, ambiguity, duplicates, and
+numeric distractors.
 
 ### Preserve a named baseline
 
@@ -161,7 +212,7 @@ EDD_BASELINE=$BASELINE \
 ```
 
 The same `EDD_BASELINE=<name>` mechanism works for Flights, Hotels, Restaurants,
-Activities, and Transportation. Shared configuration lives in
+Activities, Transportation, Travel Readiness, and Budget. Shared configuration lives in
 `edd/baseline_config.py`; shared storage and immutability enforcement live in
 `edd/baseline_store.py`.
 

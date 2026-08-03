@@ -52,6 +52,7 @@ async def test_flexible_skeleton_selects_global_cheapest_gateway_option():
                 departure_date="2026-08-22",
                 return_date="2026-09-04",
                 total_amount="900.00",
+                offer_id="offer-krk-900",
                 origin="BOG",
                 destination="KRK",
             )
@@ -71,6 +72,7 @@ async def test_flexible_skeleton_selects_global_cheapest_gateway_option():
                 departure_date="2026-08-25",
                 return_date="2026-09-07",
                 total_amount="700.00",
+                offer_id="offer-waw-700",
                 origin="BOG",
                 destination="WAW",
             )

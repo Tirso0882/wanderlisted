@@ -5,23 +5,28 @@ import uuid
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from time import time
+from typing import Annotated, Literal
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.graph.state import CompiledStateGraph
 from langsmith import traceable
 from langsmith import Client
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from custom_logging import AppLogger
 from src.agent.stage4_graph import create_multiagent_travel_graph
+from src.models import BudgetBreakdown, BudgetReviewDecision
 import config as app_config
 
-load_dotenv(override=True)
+# Explicit process/CI settings must win over developer-local .env values so
+# hermetic tests can disable tracing and production injection remains authoritative.
+load_dotenv()
 
 _api_cfg = app_config.get("api") or {}
 _API_VERSION = _api_cfg.get("version", "2.0.0")
@@ -54,6 +59,22 @@ def _extract_text_content(content) -> str:
         ]
         return " ".join(texts)
     return str(content or "")
+
+
+def _public_components(components: dict | None) -> dict | None:
+    """Expose structured component data without serializing chat transcripts."""
+    public: dict = {}
+    for key, value in (components or {}).items():
+        if key in {"routing", "completed_agents"}:
+            continue
+        if isinstance(value, dict):
+            value = {
+                field: item for field, item in value.items() if field != "messages"
+            }
+            if key in {"readiness", "readiness_preflight"}:
+                value = {"data": value.get("data")}
+        public[key] = jsonable_encoder(value)
+    return public or None
 
 
 # ── Graph dependency (replaces global mutable state) ────────────────────────
@@ -170,9 +191,9 @@ class ChatRequest(BaseModel):
     target_agent: str | None = Field(
         default=None,
         description=(
-            "Isolate a single agent. When set, bypasses triage/supervisor "
-            "and routes directly to this agent only. "
-            "Valid: FlightsAgent, HotelsAgent, DestinationAgent, "
+            "Isolate a single agent after structured intake validates its "
+            "required inputs. "
+            "Valid: FlightsAgent, HotelsAgent, TravelReadinessAgent, "
             "RestaurantsAgent, ActivitiesAgent, TransportationAgent, "
             "BudgetAgent, ItineraryAgent."
         ),
@@ -194,7 +215,7 @@ class ChatRequest(BaseModel):
         valid = {
             "FlightsAgent",
             "HotelsAgent",
-            "DestinationAgent",
+            "TravelReadinessAgent",
             "RestaurantsAgent",
             "ActivitiesAgent",
             "TransportationAgent",
@@ -223,7 +244,7 @@ class ChatResponse(BaseModel):
         default=None,
         description="HITL interrupt payload — present when interrupted=True.",
     )
-    budget: dict | None = Field(
+    budget: BudgetBreakdown | None = Field(
         default=None,
         description="Structured budget breakdown when BudgetAgent has run.",
     )
@@ -264,9 +285,7 @@ async def _run_agent(
     )
     components = result.get("itinerary_components", {})
 
-    # Build a clean components dict without internal bookkeeping keys
-    _internal_keys = {"routing", "completed_agents"}
-    exposed = {k: v for k, v in components.items() if k not in _internal_keys}
+    exposed = _public_components(components)
 
     # Check for HITL interrupts
     interrupts = result.get("__interrupt__", [])
@@ -287,7 +306,7 @@ async def _run_agent(
         "interrupted": interrupted,
         "interrupt_data": interrupt_data if isinstance(interrupt_data, dict) else None,
         "budget": components.get("budget_structured"),
-        "components": exposed or None,
+        "components": exposed,
     }
 
 
@@ -359,9 +378,22 @@ async def chat_stream(
                     stream_mode="updates",
                 ):
                     for node_name, update in node_output.items():
-                        await queue.put(
-                            f"data: {json.dumps({'type': 'agent_start', 'agent': node_name})}\n\n"
-                        )
+                        agent_name = {
+                            "flights": "FlightsAgent",
+                            "hotel_stay": "HotelsAgent",
+                            "hotel_fan_in": "HotelsAgent",
+                            "readiness_preflight": "TravelReadinessAgent",
+                            "readiness": "TravelReadinessAgent",
+                            "restaurants": "RestaurantsAgent",
+                            "activities": "ActivitiesAgent",
+                            "transportation": "TransportationAgent",
+                            "budget": "BudgetAgent",
+                            "itinerary": "ItineraryAgent",
+                        }.get(node_name)
+                        if agent_name:
+                            await queue.put(
+                                f"data: {json.dumps({'type': 'agent_start', 'agent': agent_name})}\n\n"
+                            )
                         messages = update.get("messages", [])
                         for msg in messages:
                             if isinstance(msg, AIMessage) and msg.content:
@@ -410,12 +442,13 @@ async def chat_stream(
             if not stream_task.done():
                 stream_task.cancel()
 
-        # Check for HITL interrupts after the stream completes
+        # Check for HITL interrupts and send one final structured payload.
         config = {"configurable": {"thread_id": session_id}}
         state = await graph.aget_state(config)
-        if state and state.next:
+        interrupt_payload = None
+        interrupted = bool(state and state.next)
+        if interrupted:
             # Graph is paused at a HITL gate
-            interrupt_payload = None
             if hasattr(state, "tasks"):
                 for task in state.tasks:
                     if hasattr(task, "interrupts") and task.interrupts:
@@ -426,8 +459,18 @@ async def chat_stream(
                         )
                         break
             yield f"data: {json.dumps({'type': 'interrupt', 'gate': state.next[0] if state.next else '', 'data': interrupt_payload})}\n\n"
-
-        yield "data: [DONE]\n\n"
+        values = state.values if state else {}
+        components = values.get("itinerary_components", {})
+        done_payload = {
+            "type": "done",
+            "interrupted": interrupted,
+            "interrupt_data": (
+                interrupt_payload if isinstance(interrupt_payload, dict) else None
+            ),
+            "budget": jsonable_encoder(components.get("budget_structured")),
+            "components": _public_components(components),
+        }
+        yield f"data: {json.dumps(done_payload)}\n\n"
 
     return StreamingResponse(
         _event_generator(),
@@ -484,13 +527,39 @@ async def readiness(graph: CompiledStateGraph = Depends(_graph_dep)):
 # ── HITL: Resume interrupted graph execution ────────────────────────────────
 
 
+class SafetyResumeDecision(BaseModel):
+    gate: Literal["safety_review"]
+    approved: bool
+
+
+class HumanResumeDecision(BaseModel):
+    gate: Literal["human_review"]
+    action: Literal["approved", "edited", "rejected"]
+    feedback: str = Field(default="", max_length=2000)
+
+
+class LegacyResumeDecision(BaseModel):
+    """Backward-compatible decision accepted from older persisted clients."""
+
+    model_config = ConfigDict(extra="allow")
+
+    approved: bool
+    feedback: str = Field(default="", max_length=2000)
+
+
+TypedResumeDecision = Annotated[
+    BudgetReviewDecision | SafetyResumeDecision | HumanResumeDecision,
+    Field(discriminator="gate"),
+]
+
+
 class ResumeRequest(BaseModel):
     session_id: str = Field(
         ..., description="The session/thread ID of the interrupted graph"
     )
-    decision: dict = Field(
+    decision: TypedResumeDecision | LegacyResumeDecision = Field(
         ...,
-        description="The human decision, e.g. {'approved': true} or {'approved': true, 'feedback': '...'}",
+        description="Typed safety, budget, or itinerary-review decision.",
     )
 
 
@@ -498,6 +567,10 @@ class ResumeResponse(BaseModel):
     message: str
     session_id: str
     status: str  # "resumed", "completed", "interrupted"
+    interrupted: bool = False
+    interrupt_data: dict | None = None
+    budget: BudgetBreakdown | None = None
+    components: dict | None = None
 
 
 @app.post("/api/v1/chat/resume", response_model=ResumeResponse)
@@ -521,7 +594,12 @@ async def resume_chat(
 
     try:
         result = await asyncio.wait_for(
-            graph.ainvoke(Command(resume=request.decision), config),
+            graph.ainvoke(
+                Command(
+                    resume=request.decision.model_dump(mode="json", exclude_none=True)
+                ),
+                config,
+            ),
             timeout=_REQUEST_TIMEOUT,
         )
     except asyncio.TimeoutError:
@@ -534,14 +612,25 @@ async def resume_chat(
     )
 
     # Determine the status
-    status = "completed"
-    if hasattr(result, "__interrupt__") and result.get("__interrupt__"):
-        status = "interrupted"
+    interrupts = result.get("__interrupt__", [])
+    interrupted = bool(interrupts)
+    status = "interrupted" if interrupted else "completed"
+    interrupt_data = None
+    if interrupts:
+        interrupt_data = (
+            interrupts[0].value if hasattr(interrupts[0], "value") else None
+        )
+    components = result.get("itinerary_components", {})
+    exposed = _public_components(components)
 
     return ResumeResponse(
         message=last_message,
         session_id=request.session_id,
         status=status,
+        interrupted=interrupted,
+        interrupt_data=interrupt_data if isinstance(interrupt_data, dict) else None,
+        budget=components.get("budget_structured"),
+        components=exposed,
     )
 
 

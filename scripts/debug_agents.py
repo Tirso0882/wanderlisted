@@ -17,8 +17,9 @@ from src.agent.llm import get_llm
 from src.agent.agents import (
     FlightsAgent,
     HotelsAgent,
-    DestinationAgent,
+    TravelReadinessAgent,
 )
+from src.models import TripRequest
 
 
 async def test_agent(name, agent_cls):
@@ -28,6 +29,14 @@ async def test_agent(name, agent_cls):
     try:
         llm = get_llm()
         agent = agent_cls(llm)
+        if isinstance(agent, TravelReadinessAgent):
+            readiness = await agent.research(
+                question="Travel readiness for Tokyo",
+                trip_request=TripRequest(destinations=["tokyo"]),
+            )
+            print(f"  SUCCESS: {readiness.message[:200]}")
+            await agent.aclose()
+            return
         executor = create_agent(
             model=llm,
             tools=agent.tools,
@@ -58,7 +67,7 @@ async def main():
     for name, cls in [
         ("FlightsAgent", FlightsAgent),
         ("HotelsAgent", HotelsAgent),
-        ("DestinationAgent", DestinationAgent),
+        ("TravelReadinessAgent", TravelReadinessAgent),
     ]:
         await test_agent(name, cls)
 

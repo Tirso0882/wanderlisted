@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import timedelta
 
 from langchain_core.messages import AIMessage, ToolMessage
 from langsmith import traceable
@@ -13,15 +14,23 @@ from src.models import (
     ComponentResult,
     ComponentStatus,
     ErrorCategory,
+    FlightSearchPricing,
     FlightWindowOption,
     FlightWindowSearchResult,
+    Money,
+    PriceBasis,
+    PriceEvidence,
+    PriceScope,
+    SelectionStatus,
     TripRequest,
     build_trip_skeleton,
 )
+from src.models.pricing import BudgetCategory
 from src.tools.iata import resolve_iata_code
 
 _log = AppLogger("agent.nodes.trip_skeleton")
 _MARKER = "FLIGHT_WINDOW_RESULT_JSON:\n"
+_PRICING_MARKER = "FLIGHT_PRICING_JSON:\n"
 
 
 def _content_text(content) -> str:
@@ -67,10 +76,82 @@ def _selected_flight(
         for result in _flight_window_results(state)
         if result.duration_days == duration
         for option in result.options
+        if option.offer_id
     ]
     if not candidates:
         return None
-    return min(candidates, key=lambda option: float(option.total_amount or "inf"))
+    selected = min(candidates, key=lambda option: float(option.total_amount or "inf"))
+    return selected.model_copy(
+        update={
+            "price_evidence": PriceEvidence(
+                category=BudgetCategory.FLIGHTS,
+                money=Money(amount=selected.total_amount, currency=selected.currency),
+                source_component="flights",
+                source_id=selected.offer_id,
+                scope=PriceScope.TOTAL,
+                basis=PriceBasis.QUOTED,
+                selection_status=SelectionStatus.SELECTED,
+                observed_at=selected.observed_at,
+            )
+        }
+    )
+
+
+def _exact_flight_pricing(state: TravelAgentState) -> list:
+    options = []
+    messages = (
+        state.get("itinerary_components", {}).get("flights", {}).get("messages", [])
+    )
+    for message in messages:
+        if not isinstance(message, ToolMessage) or message.name != "search_flights":
+            continue
+        text = _content_text(message.content)
+        if _PRICING_MARKER not in text:
+            continue
+        try:
+            payload = json.loads(text.split(_PRICING_MARKER, 1)[1])
+            options.extend(FlightSearchPricing.model_validate(payload).options)
+        except (json.JSONDecodeError, ValueError) as exc:
+            _log.warning("Invalid exact-flight pricing evidence: %s", exc)
+    return options
+
+
+def _selected_exact_flight(
+    state: TravelAgentState,
+    *,
+    start_date,
+    end_date,
+) -> FlightWindowOption | None:
+    candidates = [
+        option
+        for option in _exact_flight_pricing(state)
+        if option.departure_date == start_date.isoformat()
+        and option.return_date == end_date.isoformat()
+    ]
+    if not candidates:
+        return None
+    selected = min(candidates, key=lambda option: option.money.amount)
+    return FlightWindowOption(
+        departure_date=start_date,
+        return_date=end_date,
+        total_amount=str(selected.money.amount),
+        currency=selected.money.currency,
+        offer_id=selected.offer_id,
+        airline_name=selected.airline_name,
+        origin=selected.origin,
+        destination=selected.destination,
+        observed_at=selected.observed_at,
+        price_evidence=PriceEvidence(
+            category=BudgetCategory.FLIGHTS,
+            money=selected.money,
+            source_component="flights",
+            source_id=selected.offer_id,
+            scope=PriceScope.TOTAL,
+            basis=PriceBasis.QUOTED,
+            selection_status=SelectionStatus.SELECTED,
+            observed_at=selected.observed_at,
+        ),
+    )
 
 
 @traceable(
@@ -92,10 +173,18 @@ async def trip_skeleton_node(state: TravelAgentState) -> dict:
                 )
             duration_days = actual_duration
             start_date = window.exact_start
-            selected_flight = None
+            selected_flight = _selected_exact_flight(
+                state,
+                start_date=start_date,
+                end_date=window.exact_end,
+            )
         elif window.exact_start and duration_days:
             start_date = window.exact_start
-            selected_flight = None
+            selected_flight = _selected_exact_flight(
+                state,
+                start_date=start_date,
+                end_date=start_date + timedelta(days=duration_days - 1),
+            )
         elif window.flexible and duration_days:
             selected_flight = _selected_flight(state, request)
             if selected_flight is None:

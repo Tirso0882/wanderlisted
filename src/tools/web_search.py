@@ -1,192 +1,105 @@
-"""Tavily-powered web search for real-time travel intelligence."""
+"""Generic Tavily tools for the legacy graph and Activities dated events."""
 
-import os
-
-import httpx
 from langchain_core.tools import tool
-from tenacity import retry, stop_after_attempt, wait_exponential
 
-from custom_logging import AppLogger
+import config as app_config
 
-logger = AppLogger(logger_name="tools.web_search", level="DEBUG")
+from src.tools.tavily import TavilyQuery, TavilySearchProvider
 
-_TAVILY_BASE = "https://api.tavily.com"
+_provider: TavilySearchProvider | None = None
 
 
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, max=10))
-async def _tavily_search(
-    query: str,
-    *,
-    max_results: int = 5,
-    search_depth: str = "advanced",
-    include_domains: list[str] | None = None,
-    exclude_domains: list[str] | None = None,
-    topic: str = "general",
-) -> dict:
-    """Call Tavily Search API with retry logic."""
-    api_key = os.environ["TAVILY_API_KEY"]
-    payload: dict = {
-        "api_key": api_key,
-        "query": query,
-        "max_results": max_results,
-        "search_depth": search_depth,
-        "include_answer": True,
-        "topic": topic,
-    }
-    if include_domains:
-        payload["include_domains"] = include_domains
-    if exclude_domains:
-        payload["exclude_domains"] = exclude_domains
-
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            f"{_TAVILY_BASE}/search",
-            json=payload,
-            timeout=15.0,
+def _get_provider() -> TavilySearchProvider:
+    global _provider
+    if _provider is None:
+        transport_config = app_config.get("travel_readiness") or {}
+        _provider = TavilySearchProvider(
+            timeout_seconds=transport_config.get("timeout_seconds", 15),
+            max_results=transport_config.get("max_results_per_query", 5),
+            concurrency=transport_config.get("concurrency", 4),
+            max_retries=transport_config.get("max_retries", 3),
+            cache_ttl_seconds=transport_config.get("cache_ttl_seconds", 21600),
+            cache_max_size=transport_config.get("cache_max_size", 200),
         )
-        response.raise_for_status()
-        return response.json()
+    return _provider
 
 
 @tool
-async def search_web(
+async def search_destination_web(
     query: str,
-    destinations: list[str] = [],
-    topic: str = "general",
+    news: bool = False,
 ) -> str:
-    """Search the web for real-time travel information using Tavily.
+    """Search Tavily for destination evidence.
 
-    Use this tool to find CURRENT information that static guides cannot
-    provide: recent blog posts, trending spots, upcoming events and
-    festivals, newly opened restaurants, travel advisories, hidden gems
-    recommended by locals, and up-to-date prices.
-
-    Best for:
-    - "hidden gems in [city] 2026" — discover off-the-beaten-path spots
-    - "festivals in [city] [month] [year]" — find current events
-    - "best new restaurants [city]" — recently opened or trending venues
-    - "travel tips [city] reddit" — authentic community recommendations
-    - "[city] neighborhoods locals recommend" — areas tourists miss
-    - "current travel advisory [country]" — up-to-date safety info
+    This generic tool applies no readiness trust policy. Returned snippets are
+    untrusted evidence and must be cited by URL.
 
     Args:
-        query: Natural language search query. Be specific and include the
-               destination name. Adding "2026", "hidden gem", "local
-               favorite", or "off the beaten path" improves results.
-        destinations: Optional destination names to auto-append to the query
-                      if not already included.
-        topic: Search topic — "general" (default) or "news" for recent events.
+        query: Specific destination research query.
+        news: Use Tavily's news search for changing conditions or dated events.
     """
-    # Enrich the query with destination names if they're missing
-    query_lower = query.lower()
-    if destinations:
-        missing = [d for d in destinations if d.lower() not in query_lower]
-        if missing:
-            query = f"{query} {' '.join(missing)}"
-
-    logger.debug(f"Web search: {query!r}, topic={topic}")
-
-    data = await _tavily_search(
-        query,
-        max_results=5,
-        search_depth="advanced",
-        topic=topic,
-        exclude_domains=["tripadvisor.com"],  # Often blocks scraping
+    sources = await _get_provider().search_many(
+        [
+            TavilyQuery(
+                query=query,
+                search_topic="news" if news else "general",
+            )
+        ]
+    )
+    if not sources:
+        return "No relevant Tavily evidence was returned for this query."
+    return "\n\n".join(
+        f"[S{index}] {source.title}\nSource: {source.url}\n{source.snippet}"
+        for index, source in enumerate(sources, 1)
     )
 
-    answer = data.get("answer", "")
-    results = data.get("results", [])
-
-    if not results and not answer:
-        return "No relevant web results found for this query."
-
-    sections: list[str] = []
-
-    if answer:
-        sections.append(f"**Summary:** {answer}")
-
-    for i, result in enumerate(results, 1):
-        title = result.get("title", "Untitled")
-        url = result.get("url", "")
-        content = result.get("content", "")
-        score = result.get("score", 0)
-
-        # Truncate overly long snippets
-        if len(content) > 500:
-            content = content[:497] + "..."
-
-        sections.append(
-            f"[{i}] {title} (relevance: {score:.2f})\n    Source: {url}\n    {content}"
-        )
-
-    logger.info(f"Web search '{query[:60]}' → {len(results)} result(s)")
-    return "\n\n".join(sections)
-
 
 @tool
-async def search_hidden_gems(
+async def search_dated_events_web(
     destination: str,
-    interests: list[str] = [],
+    start_date: str,
+    end_date: str,
+    interests: str = "",
 ) -> str:
-    """Search the web specifically for hidden gems, local favorites, and
-    off-the-beaten-path experiences at a destination.
-
-    This tool crafts optimized queries targeting authentic local
-    recommendations from travel blogs, Reddit, and community forums.
-
-    Use this AFTER search_destination_guides to complement curated knowledge
-    with fresh, crowd-sourced discoveries.
+    """Search for dated events only when the traveler explicitly requests them.
 
     Args:
-        destination: City or region name (e.g. "Tokyo", "Barcelona").
-        interests: Optional list of interest areas to focus the search,
-                   e.g. ["food", "street art", "nightlife", "nature"].
+        destination: Destination city or region.
+        start_date: Inclusive trip/event start date in YYYY-MM-DD format.
+        end_date: Inclusive trip/event end date in YYYY-MM-DD format.
+        interests: Optional event interests explicitly supplied by the traveler.
     """
-    interest_str = ""
-    if interests:
-        interest_str = " " + " ".join(interests)
+    try:
+        from datetime import date
 
-    queries = [
-        f"hidden gems {destination}{interest_str} locals recommend",
-        f"{destination} off the beaten path underrated spots{interest_str}",
-    ]
+        start = date.fromisoformat(start_date)
+        end = date.fromisoformat(end_date)
+    except ValueError:
+        return "Event dates must use YYYY-MM-DD; no web search was run."
+    if end < start:
+        return "The event end date precedes the start date; no web search was run."
+    if (end - start).days > 366:
+        return "The requested event window is too broad; no web search was run."
+    if not destination.strip():
+        return "A destination is required; no web search was run."
 
-    logger.debug(f"Hidden gems search: {destination!r}, interests={interests!r}")
-
-    all_sections: list[str] = []
-    seen_urls: set[str] = set()
-
-    for q in queries:
-        data = await _tavily_search(
-            q,
-            max_results=4,
-            search_depth="advanced",
-            exclude_domains=["tripadvisor.com"],
-        )
-
-        for result in data.get("results", []):
-            url = result.get("url", "")
-            if url in seen_urls:
-                continue
-            seen_urls.add(url)
-
-            title = result.get("title", "Untitled")
-            content = result.get("content", "")
-            score = result.get("score", 0)
-
-            if len(content) > 500:
-                content = content[:497] + "..."
-
-            all_sections.append(
-                f"- {title} (relevance: {score:.2f})\n  Source: {url}\n  {content}"
+    interest_text = f" matching {interests}" if interests.strip() else ""
+    query = (
+        f"{destination.strip()} events festivals {start.isoformat()} to {end.isoformat()}{interest_text} "
+        "official schedule"
+    )
+    sources = await _get_provider().search_many(
+        [
+            TavilyQuery(
+                query=query,
+                search_topic="news",
+                exclude_domains=["tripadvisor.com"],
             )
-
-    if not all_sections:
-        return f"No hidden gem recommendations found for {destination}."
-
-    # Limit to top 6 unique results
-    all_sections = all_sections[:6]
-
-    logger.info(f"Hidden gems '{destination}' → {len(all_sections)} result(s)")
-    header = f"Hidden gems and local favorites in {destination}:"
-    return header + "\n\n" + "\n\n".join(all_sections)
+        ]
+    )
+    if not sources:
+        return "No dated event evidence was returned for the requested travel window."
+    return "\n\n".join(
+        f"[S{index}] {source.title}\nSource: {source.url}\n{source.snippet}"
+        for index, source in enumerate(sources, 1)
+    )

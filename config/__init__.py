@@ -20,7 +20,7 @@ def load_config() -> dict[str, Any]:
 
 
 def get(section: str, key: str | None = None, default: Any = None) -> Any:
-    """Convenience accessor: ``config.get("rag", "chunk_size", 2000)``."""
+    """Convenience accessor: ``config.get("destination", "max_queries", 6)``."""
     cfg = load_config()
     section_data = cfg.get(section, {})
     if key is None:

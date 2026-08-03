@@ -9,11 +9,12 @@ from src.agent.llm import get_llm
 from src.agent.agents import (
     FlightsAgent,
     HotelsAgent,
-    DestinationAgent,
+    TravelReadinessAgent,
     RestaurantsAgent,
     ActivitiesAgent,
     TransportationAgent,
 )
+from src.models import TripRequest
 
 AGENT_TIERS = {
     "FlightsAgent": "fast",
@@ -21,7 +22,7 @@ AGENT_TIERS = {
     "RestaurantsAgent": "fast",
     "ActivitiesAgent": "fast",
     "TransportationAgent": "fast",
-    "DestinationAgent": "fast",
+    "TravelReadinessAgent": "fast",
 }
 
 AGENT_CLASSES = {
@@ -30,7 +31,7 @@ AGENT_CLASSES = {
     "RestaurantsAgent": RestaurantsAgent,
     "ActivitiesAgent": ActivitiesAgent,
     "TransportationAgent": TransportationAgent,
-    "DestinationAgent": DestinationAgent,
+    "TravelReadinessAgent": TravelReadinessAgent,
 }
 
 
@@ -39,6 +40,16 @@ async def test_single_agent(name: str):
     llm = get_llm(tier=tier)
     cls = AGENT_CLASSES[name]
     agent = cls(llm)
+    if isinstance(agent, TravelReadinessAgent):
+        try:
+            result = await agent.research(
+                question="Travel readiness for Paris",
+                trip_request=TripRequest(destinations=["paris"]),
+            )
+            print(f"  OK — {name}: {len(result.message)} characters")
+        finally:
+            await agent.aclose()
+        return
     executor = create_agent(
         model=llm,
         tools=agent.tools,

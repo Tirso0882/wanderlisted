@@ -10,7 +10,7 @@ VALID_AGENT_NAMES = frozenset(
     {
         "FlightsAgent",
         "HotelsAgent",
-        "DestinationAgent",
+        "TravelReadinessAgent",
         "BudgetAgent",
         "RestaurantsAgent",
         "ActivitiesAgent",
@@ -26,7 +26,7 @@ class RoutingDecision(BaseModel):
     agents: list[str] = Field(
         description=(
             "List of specialist agent names to invoke. "
-            "Valid names: FlightsAgent, HotelsAgent, DestinationAgent, "
+            "Valid names: FlightsAgent, HotelsAgent, TravelReadinessAgent, "
             "BudgetAgent, RestaurantsAgent, ActivitiesAgent, "
             "TransportationAgent, ItineraryAgent."
         ),

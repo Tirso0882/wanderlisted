@@ -262,6 +262,8 @@ class HandbookRenderer:
         # ── Budget ───────────────────────────────────────────────
         budget_data = components.get("budget_structured")
         if budget_data and isinstance(budget_data, dict):
+            # Inline handbook totals are the validated USD base values. Requested
+            # display-currency values are carried separately for newer clients.
             handbook.budget_flights = budget_data.get("flights", 0)
             handbook.budget_accommodation = budget_data.get("accommodation", 0)
             handbook.budget_transport = budget_data.get("transport", 0)
@@ -271,6 +273,30 @@ class HandbookRenderer:
             handbook.budget_total = budget_data.get("total", 0)
             handbook.budget_per_person = budget_data.get("per_person", 0)
             handbook.budget_summary = budget_data.get("summary", "")
+            handbook.budget_base_currency = budget_data.get("base_currency", "USD")
+            handbook.budget_display_currency = budget_data.get(
+                "display_currency", handbook.budget_base_currency
+            )
+            handbook.budget_display_breakdown = budget_data.get("display_breakdown")
+            handbook.budget_coverage_status = budget_data.get(
+                "coverage_status", "partial"
+            )
+            handbook.budget_missing_categories = budget_data.get(
+                "missing_categories", []
+            )
+            handbook.budget_estimated_categories = budget_data.get(
+                "estimated_categories", []
+            )
+            handbook.budget_assumptions = budget_data.get("assumptions", [])
+            handbook.budget_reserve_recommendation = budget_data.get(
+                "reserve_recommendation", 0
+            )
+            handbook.budget_display_reserve_recommendation = budget_data.get(
+                "display_reserve_recommendation"
+            )
+            handbook.budget_contingency_included = budget_data.get(
+                "contingency_included", False
+            )
 
         # ── Route cities (from destinations) ─────────────────────
         if destinations:

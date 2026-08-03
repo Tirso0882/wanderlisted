@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from src.models.trip_request import (
+    ReadinessTopic,
     RequestScope,
     RequestedCapability,
     TripRequest,
@@ -12,7 +13,7 @@ _FULL_CAPABILITIES = frozenset(
     {
         RequestedCapability.FLIGHTS,
         RequestedCapability.HOTELS,
-        RequestedCapability.DESTINATION,
+        RequestedCapability.TRAVEL_READINESS,
         RequestedCapability.RESTAURANTS,
         RequestedCapability.ACTIVITIES,
         RequestedCapability.TRANSPORTATION,
@@ -24,7 +25,7 @@ _FULL_CAPABILITIES = frozenset(
 _CAPABILITY_TO_AGENT = {
     RequestedCapability.FLIGHTS: "FlightsAgent",
     RequestedCapability.HOTELS: "HotelsAgent",
-    RequestedCapability.DESTINATION: "DestinationAgent",
+    RequestedCapability.TRAVEL_READINESS: "TravelReadinessAgent",
     RequestedCapability.RESTAURANTS: "RestaurantsAgent",
     RequestedCapability.ACTIVITIES: "ActivitiesAgent",
     RequestedCapability.TRANSPORTATION: "TransportationAgent",
@@ -35,7 +36,7 @@ _CAPABILITY_TO_AGENT = {
 _AGENT_ORDER = (
     "FlightsAgent",
     "HotelsAgent",
-    "DestinationAgent",
+    "TravelReadinessAgent",
     "RestaurantsAgent",
     "ActivitiesAgent",
     "TransportationAgent",
@@ -78,7 +79,7 @@ def missing_required_fields(request: TripRequest) -> list[str]:
     destination_capabilities = {
         RequestedCapability.FLIGHTS,
         RequestedCapability.HOTELS,
-        RequestedCapability.DESTINATION,
+        RequestedCapability.TRAVEL_READINESS,
         RequestedCapability.RESTAURANTS,
         RequestedCapability.ACTIVITIES,
         RequestedCapability.BUDGET,
@@ -86,6 +87,14 @@ def missing_required_fields(request: TripRequest) -> list[str]:
     }
     if capabilities & destination_capabilities and not request.destinations:
         missing.append("destinations")
+
+    readiness_requested = RequestedCapability.TRAVEL_READINESS in capabilities
+    entry_requested = (
+        request.scope == RequestScope.FULL_ITINERARY
+        or ReadinessTopic.ENTRY in request.readiness_topics
+    )
+    if readiness_requested and entry_requested and not request.passport_country:
+        missing.append("passport_country")
 
     if RequestedCapability.FLIGHTS in capabilities:
         if not (request.origin_city or request.origin_airport):
@@ -119,6 +128,7 @@ _QUESTIONS = {
         "requested_capability": "Which travel topic should I help you with?",
         "destinations": "Which destination or cities should I plan for?",
         "origin_city": "Which city or airport will you depart from?",
+        "passport_country": "Which country issued your passport?",
         "date_window": "What exact dates or flexible travel window and trip length should I use?",
         "exact_stay_dates": "What are the hotel check-in and check-out dates?",
         "adults": "How many adults are traveling?",
@@ -128,6 +138,7 @@ _QUESTIONS = {
         "requested_capability": "W jakim obszarze podróży mam Ci pomóc?",
         "destinations": "Jakie miejsce lub miasta mam zaplanować?",
         "origin_city": "Z jakiego miasta lub lotniska wylatujesz?",
+        "passport_country": "Który kraj wydał Twój paszport?",
         "date_window": "Jakie dokładne daty lub elastyczny okres i długość podróży mam przyjąć?",
         "exact_stay_dates": "Jakie są daty zameldowania i wymeldowania z hotelu?",
         "adults": "Ile osób dorosłych podróżuje?",
