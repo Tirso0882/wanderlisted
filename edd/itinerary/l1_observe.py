@@ -70,8 +70,8 @@ def _place(
     periods: list[PlaceOpeningPeriod] | None = None,
     full_evidence=False,
 ) -> PlaceEvidence:
-    opening_periods = periods if periods is not None else (
-        _opening(visit_day) if visit_day else []
+    opening_periods = (
+        periods if periods is not None else (_opening(visit_day) if visit_day else [])
     )
     return PlaceEvidence(
         source_id=source_id,
@@ -152,7 +152,11 @@ def _route(
         ordered = list(day.stops)
         if day.day_number in reverse_days:
             ordered.reverse()
-        locations = [day.start_location, *ordered, day.end_location or day.start_location]
+        locations = [
+            day.start_location,
+            *ordered,
+            day.end_location or day.start_location,
+        ]
         legs = []
         for index in range(len(locations) - 1):
             if day.day_number in zero_duration_days:
@@ -255,7 +259,9 @@ def _summarize(*, plan, draft, route_plan, budget, skeleton) -> dict:
             item.rate_key for item in draft.selected_accommodations
         ],
         "selected_hotel_names": [item.name for item in draft.selected_accommodations],
-        "draft_source_ids": [stop.source_id for day in draft.days for stop in day.stops],
+        "draft_source_ids": [
+            stop.source_id for day in draft.days for stop in day.stops
+        ],
         "scheduled_source_ids": {
             number: [item.source_id for item in items]
             for number, items in scheduled.items()
@@ -293,9 +299,7 @@ def _summarize(*, plan, draft, route_plan, budget, skeleton) -> dict:
         "day_feasibility": {
             str(day.day_number): day.feasibility_status for day in plan.days
         },
-        "assumptions": {
-            str(day.day_number): day.assumptions for day in plan.days
-        },
+        "assumptions": {str(day.day_number): day.assumptions for day in plan.days},
         "missing_constraints": plan.missing_constraints,
         "total_budget_usd": plan.total_budget_usd,
         "plan": plan.model_dump(mode="json"),
@@ -427,10 +431,16 @@ def observe_case(case: dict) -> dict:
             cities=["paris", "lyon"], start_date=START, duration_days=4
         )
         paris = _place(
-            "activities:paris-stop", "Paris Stop", city="paris", visit_day=START + timedelta(days=1)
+            "activities:paris-stop",
+            "Paris Stop",
+            city="paris",
+            visit_day=START + timedelta(days=1),
         )
         lyon = _place(
-            "activities:lyon-stop", "Lyon Stop", city="lyon", visit_day=START + timedelta(days=2)
+            "activities:lyon-stop",
+            "Lyon Stop",
+            city="lyon",
+            visit_day=START + timedelta(days=2),
         )
         return _execute(
             request=request,
@@ -467,7 +477,9 @@ def observe_case(case: dict) -> dict:
             return draft.model_copy(
                 update={
                     "days": [
-                        day.model_copy(update={"date": "2099-01-01", "city": "atlantis"})
+                        day.model_copy(
+                            update={"date": "2099-01-01", "city": "atlantis"}
+                        )
                         for day in draft.days
                     ]
                 }
@@ -567,12 +579,16 @@ def observe_case(case: dict) -> dict:
         )
     elif scenario == "hallucination_wrong_city":
         wrong = _place(
-            "activities:lyon-wrong", "Wrong City Museum", city="lyon", visit_day=visit_day
+            "activities:lyon-wrong",
+            "Wrong City Museum",
+            city="lyon",
+            visit_day=visit_day,
         )
         catalog = _catalog(skeleton, [wrong])
         proposal = _proposal(skeleton, catalog, {2: [wrong.source_id]})
         valid = wrong
     elif scenario == "hallucination_unselected_route":
+
         def introduce_unselected(route_plan):
             route_plan.days[1].ordered_stops.append(
                 PlaceRef(

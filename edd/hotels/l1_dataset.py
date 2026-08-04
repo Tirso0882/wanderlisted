@@ -528,7 +528,14 @@ DATASET: list[dict] = [
     },
     {
         "name": "new-york-compact-all-fields",
-        "tags": ["compact-format", "interaction", "stars", "board", "budget", "occupancy"],
+        "tags": [
+            "compact-format",
+            "interaction",
+            "stars",
+            "board",
+            "budget",
+            "occupancy",
+        ],
         "query": "STAY=NYC | IN=2027-06-08 | OUT=2027-06-11 | GUESTS=2A+1C(age 5) | MIN_STARS=4 | BOARD=BB | MAX_TOTAL=1200",
         "expected": {
             "city": "NYC",

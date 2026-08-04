@@ -12,7 +12,9 @@ from edd.rubrics import (
 
 _SPEC = AGENT_SPECS["itinerary"]
 
-FAITHFULNESS_RUBRIC = faithfulness_rubric(_SPEC) + """
+FAITHFULNESS_RUBRIC = (
+    faithfulness_rubric(_SPEC)
+    + """
 
 TYPED ITINERARY RULES:
   - TripSkeleton alone owns dates, day numbers, stay cities, and the final exit city.
@@ -21,13 +23,17 @@ TYPED ITINERARY RULES:
   - Missing hours, route legs, flight times, or inter-city timing cannot be called verified.
   - Daily costs include only mapped, non-estimated Budget line items; the overall budget is copied.
 """
+)
 
-HELPFULNESS_RUBRIC = helpfulness_rubric(_SPEC) + """
+HELPFULNESS_RUBRIC = (
+    helpfulness_rubric(_SPEC)
+    + """
 
 ITINERARY PRESENTATION:
   - Surface local times when verified, feasibility warnings, assumptions, missing constraints,
     cost coverage, and every selected stop that was moved to the unscheduled list.
 """
+)
 
 
 async def judge_faithfulness(judge, trajectory: Trajectory) -> dict:

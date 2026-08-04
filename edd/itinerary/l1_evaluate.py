@@ -26,7 +26,12 @@ def _invariant_checks(report: dict) -> list[dict]:
         for offset in range(plan["duration_days"])
     ]
     checks = [
-        _check("invariant:calendar", report["dates"] == expected_dates, report["dates"], expected_dates),
+        _check(
+            "invariant:calendar",
+            report["dates"] == expected_dates,
+            report["dates"],
+            expected_dates,
+        ),
         _check(
             "invariant:day-numbers",
             report["day_numbers"] == list(range(1, plan["duration_days"] + 1)),
@@ -45,11 +50,17 @@ def _invariant_checks(report: dict) -> list[dict]:
     }
     selected = set(report["draft_source_ids"])
     checks.append(
-        _check("invariant:selected-source-ids", emitted <= selected, sorted(emitted), sorted(selected))
+        _check(
+            "invariant:selected-source-ids",
+            emitted <= selected,
+            sorted(emitted),
+            sorted(selected),
+        )
     )
 
     route_by_day = {
-        item["day_number"]: item for item in (report.get("route_plan") or {}).get("days", [])
+        item["day_number"]: item
+        for item in (report.get("route_plan") or {}).get("days", [])
     }
     route_measurements_ok = True
     route_actual = []
@@ -97,7 +108,9 @@ def _invariant_checks(report: dict) -> list[dict]:
             if item["amount_usd"] is not None and not item["estimated"]
         }
         expected_costs = {
-            number: round(sum(supported.get(source_id, 0) for source_id in source_ids), 2)
+            number: round(
+                sum(supported.get(source_id, 0) for source_id in source_ids), 2
+            )
             for number, source_ids in report["scheduled_source_ids"].items()
         }
         checks.append(

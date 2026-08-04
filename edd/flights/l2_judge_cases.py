@@ -279,8 +279,7 @@ JUDGE_CASES: list[dict] = [
             query="Cheapest flight San Francisco to Seattle, 2026-10-05.",
             tool_outputs=_SFO_SEA_EVIDENCE,
             final_text=(
-                "The cheapest is United UA512 at $132, though it has one stop "
-                "(4h50m)."
+                "The cheapest is United UA512 at $132, though it has one stop (4h50m)."
             ),
         ),
     },
@@ -407,8 +406,7 @@ JUDGE_CASES: list[dict] = [
             query="Flights New York to Tokyo, 2026-08-15, 1 adult, economy.",
             tool_outputs=_NY_TYO_EVIDENCE,
             final_text=(
-                "Two picks: Korean Air KE85 non-stop for $760, or United UA79 for "
-                "$810."
+                "Two picks: Korean Air KE85 non-stop for $760, or United UA79 for $810."
             ),
         ),
     },

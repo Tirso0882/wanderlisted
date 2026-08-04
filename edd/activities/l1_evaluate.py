@@ -21,7 +21,14 @@ sys.path.insert(
 from src.tools.google_maps import UNSUPPORTED_NEARBY_PLACE_TYPES
 
 _PLACE_TOOLS = {"search_places_text", "search_places_nearby"}
-_LODGING_PLACE_TYPES = {"bed_and_breakfast", "hostel", "hotel", "lodging", "motel", "resort"}
+_LODGING_PLACE_TYPES = {
+    "bed_and_breakfast",
+    "hostel",
+    "hotel",
+    "lodging",
+    "motel",
+    "resort",
+}
 
 
 def _places_calls(trajectory: list[dict]) -> list[dict]:
@@ -229,7 +236,9 @@ def correct_locations(trajectory: list[dict], expected: dict) -> dict:
     return {
         "key": "correct_locations",
         "score": int(not missing),
-        "comment": "" if not missing else f"searches missed requested location(s): {missing}",
+        "comment": ""
+        if not missing
+        else f"searches missed requested location(s): {missing}",
     }
 
 

@@ -24,7 +24,11 @@ _SPEC = AGENT_SPECS["transportation"]
 
 # These distinctive anchor identifiers are checked against the calibration corpus
 # in tests/test_judge_prompt_holdouts.py. Change them if these examples change.
-CALIBRATION_HOLDOUT_MARKERS = ("Southern Cross Station", "Flinders Street Station", "TRAM 11")
+CALIBRATION_HOLDOUT_MARKERS = (
+    "Southern Cross Station",
+    "Flinders Street Station",
+    "TRAM 11",
+)
 
 _FAITH_EXAMPLES = """EXAMPLES (illustrative anchors - do NOT treat as evidence for the case you score):
   - RESULTS: "Route: Southern Cross Station -> Flinders Street Station\nDistance:

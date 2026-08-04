@@ -1,0 +1,77 @@
+{
+  "artifact_sha256": "8f3515c3ba8bb8a1e1a33a14e347763a2097315ec44eff03cdcdc1169c97f74e",
+  "baseline_name": "2026-08-04-system-refactor-offline-v1",
+  "cache_status": "not_used",
+  "commands": [
+    "python -m pytest tests/test_edd_activities.py -q"
+  ],
+  "component": "activities",
+  "created_at": "2026-08-04T09:15:38.351538+00:00",
+  "dataset_case_count": 40,
+  "dataset_version": "1.0.1",
+  "evidence_kind": "evaluator_contract_only",
+  "external_calls": 0,
+  "kind": "edd-offline-contract-baseline",
+  "metrics": {
+    "contract_tests_failed": 0,
+    "contract_tests_passed": 28,
+    "dataset_cases_executed": null,
+    "dataset_cases_passed": null
+  },
+  "model_quality_claim": false,
+  "schema_version": 1,
+  "sources": [
+    {
+      "path": "edd/offline_baselines.py",
+      "sha256": "74bedc6fdf609f7e3eae0ed0d9b8f321927ef41270a36ede13d171514c2b560e"
+    },
+    {
+      "path": "pyproject.toml",
+      "sha256": "5e9bed415b7342b63eaffbf7e9e4090256b5af91ce23392b69574bbd1e501735"
+    },
+    {
+      "path": "uv.lock",
+      "sha256": "bf593afeed76ba288579160b87be49e1bbae31bf20b2033185358bb6c35585ce"
+    },
+    {
+      "path": "tests/test_edd_activities.py",
+      "sha256": "4596be17b46712145eb19ea159adcfafad8fd4ed9ed440b1ceacf68207181cbf"
+    },
+    {
+      "path": "edd/activities/l1_dataset.py",
+      "sha256": "54eb3a1261cc224b635b9ff1d84a563d6fa314f2fe7ade235a09d7576e81990f"
+    },
+    {
+      "path": "edd/activities/l1_evaluate.py",
+      "sha256": "a54754c0879a78e8a130cb81e9b0c81cf0eb5cae9614f080c1d779c1bbeb26a6"
+    },
+    {
+      "path": "edd/baseline_config.py",
+      "sha256": "70751b65946c5fe472f797b340343f50ad510e8703243176429298e7d5875c8f"
+    },
+    {
+      "path": "edd/activities/run_utils.py",
+      "sha256": "dc2e244e8fb39d4e40ad57132239407fc9584e075912bb67e4c564f9245f37ed"
+    },
+    {
+      "path": "edd/harness.py",
+      "sha256": "31b73fe1de12617e1c6626ee5f43286583d0857f2442302f7f2a7a37dc254a21"
+    },
+    {
+      "path": "src/agent/llm.py",
+      "sha256": "17fde43f0108fd33cbf92b568351b9ba7b2b9bfc02f6347395e5f42472a84397"
+    },
+    {
+      "path": "src/agent/prompts/agent_prompt.py",
+      "sha256": "b952cb36485891dff69f8539b217fd124bca0909878063c8dd0f09d958b47fb1"
+    },
+    {
+      "path": "src/agent/agents/activities_agent.py",
+      "sha256": "981f44c6161c901f7029791080cfc31613950ed6d3197ef7bd10835d68426253"
+    },
+    {
+      "path": "src/tools/google_maps.py",
+      "sha256": "9bcffec5134a1cc49a362ed3c1ae83dca4265b323a057694b12480ff7a2641cc"
+    }
+  ]
+}

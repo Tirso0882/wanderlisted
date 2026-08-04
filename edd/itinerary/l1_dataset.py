@@ -17,7 +17,9 @@ DATASET: list[dict] = [
                 "scheduled_places.2.0.address": "1 Evidence Street, Paris",
                 "scheduled_places.2.0.website_url": "https://museum.example",
                 "scheduled_places.2.0.google_maps_url": "https://maps.example/museum-1",
-                "scheduled_places.2.0.photo_urls": ["https://images.example/museum-1.jpg"],
+                "scheduled_places.2.0.photo_urls": [
+                    "https://images.example/museum-1.jpg"
+                ],
             }
         },
     },
@@ -97,9 +99,7 @@ DATASET: list[dict] = [
                 "scheduled_source_ids.2": ["activities:paris-stop"],
                 "scheduled_source_ids.3": ["activities:lyon-stop"],
             },
-            "contains": {
-                "missing_constraints": ["day_3_intercity_transfer_time"]
-            },
+            "contains": {"missing_constraints": ["day_3_intercity_transfer_time"]},
         },
     },
     {
@@ -160,7 +160,11 @@ DATASET: list[dict] = [
                 "status": "completed",
                 "scheduled_starts.2": ["09:15", "11:00", "13:15"],
             },
-            "contains": {"assumptions.2": ["A 30-minute rest break follows every two stops for this party."]},
+            "contains": {
+                "assumptions.2": [
+                    "A 30-minute rest break follows every two stops for this party."
+                ]
+            },
         },
     },
     {
@@ -235,7 +239,9 @@ DATASET: list[dict] = [
         "scenario": "hallucination_unselected_route",
         "expected": {
             "equals": {"status": "rejected"},
-            "contains": {"error": ["route references stops outside the selected draft"]},
+            "contains": {
+                "error": ["route references stops outside the selected draft"]
+            },
         },
     },
 ]

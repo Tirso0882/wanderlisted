@@ -1,0 +1,85 @@
+{
+  "artifact_sha256": "859104102fee55cd2896270b6a8bd8bbd369f80e726ff830b81eec457d505bfd",
+  "baseline_name": "2026-08-04-system-refactor-offline-v1",
+  "cache_status": "not_used",
+  "commands": [
+    "python -m pytest tests/test_edd_hotels.py -q"
+  ],
+  "component": "hotels",
+  "created_at": "2026-08-04T09:15:35.378695+00:00",
+  "dataset_case_count": 40,
+  "dataset_version": "2.0.0",
+  "evidence_kind": "evaluator_contract_only",
+  "external_calls": 0,
+  "kind": "edd-offline-contract-baseline",
+  "metrics": {
+    "contract_tests_failed": 0,
+    "contract_tests_passed": 16,
+    "dataset_cases_executed": null,
+    "dataset_cases_passed": null
+  },
+  "model_quality_claim": false,
+  "schema_version": 1,
+  "sources": [
+    {
+      "path": "edd/offline_baselines.py",
+      "sha256": "74bedc6fdf609f7e3eae0ed0d9b8f321927ef41270a36ede13d171514c2b560e"
+    },
+    {
+      "path": "pyproject.toml",
+      "sha256": "5e9bed415b7342b63eaffbf7e9e4090256b5af91ce23392b69574bbd1e501735"
+    },
+    {
+      "path": "uv.lock",
+      "sha256": "bf593afeed76ba288579160b87be49e1bbae31bf20b2033185358bb6c35585ce"
+    },
+    {
+      "path": "tests/test_edd_hotels.py",
+      "sha256": "08ae1507d9f5bb35bfb87cad6f5f5e35130b68669dd6970bb392022bbebba888"
+    },
+    {
+      "path": "edd/hotels/l1_dataset.py",
+      "sha256": "d00de09902bb48bcd36f235265a1abd2a311c129e2a897a811db1a24607d2721"
+    },
+    {
+      "path": "edd/hotels/l1_evaluate.py",
+      "sha256": "83dc2cc11b1da58ebbed76346fa3358a6625b7971c1b71f734e0a6e904b354a8"
+    },
+    {
+      "path": "edd/baseline_config.py",
+      "sha256": "70751b65946c5fe472f797b340343f50ad510e8703243176429298e7d5875c8f"
+    },
+    {
+      "path": "edd/hotels/run_utils.py",
+      "sha256": "1df79aad3a2d04690309e61053086753f944a6cb0a797fb1a56ad8c52fce7952"
+    },
+    {
+      "path": "edd/harness.py",
+      "sha256": "31b73fe1de12617e1c6626ee5f43286583d0857f2442302f7f2a7a37dc254a21"
+    },
+    {
+      "path": "src/agent/llm.py",
+      "sha256": "17fde43f0108fd33cbf92b568351b9ba7b2b9bfc02f6347395e5f42472a84397"
+    },
+    {
+      "path": "src/agent/prompts/agent_prompt.py",
+      "sha256": "b952cb36485891dff69f8539b217fd124bca0909878063c8dd0f09d958b47fb1"
+    },
+    {
+      "path": "src/agent/agents/hotels_agent.py",
+      "sha256": "1c3ed18bdb064f0ed0dd26dd0ef6236839022d5341f7a8d45e36bca8ecf1d251"
+    },
+    {
+      "path": "src/tools/hotels_hotelbeds.py",
+      "sha256": "d48ff8e6d0a05690ec7e4508763d464778ef2fa207d550e197149b77fedbe75c"
+    },
+    {
+      "path": "src/tools/activities.py",
+      "sha256": "cd163a210ee0777605da5a02b20fa504b775e33ca751cfce5854213ab593c723"
+    },
+    {
+      "path": "src/tools/google_maps.py",
+      "sha256": "9bcffec5134a1cc49a362ed3c1ae83dca4265b323a057694b12480ff7a2641cc"
+    }
+  ]
+}
