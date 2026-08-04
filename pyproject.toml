@@ -8,8 +8,9 @@ requires-python = ">=3.12"
 pythonpath = ["."]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+addopts = "-m 'not integration'"
 markers = [
-    "integration: tests that call live external APIs (deselect with -m 'not integration')",
+    "integration: tests that call live external APIs (deselected by default; run explicitly with -m integration)",
 ]
 filterwarnings = [
     "ignore::UserWarning",

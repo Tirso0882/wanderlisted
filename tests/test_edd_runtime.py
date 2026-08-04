@@ -33,6 +33,7 @@ assert tracing_is_enabled() is False
         "edd.activities.l1_run",
         "edd.transportation.l1_run",
         "edd.readiness.l1_run",
+        "edd.itinerary.l1_run",
     ],
 )
 def test_layer1_runner_disables_tracing(module_name):

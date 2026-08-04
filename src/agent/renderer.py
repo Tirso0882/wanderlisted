@@ -16,9 +16,15 @@ from typing import Any
 from jinja2 import Environment, FileSystemLoader
 
 from custom_logging import AppLogger
+from src.models import BudgetBreakdown, DraftItinerary, TripRequest, TripSkeleton
 from src.models.itinerary import (
+    FlightOption,
+    FlightSegment,
+    HotelOption,
+    ItineraryPlan,
     TripHandbook,
 )
+from src.readiness import TravelReadinessReport
 
 logger = AppLogger(logger_name="agent.renderer", level="DEBUG")
 
@@ -226,81 +232,186 @@ class HandbookRenderer:
         *,
         run_id: str = "",
     ) -> TripHandbook:
-        """Parse ``TravelAgentState`` dict into a ``TripHandbook``.
-
-        This is the core assembly step — it reads free-text agent outputs
-        and the state metadata to populate every field.
-        """
+        """Build a handbook exclusively from validated structured artifacts."""
         components = state.get("itinerary_components", {})
-        destinations = state.get("destinations", [])
-        start_date = state.get("start_date", "")
-        season = _get_season(start_date)
+        request = TripRequest.model_validate(state.get("trip_request", {}))
+        skeleton = TripSkeleton.model_validate(
+            components.get("trip_skeleton_structured", {})
+        )
+        draft = DraftItinerary.model_validate(
+            components.get("draft_itinerary_structured", {})
+        )
+        plan = ItineraryPlan.model_validate(components.get("itinerary_structured", {}))
+        raw_budget = components.get("budget_structured")
+        budget = BudgetBreakdown.model_validate(raw_budget) if raw_budget else None
+        raw_readiness = components.get("readiness", {}).get("data") or components.get(
+            "readiness_preflight", {}
+        ).get("data")
+        readiness = (
+            TravelReadinessReport.model_validate(raw_readiness)
+            if raw_readiness
+            else TravelReadinessReport()
+        )
+        destinations = list(request.destinations) or list(readiness.destinations)
+        season = _get_season(plan.start_date)
         palette = _pick_palette(destinations, season)
 
+        selected_flight = skeleton.selected_flight
+        flights: list[FlightOption] = []
+        budget_items = {
+            item.source_id: item
+            for item in (budget.line_items if budget else [])
+            if item.amount_usd is not None and not item.estimated
+        }
+        if selected_flight is not None:
+            flight_cost = 0.0
+            line_item = budget_items.get(selected_flight.offer_id)
+            if line_item is not None and line_item.amount_usd is not None:
+                flight_cost = float(line_item.amount_usd)
+            elif selected_flight.currency == "USD":
+                try:
+                    flight_cost = float(selected_flight.total_amount)
+                except (TypeError, ValueError):
+                    flight_cost = 0.0
+            flights.append(
+                FlightOption(
+                    outbound=[
+                        FlightSegment(
+                            carrier=selected_flight.airline_name,
+                            departure_airport=selected_flight.origin,
+                            arrival_airport=selected_flight.destination,
+                        )
+                    ],
+                    inbound=[
+                        FlightSegment(
+                            carrier=selected_flight.airline_name,
+                            departure_airport=selected_flight.destination,
+                            arrival_airport=selected_flight.origin,
+                        )
+                    ],
+                    total_price_usd=flight_cost,
+                    currency="USD",
+                )
+            )
+
+        selected_by_stay = {
+            item.stay_sequence: item for item in draft.selected_accommodations
+        }
+        draft_by_day = {item.day_number: item for item in draft.days}
+        hotels: list[HotelOption] = []
+        for stay in skeleton.stays:
+            selected = selected_by_stay.get(stay.sequence)
+            if selected is None:
+                continue
+            first_day_number = (stay.check_in - skeleton.start_date).days + 1
+            fallback_ref = (
+                draft_by_day.get(first_day_number).start_location
+                if draft_by_day.get(first_day_number)
+                else None
+            )
+            hotel_cost = 0.0
+            line_item = budget_items.get(selected.rate_key)
+            if line_item is not None and line_item.amount_usd is not None:
+                hotel_cost = float(line_item.amount_usd)
+            elif (
+                selected.price_evidence is not None
+                and selected.price_evidence.money.currency == "USD"
+            ):
+                try:
+                    hotel_cost = float(selected.price_evidence.money.amount)
+                except (TypeError, ValueError):
+                    hotel_cost = 0.0
+            hotels.append(
+                HotelOption(
+                    name=selected.name,
+                    price_per_night_usd=(
+                        round(hotel_cost / stay.nights, 2) if stay.nights else 0
+                    ),
+                    total_price_usd=hotel_cost,
+                    check_in=stay.check_in.isoformat(),
+                    check_out=stay.check_out.isoformat(),
+                    latitude=fallback_ref.latitude if fallback_ref else 0,
+                    longitude=fallback_ref.longitude if fallback_ref else 0,
+                    photo_urls=fallback_ref.photo_urls if fallback_ref else [],
+                    google_maps_url=(
+                        fallback_ref.google_maps_url if fallback_ref else ""
+                    ),
+                    website_url=fallback_ref.website_url if fallback_ref else "",
+                    description=fallback_ref.description if fallback_ref else "",
+                )
+            )
+
+        route_cities = list(dict.fromkeys(stay.city for stay in skeleton.stays))
+        if skeleton.exit_city and skeleton.exit_city not in route_cities:
+            route_cities.append(skeleton.exit_city)
+        route_transport = list(
+            dict.fromkeys(
+                str(step.mode)
+                for day in plan.days
+                for block in day.time_blocks
+                for step in block.transit
+            )
+        )
+
         handbook = TripHandbook(
+            trip_title=(
+                "Trip to "
+                + ", ".join(destination.title() for destination in destinations)
+                if destinations
+                else "Your Travel Handbook"
+            ),
+            origin_city=request.origin_city,
             destinations=destinations,
-            travel_style=state.get("travel_style", ""),
+            start_date=plan.start_date,
+            end_date=plan.end_date,
+            total_budget_usd=budget.total if budget else 0,
+            travel_style=request.travel_style or state.get("travel_style", ""),
             group_type=state.get("group_type", ""),
-            dietary_restrictions=state.get("dietary_restrictions", []),
-            accessibility_needs=state.get("accessibility_needs", []),
+            dietary_restrictions=request.dietary_restrictions,
+            accessibility_needs=request.accessibility_needs,
+            route_cities=route_cities,
+            route_transport=route_transport,
+            flights=flights,
+            hotels=hotels,
+            days=list(plan.days),
+            safety=readiness.safety,
+            culture=readiness.culture,
+            packing=list(readiness.packing_constraints),
+            local_currency_code=readiness.safety.currency_code,
             theme_accent_color=palette.accent,
             hero_gradient_from=palette.gradient_from,
             hero_gradient_to=palette.gradient_to,
             hero_emoji=palette.hero_emoji,
             season=season,
-            generated_at=datetime.now().strftime("%B %d, %Y at %H:%M"),
+            generated_at=readiness.generated_at if raw_readiness else "",
             langsmith_run_id=run_id,
         )
 
-        # ── Trip title ───────────────────────────────────────────
-        if destinations:
-            dest_str = ", ".join(d.title() for d in destinations)
-            handbook.trip_title = f"Trip to {dest_str}"
-        else:
-            handbook.trip_title = "Your Travel Handbook"
-
         # ── Budget ───────────────────────────────────────────────
-        budget_data = components.get("budget_structured")
-        if budget_data and isinstance(budget_data, dict):
+        if budget is not None:
             # Inline handbook totals are the validated USD base values. Requested
             # display-currency values are carried separately for newer clients.
-            handbook.budget_flights = budget_data.get("flights", 0)
-            handbook.budget_accommodation = budget_data.get("accommodation", 0)
-            handbook.budget_transport = budget_data.get("transport", 0)
-            handbook.budget_meals = budget_data.get("meals", 0)
-            handbook.budget_activities = budget_data.get("activities", 0)
-            handbook.budget_misc = budget_data.get("misc", 0)
-            handbook.budget_total = budget_data.get("total", 0)
-            handbook.budget_per_person = budget_data.get("per_person", 0)
-            handbook.budget_summary = budget_data.get("summary", "")
-            handbook.budget_base_currency = budget_data.get("base_currency", "USD")
-            handbook.budget_display_currency = budget_data.get(
-                "display_currency", handbook.budget_base_currency
+            handbook.budget_flights = budget.flights
+            handbook.budget_accommodation = budget.accommodation
+            handbook.budget_transport = budget.transport
+            handbook.budget_meals = budget.meals
+            handbook.budget_activities = budget.activities
+            handbook.budget_misc = budget.misc
+            handbook.budget_total = budget.total
+            handbook.budget_per_person = budget.per_person
+            handbook.budget_summary = budget.summary
+            handbook.budget_base_currency = budget.base_currency
+            handbook.budget_display_currency = budget.display_currency
+            handbook.budget_display_breakdown = budget.display_breakdown
+            handbook.budget_coverage_status = budget.coverage_status
+            handbook.budget_missing_categories = list(budget.missing_categories)
+            handbook.budget_estimated_categories = list(budget.estimated_categories)
+            handbook.budget_assumptions = list(budget.assumptions)
+            handbook.budget_reserve_recommendation = budget.reserve_recommendation
+            handbook.budget_display_reserve_recommendation = (
+                budget.display_reserve_recommendation
             )
-            handbook.budget_display_breakdown = budget_data.get("display_breakdown")
-            handbook.budget_coverage_status = budget_data.get(
-                "coverage_status", "partial"
-            )
-            handbook.budget_missing_categories = budget_data.get(
-                "missing_categories", []
-            )
-            handbook.budget_estimated_categories = budget_data.get(
-                "estimated_categories", []
-            )
-            handbook.budget_assumptions = budget_data.get("assumptions", [])
-            handbook.budget_reserve_recommendation = budget_data.get(
-                "reserve_recommendation", 0
-            )
-            handbook.budget_display_reserve_recommendation = budget_data.get(
-                "display_reserve_recommendation"
-            )
-            handbook.budget_contingency_included = budget_data.get(
-                "contingency_included", False
-            )
-
-        # ── Route cities (from destinations) ─────────────────────
-        if destinations:
-            handbook.route_cities = [d.title() for d in destinations]
+            handbook.budget_contingency_included = budget.contingency_included
 
         logger.info(
             "Handbook built: title=%s destinations=%s budget_total=%.0f",

@@ -7,6 +7,9 @@ the Jinja2 template renderer.
 
 from __future__ import annotations
 
+from datetime import date
+from enum import StrEnum
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from src.models.enums import (
@@ -21,6 +24,107 @@ from src.models.enums import (
 )
 from src.models.pricing import BudgetCategory, PriceEvidence, SelectionStatus
 from src.models.budget import BudgetAmounts, BudgetCoverageStatus
+
+
+class ItineraryCoverageStatus(StrEnum):
+    """How completely canonical artifacts support the compiled itinerary."""
+
+    COMPLETE = "complete"
+    PARTIAL = "partial"
+    BLOCKED = "blocked"
+
+
+class FeasibilityStatus(StrEnum):
+    """Strength of the schedule-feasibility claim."""
+
+    VERIFIED = "verified"
+    NEEDS_REVIEW = "needs_review"
+    INFEASIBLE = "infeasible"
+
+
+class PlaceOpeningPeriod(BaseModel):
+    """One regular local-time opening interval from Google Places."""
+
+    open_day: int = Field(ge=0, le=6)  # Google: Sunday=0
+    open_time: str = Field(pattern=r"^\d{2}:\d{2}$")
+    close_day: int = Field(ge=0, le=6)
+    close_time: str = Field(pattern=r"^\d{2}:\d{2}$")
+
+
+class PlaceEvidence(BaseModel):
+    """Immutable provider evidence from which selected place refs are resolved."""
+
+    source_id: str = Field(min_length=1)
+    source_component: str = ""
+    place_id: str = ""
+    name: str = Field(min_length=1)
+    search_context: str = ""
+    city: str = ""
+    address: str = ""
+    latitude: float = 0.0
+    longitude: float = 0.0
+    category: str = ""
+    types: list[str] = Field(default_factory=list)
+    rating: float | None = None
+    review_count: int = Field(default=0, ge=0)
+    price_level: str = ""
+    description: str = ""
+    website_url: str = ""
+    google_maps_url: str = ""
+    photo_urls: list[str] = Field(default_factory=list)
+    opening_hours: list[str] = Field(default_factory=list)
+    opening_periods: list[PlaceOpeningPeriod] = Field(default_factory=list)
+    utc_offset_minutes: int | None = None
+    estimated_duration_minutes: int = Field(default=0, ge=0)
+
+
+class HotelEvidence(BaseModel):
+    """Provider-backed hotel rate and location used by the selection resolver."""
+
+    source_id: str = Field(min_length=1)
+    rate_key: str = Field(min_length=1)
+    place_id: str = ""
+    name: str = Field(min_length=1)
+    city_code: str = ""
+    destination_name: str = ""
+    neighbourhood: str = ""
+    address: str = ""
+    latitude: float = 0.0
+    longitude: float = 0.0
+    star_rating: int = Field(default=0, ge=0, le=5)
+    room_name: str = ""
+    description: str = ""
+    website_url: str = ""
+    google_maps_url: str = ""
+    photo_urls: list[str] = Field(default_factory=list)
+    check_in: str = ""
+    check_out: str = ""
+    amount: str = "0"
+    currency: str = "USD"
+
+    @field_validator("currency", mode="before")
+    @classmethod
+    def _normalise_hotel_currency(cls, value: str) -> str:
+        return value.strip().upper()[:3] if isinstance(value, str) else value
+
+
+class DaySelectionProposal(BaseModel):
+    """LLM decision containing references only; facts are resolved in code."""
+
+    day_number: int = Field(ge=1)
+    stop_source_ids: list[str] = Field(default_factory=list, max_length=5)
+    preferred_mode: TransitMode = TransitMode.TRANSIT
+
+
+class AccommodationSelectionProposal(BaseModel):
+    stay_sequence: int = Field(ge=1)
+    rate_key: str = Field(min_length=1)
+
+
+class ItinerarySelectionProposal(BaseModel):
+    days: list[DaySelectionProposal] = Field(default_factory=list)
+    accommodations: list[AccommodationSelectionProposal] = Field(default_factory=list)
+    selection_notes: list[str] = Field(default_factory=list)
 
 
 # ── Flights ──────────────────────────────────────────────────────────────
@@ -124,6 +228,8 @@ class HotelOption(BaseModel):
 class PlaceCard(BaseModel):
     """Unified model for activities, restaurants, and attractions."""
 
+    source_component: str = ""
+    source_id: str = ""
     name: str = ""
     category: str = ""
     rating: float | None = None
@@ -139,6 +245,9 @@ class PlaceCard(BaseModel):
     longitude: float = 0.0
     estimated_cost_usd: float = 0.0
     estimated_duration_minutes: int = 60
+    scheduled_start: str = ""
+    scheduled_end: str = ""
+    duration_basis: str = ""
 
     @field_validator("rating", mode="before")
     @classmethod
@@ -167,12 +276,24 @@ class PlaceRef(BaseModel):
     """Stable reference to a selected hotel, activity, or restaurant."""
 
     name: str
+    source_component: str = ""
+    source_id: str = ""
     address: str = ""
     place_id: str = ""
     latitude: float = 0.0
     longitude: float = 0.0
     category: str = ""
     price_level: str = ""
+    rating: float | None = None
+    review_count: int = Field(default=0, ge=0)
+    description: str = ""
+    website_url: str = ""
+    google_maps_url: str = ""
+    photo_urls: list[str] = Field(default_factory=list)
+    opening_hours: list[str] = Field(default_factory=list)
+    opening_periods: list[PlaceOpeningPeriod] = Field(default_factory=list)
+    utc_offset_minutes: int | None = None
+    estimated_duration_minutes: int = Field(default=0, ge=0)
     price_evidence: PriceEvidence | None = None
 
     def route_location(self) -> str:
@@ -245,6 +366,7 @@ class RouteLeg(BaseModel):
     mode: TransitMode = TransitMode.TRANSIT
     distance_meters: int = Field(default=0, ge=0)
     duration_seconds: int = Field(default=0, ge=0)
+    route_leg_index: int | None = Field(default=None, ge=0)
     instructions: list[str] = Field(default_factory=list)
 
 
@@ -282,6 +404,12 @@ class TransitStep(BaseModel):
     instructions: str = ""
     booking_url: str = ""
     fare_estimate_usd: float = 0.0
+    distance_meters: int = Field(default=0, ge=0)
+    duration_seconds: int = Field(default=0, ge=0)
+    route_leg_index: int = Field(default=0, ge=0)
+    source_day_number: int = Field(default=0, ge=0)
+    scheduled_start: str = ""
+    scheduled_end: str = ""
 
     @field_validator("fare_estimate_usd", mode="after")
     @classmethod
@@ -322,6 +450,8 @@ class TimeBlock(BaseModel):
     restaurant: PlaceCard | None = None
     transit: list[TransitStep] = Field(default_factory=list)
     subtotal_usd: float = 0.0
+    start_time: str = ""
+    end_time: str = ""
 
     @field_validator("subtotal_usd", mode="after")
     @classmethod
@@ -339,11 +469,54 @@ class DayPlan(BaseModel):
     daily_cost_usd: float = 0.0
     walking_km: float = 0.0
     route_map_url: str = ""  # Maps Embed API directions URL for the day's route
+    feasibility_status: FeasibilityStatus = FeasibilityStatus.NEEDS_REVIEW
+    feasibility_warnings: list[str] = Field(default_factory=list)
+    assumptions: list[str] = Field(default_factory=list)
+    cost_coverage: str = "unavailable"
+    unscheduled_stops: list[PlaceCard] = Field(default_factory=list)
 
     @field_validator("daily_cost_usd", "walking_km", mode="after")
     @classmethod
     def _non_negative_float(cls, v: float) -> float:
         return max(0.0, v)
+
+
+class ItineraryPlan(BaseModel):
+    """Versioned, validated source of truth for itinerary consumers."""
+
+    schema_version: int = 1
+    start_date: str
+    end_date: str
+    duration_days: int = Field(ge=1)
+    days: list[DayPlan] = Field(default_factory=list)
+    coverage_status: ItineraryCoverageStatus = ItineraryCoverageStatus.PARTIAL
+    feasibility_status: FeasibilityStatus = FeasibilityStatus.NEEDS_REVIEW
+    missing_constraints: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    artifact_fingerprint: str = Field(min_length=1)
+    request_revision: int = Field(default=0, ge=0)
+    total_budget_usd: float = Field(default=0, ge=0)
+
+    @model_validator(mode="after")
+    def _validate_calendar(self) -> "ItineraryPlan":
+        start = date.fromisoformat(self.start_date)
+        end = date.fromisoformat(self.end_date)
+        expected_duration = (end - start).days + 1
+        if expected_duration != self.duration_days:
+            raise ValueError("itinerary duration must match its inclusive date range")
+        if len(self.days) != self.duration_days:
+            raise ValueError("itinerary must contain exactly one plan for every date")
+        expected_numbers = list(range(1, self.duration_days + 1))
+        actual_numbers = [item.day_number for item in self.days]
+        if actual_numbers != expected_numbers:
+            raise ValueError("itinerary day numbers must be contiguous and ordered")
+        expected_dates = [
+            date.fromordinal(start.toordinal() + offset).isoformat()
+            for offset in range(self.duration_days)
+        ]
+        if [item.date for item in self.days] != expected_dates:
+            raise ValueError("itinerary day dates must match the canonical calendar")
+        return self
 
 
 # ── Safety ───────────────────────────────────────────────────────────────

@@ -279,6 +279,39 @@ class TestSearchHotelsHotelbeds:
         assert "1250" in result
 
     @respx.mock
+    async def test_emits_typed_rate_and_location_evidence_from_same_response(
+        self, monkeypatch
+    ):
+        monkeypatch.setenv("HOTELBEDS_API_KEY", "test-key")
+        monkeypatch.setenv("HOTELBEDS_API_SECRET", "test-secret")
+        monkeypatch.setenv("HOTELBEDS_BASE_URL", "https://api.test.hotelbeds.com")
+        route = respx.post("https://api.test.hotelbeds.com/hotel-api/1.0/hotels").mock(
+            return_value=Response(200, json=_MOCK_AVAILABILITY_RESPONSE)
+        )
+
+        result = await search_hotels_hotelbeds.ainvoke(
+            {
+                "city_code": "TYO",
+                "check_in_date": "2026-06-15",
+                "check_out_date": "2026-06-20",
+                "adults": 2,
+            }
+        )
+
+        payload = json.loads(result.split("HOTEL_RESULTS_JSON:\n", 1)[1])
+        evidence = payload["options"][0]
+        assert len(route.calls) == 1
+        assert evidence["source_id"] == evidence["rate_key"]
+        assert evidence["name"] == "Ryokan Katsutaro"
+        assert evidence["city_code"] == "TYO"
+        assert evidence["latitude"] == 35.722
+        assert evidence["longitude"] == 139.766
+        assert evidence["check_in"] == "2026-06-15"
+        assert evidence["check_out"] == "2026-06-20"
+        assert evidence["amount"] == "485.00"
+        assert evidence["currency"] == "USD"
+
+    @respx.mock
     async def test_returns_cancellation_info(self, monkeypatch):
         monkeypatch.setenv("HOTELBEDS_API_KEY", "test-key")
         monkeypatch.setenv("HOTELBEDS_API_SECRET", "test-secret")

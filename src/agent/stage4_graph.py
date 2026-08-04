@@ -42,8 +42,6 @@ Usage:
 import asyncio
 import json
 import os
-import re
-from typing import Any
 
 import functools
 
@@ -59,14 +57,6 @@ from src.agent.nodes import component_gate_node, intake_node, trip_skeleton_node
 from src.agent.policies import classify_component_result, requested_agents
 from src.agent.state import TravelAgentState
 from src.agent.prompts import (
-    DRAFT_ITINERARY_SYSTEM_PROMPT,
-    HANDBOOK_DAYS_EXTRACTION_PROMPT,
-    HANDBOOK_EXTRACTION_RETRY_SUFFIX,
-    HANDBOOK_FLIGHTS_EXTRACTION_PROMPT,
-    HANDBOOK_HOTELS_EXTRACTION_PROMPT,
-    HANDBOOK_METADATA_EXTRACTION_PROMPT,
-    HANDBOOK_MISSING_DAYS_EXTRACTION_PROMPT,
-    HANDBOOK_PACKING_EXTRACTION_PROMPT,
     HOTEL_STAY_SEARCH_PROMPT,
     READINESS_CONSTRAINTS_CONTEXT_PROMPT,
     SHALLOW_REPLY_SYSTEM_PROMPT,
@@ -100,15 +90,18 @@ from src.models import (
 from src.budget import BudgetContext
 from src.models.itinerary import (
     DayRoute,
-    DayPlan,
     DraftItinerary,
-    FlightOption,
-    HotelOption,
-    PackingItem,
+    ItineraryPlan,
     PlaceRef,
     RouteLeg,
     RoutePlan,
-    TripHandbook,
+)
+from src.itinerary import (
+    ItineraryAssemblyContext,
+    ItinerarySelectionContext,
+    ItineraryValidationError,
+    build_evidence_catalog,
+    compute_artifact_fingerprint,
 )
 from src.agent.renderer import HandbookRenderer
 from src.readiness import TravelReadinessReport
@@ -684,6 +677,7 @@ async def human_review_node(state: TravelAgentState) -> dict:
 
     components = state.get("itinerary_components", {})
     itinerary_data = components.get("itinerary", {})
+    structured_plan = components.get("itinerary_structured")
 
     # Build a summary of what was assembled
     summary_parts = []
@@ -705,14 +699,39 @@ async def human_review_node(state: TravelAgentState) -> dict:
         summary_parts.append("📅 Itinerary: assembled")
 
     itinerary_preview = ""
-    for m in itinerary_data.get("messages", []):
-        if isinstance(m, AIMessage) and m.content:
-            itinerary_preview += _extract_text_content(m.content)[:2000]
-            break
+    if structured_plan:
+        try:
+            plan = ItineraryPlan.model_validate(structured_plan)
+            preview_lines = [
+                f"{plan.start_date} to {plan.end_date} — {plan.feasibility_status}"
+            ]
+            for day in plan.days:
+                names = [
+                    place.name
+                    for block in day.time_blocks
+                    for place in (
+                        [*block.activities]
+                        + ([block.restaurant] if block.restaurant else [])
+                    )
+                ]
+                preview_lines.append(
+                    f"Day {day.day_number} ({day.date}, {day.city}): "
+                    + (", ".join(names) if names else "no scheduled stops")
+                )
+            itinerary_preview = "\n".join(preview_lines)[:2000]
+        except ValueError:
+            itinerary_preview = ""
+    if not itinerary_preview:
+        for m in itinerary_data.get("messages", []):
+            if isinstance(m, AIMessage) and m.content:
+                itinerary_preview += _extract_text_content(m.content)[:2000]
+                break
 
     raw_decision = interrupt(
         {
             "type": "itinerary_review",
+            "gate": "human_review",
+            "summary": "Review the validated, typed itinerary before handbook generation.",
             "message": "📋 Your travel plan is ready for review before generating the final handbook.",
             "components_available": summary_parts,
             "itinerary_preview": itinerary_preview[:2000],
@@ -742,15 +761,61 @@ async def human_review_node(state: TravelAgentState) -> dict:
 
     feedback = decision.get("feedback", "")
     if feedback:
+        unsupported_edits = (
+            "change the date",
+            "change dates",
+            "different dates",
+            "extend the trip",
+            "shorten the trip",
+            "add a city",
+            "new destination",
+            "change destination",
+            "change the flight",
+            "different flight",
+            "new flight",
+            "change the budget",
+            "increase the budget",
+        )
+        if any(phrase in feedback.casefold() for phrase in unsupported_edits):
+            return {
+                "messages": [
+                    AIMessage(
+                        content=(
+                            "That edit changes a canonical trip input or requires new "
+                            "provider evidence. Please confirm the new trip details so "
+                            "the affected specialists can run explicitly."
+                        )
+                    )
+                ],
+                "current_agent": "human_review:needs_clarification",
+                "workflow_status": "needs_user_input",
+                "pending_questions": [
+                    "Please confirm the new dates, destination, flight, or budget details."
+                ],
+                "hitl_action": "needs_clarification",
+                "human_feedback": feedback,
+            }
+        edit_routing = list(components.get("routing", []))
+        for agent_name in (
+            DEPENDENT_TRANSPORTATION_AGENT,
+            "BudgetAgent",
+            "ItineraryAgent",
+        ):
+            if agent_name not in edit_routing:
+                edit_routing.append(agent_name)
         return {
             "messages": [
                 AIMessage(
-                    content=f"📝 Noted your feedback: {feedback}. Generating handbook with adjustments."
+                    content=(
+                        f"📝 Noted your feedback: {feedback}. "
+                        "I will revalidate the selection and dependent routes before rendering."
+                    )
                 )
             ],
             "current_agent": "human_review",
             "hitl_action": "edited",
             "human_feedback": feedback,
+            "itinerary_components": {"routing": edit_routing},
         }
 
     return {
@@ -928,11 +993,6 @@ async def supervisor_node(state: TravelAgentState, *, supervisor_agent) -> dict:
     authoritative_agents = requested_agents(canonical_request)
     if authoritative_agents:
         decision.agents = authoritative_agents
-
-    # Ensure ItineraryAgent is always included when BudgetAgent is routed
-    # (budget → itinerary → render_handbook is the required pipeline)
-    if "BudgetAgent" in decision.agents and "ItineraryAgent" not in decision.agents:
-        decision.agents.append("ItineraryAgent")
 
     # Merge user profile: keep existing values, override only if new non-empty
     new_destinations = decision.destinations or state.get("destinations", [])
@@ -1418,6 +1478,7 @@ async def transportation_node(state: TravelAgentState, *, executor) -> dict:
                 mode=day.preferred_mode,
                 distance_meters=leg["distance_meters"],
                 duration_seconds=leg["duration_seconds"],
+                route_leg_index=leg.get("route_leg_index"),
                 instructions=leg["instructions"],
             )
             for leg in result["legs"]
@@ -1447,7 +1508,6 @@ async def transportation_node(state: TravelAgentState, *, executor) -> dict:
             "messages": [route_message],
             "current_agent": "transportation",
             "itinerary_components": {
-                **components,
                 "transportation": {"messages": [route_message]},
                 "route_plan_structured": route_plan.model_dump(),
                 "completed_agents": components.get("completed_agents", [])
@@ -1460,8 +1520,13 @@ async def transportation_node(state: TravelAgentState, *, executor) -> dict:
 @traceable(
     run_type="chain", name="draft_itinerary_node", tags=["wanderlisted", "draft"]
 )
-async def draft_itinerary_node(state: TravelAgentState, *, llm) -> dict:
-    """Select exact hotels and stops before Transportation computes routes."""
+async def draft_itinerary_node(
+    state: TravelAgentState,
+    *,
+    agent: ItineraryAgent | None = None,
+    llm=None,
+) -> dict:
+    """Select provider source IDs, then resolve them to an immutable draft."""
     components = state.get("itinerary_components", {})
 
     def _component_text(key: str) -> str:
@@ -1471,51 +1536,120 @@ async def draft_itinerary_node(state: TravelAgentState, *, llm) -> dict:
             if isinstance(message, (AIMessage, ToolMessage)) and message.content
         )
 
-    evidence = "\n\n".join(
+    raw_evidence = "\n\n".join(
         f"[{key.upper()}]\n{text}"
-        for key in ("trip_skeleton", "hotels", "activities", "restaurants")
+        for key in ("hotels", "activities", "restaurants")
         if (text := _component_text(key))
     )
-    readiness_constraints = build_readiness_constraints_context(state)
-    if readiness_constraints:
-        evidence = "\n\n".join(
-            part
-            for part in (
-                evidence,
-                f"[READINESS CONSTRAINTS]\n{readiness_constraints}",
-            )
-            if part
+    try:
+        request = TripRequest.model_validate(state.get("trip_request", {}))
+        skeleton = TripSkeleton.model_validate(
+            components.get("trip_skeleton_structured", {})
         )
-    if not evidence:
-        draft = DraftItinerary(selection_notes=["No routable discovery data found."])
-    else:
-        structured_llm = llm.with_structured_output(
-            DraftItinerary, method="function_calling"
+        catalog = build_evidence_catalog(components, skeleton)
+        selector = agent or ItineraryAgent(llm)
+        draft = await selector.select_draft(
+            ItinerarySelectionContext(
+                request=request,
+                skeleton=skeleton,
+                catalog=catalog,
+                feedback=state.get("human_feedback", ""),
+                raw_evidence=raw_evidence,
+            )
         )
-        try:
-            draft = await structured_llm.ainvoke(
-                [
-                    SystemMessage(content=DRAFT_ITINERARY_SYSTEM_PROMPT),
-                    SystemMessage(content=build_user_profile_context(state)),
-                    HumanMessage(content=evidence),
-                ]
+    except Exception as exc:
+        _log.warning("Typed itinerary selection failed: %s", exc)
+        errors = (
+            list(exc.errors)
+            if isinstance(exc, ItineraryValidationError)
+            else [f"{type(exc).__name__}: {exc}"]
+        )
+        message = AIMessage(
+            content="Itinerary selection failed validation: " + "; ".join(errors)
+        )
+        outcome = ComponentResult(
+            component="draft_itinerary",
+            status=ComponentStatus.FAILED,
+            message=_extract_text_content(message.content),
+            error_category=ErrorCategory.VALIDATION,
+            error_detail="; ".join(errors)[:500],
+        )
+        return {
+            "messages": [message],
+            "current_agent": "draft_itinerary:failed",
+            "itinerary_components": {
+                "draft_itinerary": {"messages": [message]},
+                "draft_itinerary_structured": None,
+            },
+            "component_results": {"draft_itinerary": outcome.model_dump(mode="json")},
+        }
+
+    feedback = state.get("human_feedback", "").strip()
+    prior_draft_data = components.get("draft_itinerary_structured")
+    if feedback and prior_draft_data:
+        prior_draft = DraftItinerary.model_validate(prior_draft_data)
+
+        def _selection_signature(value: DraftItinerary) -> tuple:
+            return (
+                tuple(
+                    (item.stay_sequence, item.rate_key)
+                    for item in value.selected_accommodations
+                ),
+                tuple(
+                    (
+                        day.day_number,
+                        tuple(stop.source_id for stop in day.stops),
+                        str(day.preferred_mode),
+                    )
+                    for day in value.days
+                ),
             )
-        except Exception as exc:
-            _log.warning("Draft itinerary extraction failed: %s", exc)
-            draft = DraftItinerary(
-                selection_notes=["Draft selection failed; route planning unavailable."]
+
+        if _selection_signature(draft) == _selection_signature(prior_draft):
+            message = AIMessage(
+                content=(
+                    "The requested edit could not be resolved from the existing "
+                    "hotel and place catalog. Please choose an available stop or "
+                    "authorize a new search."
+                )
             )
+            outcome = ComponentResult(
+                component="draft_itinerary",
+                status=ComponentStatus.NEEDS_USER_INPUT,
+                message=_extract_text_content(message.content),
+                missing_fields=["supported_catalog_edit"],
+            )
+            return {
+                "messages": [message],
+                "current_agent": "draft_itinerary:needs_user_input",
+                "workflow_status": "needs_user_input",
+                "pending_questions": [
+                    "Which existing catalog stop should be changed, or should I run a new search?"
+                ],
+                "component_results": {
+                    "draft_itinerary": outcome.model_dump(mode="json")
+                },
+            }
 
     draft_json = draft.model_dump_json(indent=2)
     draft_message = AIMessage(content=f"DRAFT_ITINERARY_JSON:\n{draft_json}")
+    outcome = ComponentResult(
+        component="draft_itinerary",
+        status=ComponentStatus.COMPLETED,
+        data=draft.model_dump(mode="json"),
+        message="Provider-backed hotels and stops selected.",
+        evidence_count=len(draft.selected_accommodations)
+        + sum(len(day.stops) for day in draft.days),
+    )
     return {
         "messages": [draft_message],
         "current_agent": "draft_itinerary",
+        "human_feedback": "",
         "itinerary_components": {
-            **components,
             "draft_itinerary": {"messages": [draft_message]},
-            "draft_itinerary_structured": draft.model_dump(),
+            "draft_itinerary_structured": draft.model_dump(mode="json"),
         },
+        "component_results": {"draft_itinerary": outcome.model_dump(mode="json")},
     }
 
 
@@ -1595,523 +1729,313 @@ async def budget_node(state: TravelAgentState, *, agent: BudgetAgent) -> dict:
 
 
 @traceable(run_type="chain", name="itinerary_node", tags=["wanderlisted", "itinerary"])
-async def itinerary_node(state: TravelAgentState, *, executor) -> dict:
-    """Sequential itinerary node — assembles itinerary from prior agent data."""
-    enriched = build_context_messages(state)
-    result = await executor.ainvoke({"messages": enriched})
-    new_msgs = result["messages"][len(enriched) :]
+async def itinerary_node(
+    state: TravelAgentState,
+    *,
+    agent: ItineraryAgent | None = None,
+    executor=None,
+) -> dict:
+    """Compile canonical artifacts; no model may rewrite factual day-plan data."""
+    # Compatibility for direct callers of the pre-typed node. Production graph
+    # always injects ``agent`` and never registers a free-form executor.
+    if agent is None and executor is not None:
+        enriched = build_context_messages(state)
+        result = await executor.ainvoke({"messages": enriched})
+        new_msgs = result["messages"][len(enriched) :]
+        components = state.get("itinerary_components", {})
+        completed = list(components.get("completed_agents", []))
+        if "ItineraryAgent" not in completed:
+            completed.append("ItineraryAgent")
+        return {
+            "messages": new_msgs,
+            "current_agent": "itinerary",
+            "itinerary_components": {
+                "itinerary": {"messages": new_msgs},
+                "completed_agents": completed,
+            },
+        }
+
     components = state.get("itinerary_components", {})
+    try:
+        request = TripRequest.model_validate(state.get("trip_request", {}))
+        skeleton = TripSkeleton.model_validate(
+            components.get("trip_skeleton_structured", {})
+        )
+        draft = DraftItinerary.model_validate(
+            components.get("draft_itinerary_structured", {})
+        )
+        route_data = components.get("route_plan_structured")
+        route_plan = RoutePlan.model_validate(route_data) if route_data else None
+        budget_data = components.get("budget_structured")
+        budget = BudgetBreakdown.model_validate(budget_data) if budget_data else None
+        readiness_data = components.get("readiness", {}).get("data") or components.get(
+            "readiness_preflight", {}
+        ).get("data")
+        readiness = (
+            TravelReadinessReport.model_validate(readiness_data)
+            if readiness_data
+            else None
+        )
+        compiler = agent or ItineraryAgent()
+        run = compiler.compile(
+            ItineraryAssemblyContext(
+                request=request,
+                skeleton=skeleton,
+                draft=draft,
+                route_plan=route_plan,
+                budget=budget,
+                readiness=readiness,
+                request_revision=state.get("request_revision", 0),
+            )
+        )
+    except Exception as exc:
+        _log.warning("Typed itinerary compilation failed: %s", exc)
+        errors = (
+            list(exc.errors)
+            if isinstance(exc, ItineraryValidationError)
+            else [f"{type(exc).__name__}: {exc}"]
+        )
+        message = AIMessage(
+            content="Itinerary compilation failed validation: " + "; ".join(errors)
+        )
+        outcome = ComponentResult(
+            component="itinerary",
+            status=ComponentStatus.FAILED,
+            message=_extract_text_content(message.content),
+            error_category=ErrorCategory.VALIDATION,
+            error_detail="; ".join(errors)[:500],
+        )
+        return {
+            "messages": [message],
+            "current_agent": "itinerary:failed",
+            "itinerary_components": {
+                "itinerary": {"messages": [message]},
+                "itinerary_structured": None,
+            },
+            "component_results": {"itinerary": outcome.model_dump(mode="json")},
+        }
+
+    message = AIMessage(content=run.message)
+    plan = run.plan.model_dump(mode="json")
+    completed = list(components.get("completed_agents", []))
+    if "ItineraryAgent" not in completed:
+        completed.append("ItineraryAgent")
+    outcome_status = (
+        ComponentStatus.COMPLETED
+        if run.plan.coverage_status == "complete"
+        else ComponentStatus.PARTIAL
+    )
+    outcome = ComponentResult(
+        component="itinerary",
+        status=outcome_status,
+        data=plan,
+        message="Typed itinerary compiled from canonical artifacts.",
+        missing_fields=run.plan.missing_constraints,
+        evidence_count=sum(
+            len(block.activities) + (1 if block.restaurant else 0)
+            for day in run.plan.days
+            for block in day.time_blocks
+        ),
+        request_fingerprint=run.plan.artifact_fingerprint,
+    )
     return {
-        "messages": new_msgs,
+        "messages": [message],
         "current_agent": "itinerary",
         "itinerary_components": {
-            **components,
-            "itinerary": result,
-            "completed_agents": components.get("completed_agents", [])
-            + ["ItineraryAgent"],
+            "itinerary": {"messages": [message]},
+            "itinerary_structured": plan,
+            "completed_agents": completed,
         },
+        "component_results": {"itinerary": outcome.model_dump(mode="json")},
     }
 
 
 @traceable(
     run_type="chain", name="render_handbook_node", tags=["wanderlisted", "render"]
 )
-async def render_handbook_node(state: TravelAgentState, *, llm) -> dict:
-    """Render the handbook, consuming structured readiness data directly."""
-    from datetime import datetime
-    from pydantic import BaseModel, Field as PydanticField
-    from src.agent.renderer import _pick_palette, _get_season
-    from src.tools.google_maps import (
-        places_photo_url,
-        directions_embed_url,
-        lookup_place_photo,
-    )
-
+async def render_handbook_node(
+    state: TravelAgentState,
+    *,
+    llm=None,
+) -> dict:
+    """Validate current typed artifacts and render without model/provider calls."""
     components = state.get("itinerary_components", {})
-    readiness_report = TravelReadinessReport()
-    raw_readiness_report = components.get("readiness", {}).get("data")
-    if raw_readiness_report:
-        try:
-            readiness_report = TravelReadinessReport.model_validate(
-                raw_readiness_report
+    raw_plan = components.get("itinerary_structured")
+    if not raw_plan:
+        message = AIMessage(
+            content=(
+                "No validated itinerary data is available, so a handbook was not "
+                "generated."
             )
-        except Exception:
-            _log.warning("render_handbook: invalid structured readiness data")
-
-    # ── Collect per-agent text ────────────────────────────────────────
-    def _agent_text(key: str) -> str:
-        if key not in components:
-            return ""
-        msgs = components[key].get("messages", [])
-        parts = []
-        for m in msgs:
-            if isinstance(m, (AIMessage, ToolMessage)) and m.content:
-                content = _extract_text_content(m.content)
-                parts.append(content)
-        return " ".join(parts)
-
-    flights_text = _agent_text("flights")
-    hotels_text = _agent_text("hotels")
-    readiness_text = _agent_text("readiness")
-    restaurants_text = _agent_text("restaurants")
-    activities_text = _agent_text("activities")
-    transportation_text = _agent_text("transportation")
-    budget_text = _agent_text("budget")
-    itinerary_text = _agent_text("itinerary")
-
-    all_text = "\n\n".join(
-        filter(
-            None,
-            [
-                f"[FLIGHTS]\n{flights_text}" if flights_text else "",
-                f"[HOTELS]\n{hotels_text}" if hotels_text else "",
-                f"[TRAVEL READINESS]\n{readiness_text}" if readiness_text else "",
-                f"[RESTAURANTS]\n{restaurants_text}" if restaurants_text else "",
-                f"[ACTIVITIES]\n{activities_text}" if activities_text else "",
-                f"[TRANSPORTATION]\n{transportation_text}"
-                if transportation_text
-                else "",
-                f"[BUDGET]\n{budget_text}" if budget_text else "",
-                f"[ITINERARY]\n{itinerary_text}" if itinerary_text else "",
-            ],
         )
-    )
-
-    # Debug: log text sizes for each section
-    for _sec_name, _sec_text in [
-        ("flights", flights_text),
-        ("hotels", hotels_text),
-        ("readiness", readiness_text),
-        ("restaurants", restaurants_text),
-        ("activities", activities_text),
-        ("transportation", transportation_text),
-        ("budget", budget_text),
-        ("itinerary", itinerary_text),
-    ]:
-        _log.debug(f"render_handbook: Section '{_sec_name}': {len(_sec_text)} chars")
-
-    if not all_text.strip():
+        outcome = ComponentResult(
+            component="handbook",
+            status=ComponentStatus.FAILED,
+            message=_extract_text_content(message.content),
+            error_category=ErrorCategory.VALIDATION,
+            error_detail="itinerary_structured is missing",
+        )
         return {
-            "messages": [
-                AIMessage(content="No agent data available to generate handbook.")
-            ],
-            "current_agent": "render_handbook",
+            "messages": [message],
+            "current_agent": "render_handbook:failed",
+            "workflow_status": "failed",
+            "itinerary_components": {"handbook_structured": None},
+            "component_results": {"handbook": outcome.model_dump(mode="json")},
         }
 
-    # ── Lightweight section-extraction models ─────────────────────────
-
-    class ExtractedFlights(BaseModel):
-        flights: list[FlightOption] = PydanticField(default_factory=list)
-
-    class ExtractedHotels(BaseModel):
-        hotels: list[HotelOption] = PydanticField(default_factory=list)
-
-    class ExtractedDays(BaseModel):
-        days: list[DayPlan] = PydanticField(default_factory=list)
-
-    class ExtractedPacking(BaseModel):
-        packing: list[PackingItem] = PydanticField(default_factory=list)
-
-    class ExtractedMeta(BaseModel):
-        trip_title: str = ""
-        origin_city: str = ""
-        start_date: str = ""
-        end_date: str = ""
-        route_cities: list[str] = PydanticField(default_factory=list)
-        route_transport: list[str] = PydanticField(default_factory=list)
-        total_budget_usd: float = 0
-        exchange_rate: float = 0
-        local_currency_code: str = ""
-
-    # ── Per-section extraction (batched to avoid rate limits) ────────
-
-    async def _extract(
-        model_cls,
-        text: str,
-        instruction: str,
-        max_retries: int = 2,
-        max_chars: int = 100_000,
-    ):
-        if not text.strip():
-            _log.debug(f"_extract({model_cls.__name__}): empty text, returning default")
-            return model_cls()
-        s_llm = llm.with_structured_output(model_cls, method="function_calling")
-        truncated = text[:max_chars]
-        msgs = [
-            SystemMessage(content=instruction),
-            HumanMessage(content=truncated),
-        ]
-        for attempt in range(max_retries + 1):
-            try:
-                result = await s_llm.ainvoke(msgs)
-                # Retry once if the primary list field came back empty
-                if result:
-                    for field_name in ("flights", "hotels", "days", "packing"):
-                        val = getattr(result, field_name, None)
-                        if isinstance(val, list) and len(val) == 0:
-                            _log.debug(
-                                f"_extract({model_cls.__name__}): empty {field_name}, retrying"
-                            )
-                            result = await s_llm.ainvoke(
-                                [
-                                    SystemMessage(
-                                        content=instruction
-                                        + HANDBOOK_EXTRACTION_RETRY_SUFFIX
-                                    ),
-                                    HumanMessage(content=truncated),
-                                ]
-                            )
-                            break
-                _log.debug(f"_extract({model_cls.__name__}): success")
-                return result
-            except Exception as exc:
-                if "429" in str(exc) and attempt < max_retries:
-                    wait = 2 ** (attempt + 1)
-                    _log.debug(
-                        f"_extract({model_cls.__name__}): rate limited, waiting {wait}s (attempt {attempt + 1})"
-                    )
-                    await asyncio.sleep(wait)
-                else:
-                    _log.error(f"_extract({model_cls.__name__}): FAILED {exc!r}")
-                    return model_cls()
-        return model_cls()
-
-    # Batch 1: smaller/faster extractions
-    flights_ex, hotels_ex, meta_ex = await asyncio.gather(
-        _extract(
-            ExtractedFlights,
-            flights_text,
-            HANDBOOK_FLIGHTS_EXTRACTION_PROMPT,
-        ),
-        _extract(
-            ExtractedHotels,
-            hotels_text,
-            HANDBOOK_HOTELS_EXTRACTION_PROMPT,
-        ),
-        _extract(
-            ExtractedMeta,
-            all_text,
-            HANDBOOK_METADATA_EXTRACTION_PROMPT,
-        ),
-    )
-
-    # Batch 2: heavier extractions (days is the biggest)
-    days_combined_text = f"{itinerary_text}\n\n{restaurants_text}\n\n{activities_text}\n\n{transportation_text}"
-    packing_text = f"{readiness_text}\n\n{activities_text}\n\n{itinerary_text}"
-    days_ex, packing_ex = await asyncio.gather(
-        _extract(
-            ExtractedDays,
-            days_combined_text,
-            HANDBOOK_DAYS_EXTRACTION_PROMPT,
-        ),
-        _extract(
-            ExtractedPacking,
-            packing_text,
-            HANDBOOK_PACKING_EXTRACTION_PROMPT,
-        ),
-    )
-
-    # ── Days completion check ─────────────────────────────────────────
-    # Detect expected trip length from the itinerary text
-    _day_nums_in_text = re.findall(r"[Dd]ay\s+(\d+)", itinerary_text)
-    expected_day_count = max((int(n) for n in _day_nums_in_text), default=0)
-    extracted_day_count = len(days_ex.days)
-    if expected_day_count > 0 and extracted_day_count < expected_day_count:
-        _log.warning(
-            "Days extraction incomplete: got %d/%d, retrying for missing days",
-            extracted_day_count,
-            expected_day_count,
+    try:
+        request = TripRequest.model_validate(state.get("trip_request", {}))
+        skeleton = TripSkeleton.model_validate(
+            components.get("trip_skeleton_structured", {})
         )
-        extracted_nums = {d.day_number for d in days_ex.days}
-        missing = [
-            n for n in range(1, expected_day_count + 1) if n not in extracted_nums
-        ]
-        if missing:
-            days_retry = await _extract(
-                ExtractedDays,
-                days_combined_text,
-                HANDBOOK_MISSING_DAYS_EXTRACTION_PROMPT.format(
-                    missing_days=missing,
-                    expected_day_count=expected_day_count,
-                ),
+        draft = DraftItinerary.model_validate(
+            components.get("draft_itinerary_structured", {})
+        )
+        route_data = components.get("route_plan_structured")
+        route_plan = RoutePlan.model_validate(route_data) if route_data else None
+        budget_data = components.get("budget_structured")
+        budget = BudgetBreakdown.model_validate(budget_data) if budget_data else None
+        readiness_data = components.get("readiness", {}).get("data") or components.get(
+            "readiness_preflight", {}
+        ).get("data")
+        readiness = (
+            TravelReadinessReport.model_validate(readiness_data)
+            if readiness_data
+            else None
+        )
+        plan = ItineraryPlan.model_validate(raw_plan)
+        expected_fingerprint = compute_artifact_fingerprint(
+            ItineraryAssemblyContext(
+                request=request,
+                skeleton=skeleton,
+                draft=draft,
+                route_plan=route_plan,
+                budget=budget,
+                readiness=readiness,
+                request_revision=state.get("request_revision", 0),
             )
-            days_ex.days.extend(days_retry.days)
-            days_ex.days.sort(key=lambda d: d.day_number)
-            _log.info(
-                "After retry: %d days extracted (expected %d)",
-                len(days_ex.days),
-                expected_day_count,
+        )
+    except (TypeError, ValueError) as exc:
+        message = AIMessage(
+            content="Handbook generation failed typed-artifact validation."
+        )
+        outcome = ComponentResult(
+            component="handbook",
+            status=ComponentStatus.FAILED,
+            message=_extract_text_content(message.content),
+            error_category=ErrorCategory.VALIDATION,
+            error_detail=str(exc)[:500],
+        )
+        return {
+            "messages": [message],
+            "current_agent": "render_handbook:failed",
+            "workflow_status": "failed",
+            "itinerary_components": {"handbook_structured": None},
+            "component_results": {"handbook": outcome.model_dump(mode="json")},
+        }
+
+    if plan.artifact_fingerprint != expected_fingerprint:
+        message = AIMessage(
+            content=(
+                "The itinerary is stale because its source artifacts changed. "
+                "Recompile the itinerary before generating the handbook."
             )
+        )
+        stale = ComponentResult(
+            component="itinerary",
+            status=ComponentStatus.STALE,
+            data=plan.model_dump(mode="json"),
+            message=_extract_text_content(message.content),
+            error_category=ErrorCategory.VALIDATION,
+            error_detail="artifact fingerprint mismatch",
+            request_fingerprint=plan.artifact_fingerprint,
+        )
+        handbook_outcome = ComponentResult(
+            component="handbook",
+            status=ComponentStatus.STALE,
+            message=_extract_text_content(message.content),
+            error_category=ErrorCategory.VALIDATION,
+            error_detail="artifact fingerprint mismatch",
+            request_fingerprint=expected_fingerprint,
+        )
+        return {
+            "messages": [message],
+            "current_agent": "render_handbook:stale",
+            "workflow_status": "stale",
+            "itinerary_components": {"handbook_structured": None},
+            "component_results": {
+                "itinerary": stale.model_dump(mode="json"),
+                "handbook": handbook_outcome.model_dump(mode="json"),
+            },
+        }
 
-    # ── Filter placeholder results ────────────────────────────────────
-    # Remove flights with no actual segment data
-    flights_ex.flights = [f for f in flights_ex.flights if f.outbound or f.inbound]
-    # Remove hotels with placeholder/hallucinated names
-    _PLACEHOLDER_PATTERNS = ("no specific", "not mentioned", "no hotel", "n/a", "none")
-    hotels_ex.hotels = [
-        h
-        for h in hotels_ex.hotels
-        if h.name and not any(p in h.name.lower() for p in _PLACEHOLDER_PATTERNS)
-    ]
+    try:
+        renderer = HandbookRenderer()
+        handbook = renderer.build_handbook(state)
+        paths = await asyncio.to_thread(renderer.write_outputs, handbook)
+    except (OSError, TypeError, ValueError) as exc:
+        message = AIMessage(content="Handbook rendering failed.")
+        outcome = ComponentResult(
+            component="handbook",
+            status=ComponentStatus.FAILED,
+            message=_extract_text_content(message.content),
+            error_category=ErrorCategory.INTERNAL,
+            error_detail=str(exc)[:500],
+            request_fingerprint=expected_fingerprint,
+        )
+        return {
+            "messages": [message],
+            "current_agent": "render_handbook:failed",
+            "workflow_status": "failed",
+            "itinerary_components": {"handbook_structured": None},
+            "component_results": {"handbook": outcome.model_dump(mode="json")},
+        }
 
-    # Attach typed provider forecasts by date; never ask an LLM to recreate them.
-    weather_by_date = {item.date: item for item in readiness_report.weather}
-    for day in days_ex.days:
-        if day.date in weather_by_date:
-            day.weather = weather_by_date[day.date]
-
-    if not packing_ex.packing:
-        packing_ex.packing = list(readiness_report.packing_constraints)
-
-    # ── Assemble TripHandbook ─────────────────────────────────────────
-    destinations = state.get("destinations", [])
-    season = _get_season(meta_ex.start_date or state.get("start_date", ""))
-    palette = _pick_palette(destinations, season)
-
-    handbook = TripHandbook(
-        # Meta
-        trip_title=meta_ex.trip_title
-        or (
-            "Trip to " + ", ".join(d.title() for d in destinations)
-            if destinations
-            else "Your Travel Handbook"
+    path_strings = {name: str(path) for name, path in paths.items()}
+    status = (
+        ComponentStatus.COMPLETED
+        if plan.coverage_status == "complete"
+        else ComponentStatus.PARTIAL
+    )
+    outcome = ComponentResult(
+        component="handbook",
+        status=status,
+        data=handbook.model_dump(mode="json"),
+        message="Deterministic handbook rendered from validated typed artifacts.",
+        missing_fields=list(plan.missing_constraints),
+        evidence_count=sum(
+            len(block.activities) + (1 if block.restaurant else 0)
+            for day in plan.days
+            for block in day.time_blocks
         ),
-        origin_city=meta_ex.origin_city,
-        destinations=destinations,
-        start_date=meta_ex.start_date,
-        end_date=meta_ex.end_date,
-        total_budget_usd=meta_ex.total_budget_usd,
-        travel_style=state.get("travel_style", ""),
-        group_type=state.get("group_type", ""),
-        dietary_restrictions=state.get("dietary_restrictions", []),
-        accessibility_needs=state.get("accessibility_needs", []),
-        route_cities=meta_ex.route_cities or [d.title() for d in destinations],
-        route_transport=meta_ex.route_transport,
-        exchange_rate=meta_ex.exchange_rate,
-        local_currency_code=meta_ex.local_currency_code,
-        # Core content
-        flights=flights_ex.flights,
-        hotels=hotels_ex.hotels,
-        days=days_ex.days,
-        # Info sections
-        safety=readiness_report.safety,
-        culture=readiness_report.culture,
-        packing=packing_ex.packing,
-        # Theme
-        theme_accent_color=palette.accent,
-        hero_gradient_from=palette.gradient_from,
-        hero_gradient_to=palette.gradient_to,
-        hero_emoji=palette.hero_emoji,
-        season=season,
-        generated_at=datetime.now().strftime("%B %d, %Y at %H:%M"),
+        request_fingerprint=expected_fingerprint,
     )
-
-    # Budget overlay from structured extraction
-    budget_data = components.get("budget_structured")
-    if budget_data and isinstance(budget_data, dict):
-        # Legacy handbook fields remain explicitly USD; display values are
-        # additive metadata and must never overwrite the arithmetic base.
-        handbook.budget_flights = budget_data.get("flights", 0)
-        handbook.budget_accommodation = budget_data.get("accommodation", 0)
-        handbook.budget_transport = budget_data.get("transport", 0)
-        handbook.budget_meals = budget_data.get("meals", 0)
-        handbook.budget_activities = budget_data.get("activities", 0)
-        handbook.budget_misc = budget_data.get("misc", 0)
-        handbook.budget_total = budget_data.get("total", 0)
-        handbook.budget_per_person = budget_data.get("per_person", 0)
-        handbook.budget_summary = budget_data.get("summary", "")
-        handbook.budget_base_currency = budget_data.get("base_currency", "USD")
-        handbook.budget_display_currency = budget_data.get(
-            "display_currency", handbook.budget_base_currency
-        )
-        handbook.budget_display_breakdown = budget_data.get("display_breakdown")
-        handbook.budget_coverage_status = budget_data.get("coverage_status", "partial")
-        handbook.budget_missing_categories = budget_data.get("missing_categories", [])
-        handbook.budget_estimated_categories = budget_data.get(
-            "estimated_categories", []
-        )
-        handbook.budget_assumptions = budget_data.get("assumptions", [])
-        handbook.budget_reserve_recommendation = budget_data.get(
-            "reserve_recommendation", 0
-        )
-        handbook.budget_display_reserve_recommendation = budget_data.get(
-            "display_reserve_recommendation"
-        )
-        handbook.budget_contingency_included = budget_data.get(
-            "contingency_included", False
-        )
-
-    # ── Post-process: photo URLs ──────────────────────────────────────
-    # Convert any raw Places photo refs to displayable URLs
-    def _fix_photo_urls(urls: list[str]) -> list[str]:
-        fixed = []
-        for u in urls:
-            if u.startswith("places/") and "/photos/" in u:
-                try:
-                    fixed.append(places_photo_url(u))
-                except RuntimeError:
-                    pass
-            elif u.startswith("http"):
-                fixed.append(u)
-        return fixed
-
-    # Build a lookup of place-name → photo URL from the raw agent text.
-    _photo_pattern = re.compile(
-        r"•\s*(.+?)\n(?:.*?\n)*?\s*Photo:\s*(https://places\.googleapis\.com/\S+)",
-        re.MULTILINE,
+    qualification = (
+        " Feasibility warnings and unscheduled stops are included."
+        if status == ComponentStatus.PARTIAL
+        else ""
     )
-    _standalone_photo = re.compile(
-        r"Photo:\s*(https://places\.googleapis\.com/\S+)",
-    )
-    _name_to_photo: dict[str, str] = {}
-    _all_photo_urls: list[str] = []
-    for m_text in [restaurants_text, activities_text, hotels_text, readiness_text]:
-        for m in _photo_pattern.finditer(m_text):
-            _name_to_photo[m.group(1).strip().lower()] = m.group(2).strip()
-        for m in _standalone_photo.finditer(m_text):
-            _all_photo_urls.append(m.group(1).strip())
-
-    def _inject_photos(card, card_name: str = "") -> None:
-        """If the card has no photos, try to match from the raw text."""
-        card.photo_urls = _fix_photo_urls(card.photo_urls)
-        if not card.photo_urls:
-            name_key = (card_name or getattr(card, "name", "")).strip().lower()
-            if name_key in _name_to_photo:
-                card.photo_urls = [_name_to_photo[name_key]]
-
-    # First pass: fix existing photos + regex match
-    for hotel in handbook.hotels:
-        _inject_photos(hotel)
-        if hotel.name and not hotel.map_embed_url:
-            from urllib.parse import quote_plus
-
-            maps_key = os.environ.get("GOOGLE_MAPS_API_KEY", "")
-            if maps_key:
-                q = quote_plus(
-                    f"{hotel.name}, {hotel.neighbourhood}"
-                    if hotel.neighbourhood
-                    else hotel.name
-                )
-                hotel.map_embed_url = f"https://www.google.com/maps/embed/v1/place?key={maps_key}&q={q}&zoom=15"
-
-    for day in handbook.days:
-        for block in day.time_blocks:
-            for act in block.activities:
-                _inject_photos(act)
-            if block.restaurant:
-                _inject_photos(block.restaurant)
-
-    # Second pass: batch photo lookups via Places API for cards still missing photos
-    destinations_str = " ".join(d.title() for d in destinations)
-
-    async def _lookup(name: str) -> tuple[str, str | None]:
-        return name, await asyncio.to_thread(lookup_place_photo, name, destinations_str)
-
-    cards_needing_photos: list[Any] = []
-    for hotel in handbook.hotels:
-        if not hotel.photo_urls and hotel.name:
-            cards_needing_photos.append(hotel)
-    for day in handbook.days:
-        for block in day.time_blocks:
-            for act in block.activities:
-                if not act.photo_urls and act.name:
-                    cards_needing_photos.append(act)
-            if (
-                block.restaurant
-                and not block.restaurant.photo_urls
-                and block.restaurant.name
-            ):
-                cards_needing_photos.append(block.restaurant)
-
-    if cards_needing_photos:
-        # Limit to 20 lookups to stay within API quotas and time
-        batch = cards_needing_photos[:20]
-        results = await asyncio.gather(
-            *[_lookup(c.name) for c in batch],
-            return_exceptions=True,
-        )
-        name_to_url: dict[str, str] = {}
-        for r in results:
-            if isinstance(r, tuple) and r[1]:
-                name_to_url[r[0]] = r[1]
-        for card in batch:
-            url = name_to_url.get(card.name)
-            if url:
-                card.photo_urls = [url]
-
-    for day in handbook.days:
-        # Collect all place names/coords for the day's route map
-        day_places: list[str] = []
-        for block in day.time_blocks:
-            for act in block.activities:
-                if act.latitude and act.longitude:
-                    day_places.append(f"{act.latitude},{act.longitude}")
-                elif act.name:
-                    day_places.append(act.name)
-            if block.restaurant:
-                if block.restaurant.latitude and block.restaurant.longitude:
-                    day_places.append(
-                        f"{block.restaurant.latitude},{block.restaurant.longitude}"
-                    )
-                elif block.restaurant.name:
-                    day_places.append(block.restaurant.name)
-
-        # Build a route map for the day if there are 2+ stops
-        if len(day_places) >= 2 and not day.route_map_url:
-            try:
-                day.route_map_url = directions_embed_url(
-                    origin=day_places[0],
-                    destination=day_places[-1],
-                    waypoints=day_places[1:-1] if len(day_places) > 2 else None,
-                    mode="walking",
-                )
-            except Exception:
-                pass
-
-    # ── Render outputs (offload sync I/O to thread) ─────────────────
-    renderer = HandbookRenderer()
-    paths = await asyncio.to_thread(renderer.write_outputs, handbook)
-    path_strings = {k: str(v) for k, v in paths.items()}
-
-    # Fire-and-forget: log metadata to LangSmith without blocking the response
-    sections_generated = [
-        k
-        for k in [
-            "flights",
-            "hotels",
-            "restaurants",
-            "activities",
-            "transportation",
-            "readiness",
-            "budget",
-            "itinerary",
-        ]
-        if k in components
-    ]
-    asyncio.create_task(
-        _bg_log_to_langsmith(
-            paths=path_strings,
-            destinations=state.get("destinations", []),
-            sections=sections_generated,
+    message = AIMessage(
+        content=(
+            "📘 **Travel Handbook Generated!**\n\n"
+            "The handbook was compiled from the validated itinerary artifacts."
+            f"{qualification}\n\n"
+            f"- 📄 HTML: `{path_strings.get('html', '')}`\n"
+            f"- 📝 Markdown: `{path_strings.get('markdown', '')}`\n"
+            f"- 📊 JSON: `{path_strings.get('json', '')}`"
         )
     )
-
     return {
-        "messages": [
-            AIMessage(
-                content=(
-                    f"📘 **Travel Handbook Generated!**\n\n"
-                    f"Your complete travel handbook has been saved:\n"
-                    f"- 📄 HTML: `{path_strings.get('html', '')}`\n"
-                    f"- 📝 Markdown: `{path_strings.get('markdown', '')}`\n"
-                    f"- 📊 JSON: `{path_strings.get('json', '')}`\n\n"
-                    f"Open the HTML file in your browser for the full "
-                    f"interactive experience."
-                )
-            )
-        ],
+        "messages": [message],
         "current_agent": "render_handbook",
+        "workflow_status": (
+            "completed" if status == ComponentStatus.COMPLETED else "partial"
+        ),
         "handbook_paths": path_strings,
+        "itinerary_components": {
+            "handbook_structured": handbook.model_dump(mode="json")
+        },
+        "component_results": {"handbook": outcome.model_dump(mode="json")},
     }
 
 
@@ -2363,6 +2287,9 @@ def route_after_hotel_gate(state: TravelAgentState) -> str:
 
 def route_after_draft_itinerary(state: TravelAgentState) -> str:
     """Route a selected draft through transportation, budget, or final assembly."""
+    outcome = state.get("component_results", {}).get("draft_itinerary", {})
+    if outcome and outcome.get("status") != ComponentStatus.COMPLETED:
+        return END
     components = state.get("itinerary_components", {})
     routing = components.get("routing", [])
 
@@ -2407,10 +2334,23 @@ def route_after_budget_review(state: TravelAgentState) -> str:
     return END
 
 
+def route_after_itinerary(state: TravelAgentState) -> str:
+    """Only a validated typed plan reaches review and handbook rendering."""
+    outcome = state.get("component_results", {}).get("itinerary", {})
+    if outcome.get("status") in {
+        ComponentStatus.COMPLETED,
+        ComponentStatus.PARTIAL,
+    }:
+        return "human_review"
+    return END
+
+
 def route_after_human_review(state: TravelAgentState) -> str:
-    """Route after human review: rejected -> END, otherwise -> render_handbook."""
-    if state.get("hitl_action") == "rejected":
+    """Apply edits through selection/routing; never claim unperformed changes."""
+    if state.get("hitl_action") in {"rejected", "needs_clarification"}:
         return END
+    if state.get("hitl_action") == "edited":
+        return "draft_itinerary"
     return "render_handbook"
 
 
@@ -2451,7 +2391,6 @@ def create_multiagent_travel_graph(checkpointer=None):
         "RestaurantsAgent": llm_fast,  # Google Maps API call + format
         "ActivitiesAgent": llm_fast,  # Google Maps API call + format
         "TransportationAgent": llm_fast,  # Google Maps API call + format
-        "ItineraryAgent": llm,  # 2 tools — day-plan synthesis across destinations
     }
 
     agent_classes = {
@@ -2460,7 +2399,6 @@ def create_multiagent_travel_graph(checkpointer=None):
         "RestaurantsAgent": RestaurantsAgent,
         "ActivitiesAgent": ActivitiesAgent,
         "TransportationAgent": TransportationAgent,
-        "ItineraryAgent": ItineraryAgent,
     }
 
     _executors = {}
@@ -2477,6 +2415,8 @@ def create_multiagent_travel_graph(checkpointer=None):
     _readiness_agent = TravelReadinessAgent(llm)
     # Budget is a typed extraction + deterministic arithmetic pipeline.
     _budget_agent = BudgetAgent(llm_utility)
+    # Itinerary uses one bounded selection call, then a deterministic compiler.
+    _itinerary_agent = ItineraryAgent(llm)
 
     # --- graph wiring ---------------------------------------------------------
 
@@ -2550,7 +2490,7 @@ def create_multiagent_travel_graph(checkpointer=None):
     builder.add_node("trip_skeleton", trip_skeleton_node)
     builder.add_node(
         "draft_itinerary",
-        functools.partial(draft_itinerary_node, llm=llm),
+        functools.partial(draft_itinerary_node, agent=_itinerary_agent),
     )
     builder.add_node(
         "budget",
@@ -2559,7 +2499,7 @@ def create_multiagent_travel_graph(checkpointer=None):
     builder.add_node("budget_review", budget_review_node)
     builder.add_node(
         "itinerary",
-        functools.partial(itinerary_node, executor=_executors["ItineraryAgent"]),
+        functools.partial(itinerary_node, agent=_itinerary_agent),
     )
     builder.add_node("human_review", human_review_node)
     builder.add_node(
@@ -2738,14 +2678,19 @@ def create_multiagent_travel_graph(checkpointer=None):
         {"budget": "budget", "itinerary": "itinerary", END: END},
     )
 
-    # itinerary -> human_review -> render_handbook -> END
-    builder.add_edge("itinerary", "human_review")
+    # Only a validated typed itinerary can proceed to review.
+    builder.add_conditional_edges(
+        "itinerary",
+        route_after_itinerary,
+        {"human_review": "human_review", END: END},
+    )
 
     # human_review -> render_handbook | END
     builder.add_conditional_edges(
         "human_review",
         route_after_human_review,
         {
+            "draft_itinerary": "draft_itinerary",
             "render_handbook": "render_handbook",
             END: END,
         },

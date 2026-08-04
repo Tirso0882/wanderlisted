@@ -6,6 +6,7 @@ import type {
   AgentStatus,
   InterruptData,
   BudgetBreakdown,
+  StructuredComponents,
   TripHandbook,
 } from "@/lib/types";
 
@@ -60,7 +61,7 @@ interface ChatState {
 
   // Structured results
   budget: BudgetBreakdown | null;
-  components: Record<string, unknown> | null;
+  components: StructuredComponents | null;
   handbook: TripHandbook | null;
   isMockMode: boolean;
 
@@ -74,7 +75,7 @@ interface ChatState {
   goHome: () => void;
   setActiveView: (view: ViewMode) => void;
   setInterruptData: (data: InterruptData | null) => void;
-  setComponents: (components: Record<string, unknown> | null) => void;
+  setComponents: (components: StructuredComponents | null) => void;
   setBudget: (budget: BudgetBreakdown | null) => void;
   setHandbook: (handbook: TripHandbook | null) => void;
 }
@@ -97,10 +98,31 @@ const INITIAL_AGENTS: Record<AgentName, AgentStatus> = {
   ItineraryAgent: "idle",
 };
 
+function extractHandbook(
+  components: StructuredComponents | null,
+): TripHandbook | null | undefined {
+  if (
+    !components ||
+    !Object.prototype.hasOwnProperty.call(components, "handbook_structured")
+  ) {
+    return undefined;
+  }
+  const candidate = components.handbook_structured;
+  if (
+    candidate &&
+    typeof candidate === "object" &&
+    Array.isArray(candidate.days)
+  ) {
+    return candidate;
+  }
+  return null;
+}
+
 /** Detect intent from user message to route the view */
 function detectIntent(message: string): ViewMode | null {
   const lower = message.toLowerCase();
   const patterns: [ViewMode, RegExp][] = [
+    ["full-plan", /\b(full.*trip|complete.*plan|plan.*everything|whole.*trip)\b/],
     ["flights", /\b(flight|fly|airport|airline|book.*fly|plane)\b/],
     ["hotels", /\b(hotel|stay|accommodation|lodging|hostel|airbnb|check.?in)\b/],
     ["destination", /\b(safe|safety|advisory|weather|forecast|visa|entry|health|culture|custom|etiquette|packing?)\b/],
@@ -109,7 +131,6 @@ function detectIntent(message: string): ViewMode | null {
     ["transport", /\b(transport|getting.*around|taxi|uber|subway|metro|bus|train|rental.*car)\b/],
     ["budget", /\b(budget|cost|price|expense|money|spend|cheap|afford)\b/],
     ["itinerary", /\b(itinerary|schedule|plan.*trip|day.*plan|full.*plan)\b/],
-    ["full-plan", /\b(full.*trip|complete.*plan|plan.*everything|whole.*trip)\b/],
   ];
 
   for (const [view, regex] of patterns) {
@@ -266,6 +287,15 @@ export const useChatStore = create<ChatState>()(
                 status === "running" ? "completed" : status,
               ]),
             ) as Record<AgentName, AgentStatus>;
+            const incomingComponents = data?.components as
+              | StructuredComponents
+              | null
+              | undefined;
+            const nextComponents =
+              incomingComponents === undefined
+                ? current.components
+                : incomingComponents;
+            const nextHandbook = extractHandbook(nextComponents);
 
             set({
               isStreaming: false,
@@ -279,8 +309,10 @@ export const useChatStore = create<ChatState>()(
                     ? (interruptPayload ?? current.interruptData)
                     : null,
               budget: (data?.budget as BudgetBreakdown) ?? current.budget,
-              components:
-                (data?.components as Record<string, unknown>) ?? current.components,
+              components: nextComponents,
+              ...(nextHandbook !== undefined
+                ? { handbook: nextHandbook }
+                : {}),
               agents: completedAgents,
             });
           },
@@ -299,7 +331,12 @@ export const useChatStore = create<ChatState>()(
         };
 
         const currentView = effectiveView;
-        const targetAgent = viewToAgent[currentView];
+        const freshFullItinerary =
+          !state.sessionId &&
+          (currentView === "itinerary" || currentView === "full-plan");
+        const targetAgent = freshFullItinerary
+          ? undefined
+          : viewToAgent[currentView];
 
         const controller = streamChat(
           {
@@ -365,7 +402,13 @@ export const useChatStore = create<ChatState>()(
 
       setActiveView: (view) => set({ activeView: view }),
       setInterruptData: (data) => set({ interruptData: data }),
-      setComponents: (components) => set({ components }),
+      setComponents: (components) => {
+        const handbook = extractHandbook(components);
+        set({
+          components,
+          ...(handbook !== undefined ? { handbook } : {}),
+        });
+      },
       setBudget: (budget) => set({ budget }),
       setHandbook: (handbook) => set({ handbook }),
     }),

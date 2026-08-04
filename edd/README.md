@@ -189,6 +189,30 @@ selection boundaries, missing flight/lodging, conversion, regional estimates,
 target verdicts, Places/Routes non-numeric signals, ambiguity, duplicates, and
 numeric distractors.
 
+### Itinerary: typed-compiler contract loop
+
+```bash
+# L1 is hermetic, deterministic, and free (16 cases; four per risk family).
+.venv/bin/python -m edd.itinerary.l1_run
+
+# L2/L3 require exact pre-existing cache snapshots plus judge-spend approval.
+EDD_LIVE_JUDGE_APPROVED=1 .venv/bin/python -m edd.itinerary.l2_judge_run
+EDD_LIVE_JUDGE_APPROVED=1 .venv/bin/python -m edd.itinerary.l3_pairwise_run
+
+# L4 uses held-out local trajectories but still requires judge approval.
+EDD_LIVE_JUDGE_APPROVED=1 .venv/bin/python -m edd.itinerary.l4_calibrate
+```
+
+Itinerary has no live-capture fallback. Cache misses and `EDD_REFRESH=1` fail
+closed, and no judge is constructed before the explicit approval gate. Layer 1
+covers artifact consumption, exact inclusive dates and city transitions,
+opening-hours/day-window feasibility, partial degradation, and rejection of
+unknown, duplicate, wrong-city, or unselected source IDs. Successful cases also
+verify that route metres/seconds are copied unchanged, fares are never invented,
+and daily costs contain only mapped, non-estimated Budget line items. Any future
+capture must first disclose exact provider requests, selection-model and judge
+calls, expected credits, and a budget cap.
+
 ### Preserve a named baseline
 
 The `.cache/` files above are disposable snapshots for reusing provider results.

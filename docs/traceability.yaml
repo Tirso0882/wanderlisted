@@ -1,0 +1,87 @@
+version: 1
+
+features:
+  - id: FEAT-ORCH
+    document: docs/features/stage4-orchestration/FEATURE.md
+    domains: [docs/domain/request-and-scope.md, docs/domain/orchestration.md]
+    rules: [BR-INT-001, BR-INT-002, BR-INT-003, BR-INT-004, BR-HITL-001, BR-HITL-002, BR-HITL-003]
+    implementation: [src/agent/stage4_graph.py, src/agent/state.py, src/api/main.py]
+    tests: [tests/test_nodes.py, tests/test_component_gate.py, tests/test_integration.py]
+    edd: []
+    runbooks: [docs/operations/RUNBOOK.md]
+
+  - id: FEAT-RDY
+    document: docs/features/travel-readiness/FEATURE.md
+    domains: [docs/domain/readiness.md]
+    rules: [BR-RDY-001, BR-RDY-002, BR-RDY-003, BR-RDY-004, BR-RDY-005]
+    implementation: [src/readiness, src/agent/agents/travel_readiness_agent.py, src/agent/stage4_graph.py]
+    tests: [tests/test_readiness_pipeline.py, tests/test_readiness_provider.py, tests/test_api_readiness_contract.py]
+    edd: [edd/readiness]
+    runbooks: [docs/operations/RUNBOOK.md, docs/operations/COST_CONTROLS.md]
+
+  - id: FEAT-BUD
+    document: docs/features/budget/FEATURE.md
+    domains: [docs/domain/budgeting.md]
+    rules: [BR-SEL-001, BR-SEL-002, BR-SEL-003, BR-SEL-004, BR-SEL-005, BR-BUD-001, BR-BUD-002, BR-BUD-003, BR-BUD-004, BR-BUD-005, BR-BUD-006]
+    implementation: [src/budget, src/models/budget.py, src/models/pricing.py, src/agent/agents/budget_agent.py]
+    tests: [tests/test_budget_pipeline.py, tests/test_budget_agent.py, tests/test_api_budget_contract.py]
+    edd: [edd/budget]
+    runbooks: [docs/operations/COST_CONTROLS.md]
+
+  - id: FEAT-ITI
+    document: docs/features/itinerary/FEATURE.md
+    domains: [docs/domain/itinerary.md]
+    rules: [BR-SEL-001, BR-SEL-002, BR-SEL-003, BR-SEL-004, BR-SEL-005, BR-ITI-001, BR-ITI-002, BR-ITI-003, BR-ITI-004, BR-ITI-005, BR-ITI-006]
+    implementation: [src/itinerary, src/models/itinerary.py, src/agent/agents/itinerary_agent.py]
+    tests: [tests/test_itinerary_pipeline.py, tests/test_itinerary_renderer.py, tests/test_api_itinerary_contract.py]
+    edd: [edd/itinerary]
+    runbooks: [docs/operations/RUNBOOK.md]
+
+  - id: FEAT-HBK
+    document: docs/features/handbook/FEATURE.md
+    domains: [docs/domain/delivery.md]
+    rules: [BR-ITI-004, BR-ITI-005, BR-ITI-006, BR-HITL-003]
+    implementation: [src/agent/renderer.py, src/agent/templates/handbook_template.html.j2, src/agent/stage4_graph.py]
+    tests: [tests/test_itinerary_renderer.py, tests/test_api_itinerary_contract.py]
+    edd: []
+    runbooks: [docs/operations/RUNBOOK.md]
+
+  - id: FEAT-HBX
+    document: docs/features/hotelbeds/FEATURE.md
+    domains: [docs/domain/discovery.md]
+    rules: [BR-SEL-001, BR-SEL-002, BR-SEL-003, BR-SEL-004]
+    implementation: [src/tools/hotels_hotelbeds.py, src/agent/agents/hotels_agent.py, src/agent/stage4_graph.py]
+    tests: [tests/test_hotels_hotelbeds.py, tests/test_hotel_stay_nodes.py, tests/test_budget_pipeline.py]
+    edd: [edd/hotels]
+    runbooks: [docs/operations/RUNBOOK.md, docs/operations/COST_CONTROLS.md]
+
+rule_mappings:
+  - document: docs/rules/intake-and-routing.md
+    ids: [BR-INT-001, BR-INT-002, BR-INT-003, BR-INT-004]
+    implementation: [src/models/trip_request.py, src/agent/nodes/intake.py, src/agent/policies/requirements.py, src/agent/stage4_graph.py]
+    evidence: [tests/test_trip_request.py, tests/test_intake.py, tests/test_requirements_policy.py, tests/test_nodes.py]
+
+  - document: docs/rules/readiness-and-safety.md
+    ids: [BR-RDY-001, BR-RDY-002, BR-RDY-003, BR-RDY-004, BR-RDY-005]
+    implementation: [src/readiness, src/agent/stage4_graph.py]
+    evidence: [tests/test_readiness_pipeline.py, tests/test_readiness_provider.py, tests/test_readiness_weather.py, tests/test_edd_readiness.py]
+
+  - document: docs/rules/selection-and-pricing.md
+    ids: [BR-SEL-001, BR-SEL-002, BR-SEL-003, BR-SEL-004, BR-SEL-005]
+    implementation: [src/models/pricing.py, src/budget/evidence.py, src/itinerary/evidence.py]
+    evidence: [tests/test_budget_pipeline.py, tests/test_budget_agent.py, tests/test_itinerary_pipeline.py]
+
+  - document: docs/rules/budget.md
+    ids: [BR-BUD-001, BR-BUD-002, BR-BUD-003, BR-BUD-004, BR-BUD-005, BR-BUD-006]
+    implementation: [src/budget/pipeline.py, src/budget/currency.py, src/agent/stage4_graph.py]
+    evidence: [tests/test_budget_pipeline.py, tests/test_api_budget_contract.py, tests/test_edd_budget.py]
+
+  - document: docs/rules/itinerary.md
+    ids: [BR-ITI-001, BR-ITI-002, BR-ITI-003, BR-ITI-004, BR-ITI-005, BR-ITI-006]
+    implementation: [src/itinerary/pipeline.py, src/itinerary/evidence.py, src/agent/renderer.py]
+    evidence: [tests/test_itinerary_pipeline.py, tests/test_itinerary_renderer.py, tests/test_edd_itinerary.py]
+
+  - document: docs/rules/hitl-and-external-calls.md
+    ids: [BR-HITL-001, BR-HITL-002, BR-HITL-003, BR-HITL-004, BR-HITL-005]
+    implementation: [src/agent/stage4_graph.py, src/api/main.py, edd, .github/workflows]
+    evidence: [tests/test_nodes.py, tests/test_api_budget_contract.py, tests/test_api_itinerary_contract.py, tests/test_edd_runtime.py]

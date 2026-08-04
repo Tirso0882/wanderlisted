@@ -1,7 +1,8 @@
 .PHONY: help install dev studio test clean lint fmt \
        docker-build docker-up docker-down eval-layer1 \
        smoke smoke-simple harness harness-agent \
-       frontend frontend-build frontend-install
+       frontend frontend-build frontend-install \
+       docs-check docs-index docs-context
 
 help:
 	@echo "Wanderlisted — Travel Agent Build System"
@@ -16,6 +17,9 @@ help:
 	@echo "  make lint         — Lint code with ruff"
 	@echo "  make fmt          — Format code with ruff"
 	@echo "  make clean        — Remove cache, logs, and compiled files"
+	@echo "  make docs-check   — Validate AI-native documentation contracts"
+	@echo "  make docs-index   — Rebuild the generated documentation index"
+	@echo "  make docs-context PATHS=\"src/budget/pipeline.py\" — Resolve context"
 	@echo ""
 	@echo "Frontend:"
 	@echo "  make frontend         — Start Next.js dev server (http://localhost:3000)"
@@ -69,6 +73,16 @@ lint-fix:
 
 fmt:
 	.venv/bin/ruff format src/ tests/ scripts/
+
+# ── AI-native documentation ───────────────────────────────────────
+docs-check:
+	.venv/bin/python scripts/docs/check_docs.py
+
+docs-index:
+	.venv/bin/python scripts/docs/build_indexes.py
+
+docs-context:
+	.venv/bin/python scripts/docs/context_bundle.py --paths $(PATHS) --triggers $(TRIGGERS)
 
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true

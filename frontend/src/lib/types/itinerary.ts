@@ -65,6 +65,8 @@ export interface HotelOption {
 // ── Places ──────────────────────────────────────────────────────────────
 
 export interface PlaceCard {
+  source_component?: string;
+  source_id?: string;
   name: string;
   category: string;
   rating: number | null;
@@ -80,6 +82,9 @@ export interface PlaceCard {
   longitude: number;
   estimated_cost_usd: number;
   estimated_duration_minutes: number;
+  scheduled_start?: string;
+  scheduled_end?: string;
+  duration_basis?: string;
 }
 
 // ── Transit ─────────────────────────────────────────────────────────────
@@ -94,6 +99,12 @@ export interface TransitStep {
   instructions: string;
   booking_url: string;
   fare_estimate_usd: number;
+  distance_meters?: number;
+  duration_seconds?: number;
+  route_leg_index?: number;
+  source_day_number?: number;
+  scheduled_start?: string;
+  scheduled_end?: string;
 }
 
 // ── Weather ─────────────────────────────────────────────────────────────
@@ -116,7 +127,12 @@ export interface TimeBlock {
   restaurant: PlaceCard | null;
   transit: TransitStep[];
   subtotal_usd: number;
+  start_time?: string;
+  end_time?: string;
 }
+
+export type FeasibilityStatus = "verified" | "needs_review" | "infeasible";
+export type ItineraryCoverageStatus = "complete" | "partial" | "blocked";
 
 export interface DayPlan {
   day_number: number;
@@ -128,6 +144,26 @@ export interface DayPlan {
   daily_cost_usd: number;
   walking_km: number;
   route_map_url: string;
+  feasibility_status?: FeasibilityStatus;
+  feasibility_warnings?: string[];
+  assumptions?: string[];
+  cost_coverage?: "complete" | "partial" | "unavailable";
+  unscheduled_stops?: PlaceCard[];
+}
+
+export interface ItineraryPlan {
+  schema_version: number;
+  start_date: string;
+  end_date: string;
+  duration_days: number;
+  days: DayPlan[];
+  coverage_status: ItineraryCoverageStatus;
+  feasibility_status: FeasibilityStatus;
+  missing_constraints: string[];
+  warnings: string[];
+  artifact_fingerprint: string;
+  request_revision: number;
+  total_budget_usd: number;
 }
 
 // ── Safety ──────────────────────────────────────────────────────────────

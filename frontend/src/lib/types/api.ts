@@ -1,6 +1,38 @@
 // API request/response types matching src/api/main.py
 
-import type { BudgetBreakdown } from "./itinerary";
+import type {
+  BudgetBreakdown,
+  ItineraryPlan,
+  TravelReadinessReport,
+  TripHandbook,
+} from "./itinerary";
+
+export interface StructuredComponents extends Record<string, unknown> {
+  itinerary_structured?: ItineraryPlan | null;
+  handbook_structured?: TripHandbook | null;
+  budget_structured?: BudgetBreakdown | null;
+  readiness?: { data?: TravelReadinessReport | null };
+  readiness_preflight?: { data?: TravelReadinessReport | null };
+  component_results?: Record<
+    string,
+    {
+      component: string;
+      status:
+        | "queued"
+        | "running"
+        | "completed"
+        | "partial"
+        | "needs_user_input"
+        | "no_inventory"
+        | "blocked_external"
+        | "failed"
+        | "stale";
+      missing_fields?: string[];
+      message?: string;
+      request_fingerprint?: string;
+    }
+  >;
+}
 
 // ── Chat ────────────────────────────────────────────────────────────────
 
@@ -17,7 +49,7 @@ export interface ChatResponse {
   interrupted: boolean;
   interrupt_data: InterruptData | null;
   budget: BudgetBreakdown | null;
-  components: Record<string, unknown> | null;
+  components: StructuredComponents | null;
 }
 
 // ── HITL ────────────────────────────────────────────────────────────────
@@ -55,7 +87,7 @@ export interface ResumeResponse {
   interrupted: boolean;
   interrupt_data: InterruptData | null;
   budget: BudgetBreakdown | null;
-  components: Record<string, unknown> | null;
+  components: StructuredComponents | null;
 }
 
 // ── Session ─────────────────────────────────────────────────────────────

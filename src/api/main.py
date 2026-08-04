@@ -61,7 +61,10 @@ def _extract_text_content(content) -> str:
     return str(content or "")
 
 
-def _public_components(components: dict | None) -> dict | None:
+def _public_components(
+    components: dict | None,
+    component_results: dict | None = None,
+) -> dict | None:
     """Expose structured component data without serializing chat transcripts."""
     public: dict = {}
     for key, value in (components or {}).items():
@@ -74,6 +77,8 @@ def _public_components(components: dict | None) -> dict | None:
             if key in {"readiness", "readiness_preflight"}:
                 value = {"data": value.get("data")}
         public[key] = jsonable_encoder(value)
+    if component_results:
+        public["component_results"] = jsonable_encoder(component_results)
     return public or None
 
 
@@ -285,7 +290,7 @@ async def _run_agent(
     )
     components = result.get("itinerary_components", {})
 
-    exposed = _public_components(components)
+    exposed = _public_components(components, result.get("component_results"))
 
     # Check for HITL interrupts
     interrupts = result.get("__interrupt__", [])
@@ -468,7 +473,9 @@ async def chat_stream(
                 interrupt_payload if isinstance(interrupt_payload, dict) else None
             ),
             "budget": jsonable_encoder(components.get("budget_structured")),
-            "components": _public_components(components),
+            "components": _public_components(
+                components, values.get("component_results")
+            ),
         }
         yield f"data: {json.dumps(done_payload)}\n\n"
 
@@ -621,7 +628,7 @@ async def resume_chat(
             interrupts[0].value if hasattr(interrupts[0], "value") else None
         )
     components = result.get("itinerary_components", {})
-    exposed = _public_components(components)
+    exposed = _public_components(components, result.get("component_results"))
 
     return ResumeResponse(
         message=last_message,

@@ -5,6 +5,7 @@ Tests each node function in isolation by injecting mock dependencies
 """
 
 from datetime import date
+import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
@@ -19,12 +20,15 @@ from src.readiness import (
 )
 from src.tools.tavily import TavilyTimeoutError
 from src.models import (
+    AccommodationSelectionProposal,
     BudgetBreakdown,
     BudgetCoverageStatus,
     BudgetVerdict,
     ConversionStatus,
+    DaySelectionProposal,
     DraftDay,
     DraftItinerary,
+    ItinerarySelectionProposal,
     PlaceRef,
     SafetyInfo,
     build_trip_skeleton,
@@ -49,7 +53,6 @@ from src.agent.stage4_graph import (
     budget_node,
     itinerary_node,
     synthesize_node,
-    render_handbook_node,
     # HITL gate nodes
     safety_review_node,
     budget_review_node,
@@ -302,10 +305,17 @@ class TestSupervisorNode:
         assert "FlightsAgent" in result["itinerary_components"]["routing"]
         assert result["destinations"] == ["tokyo"]
 
-    async def test_budget_always_includes_itinerary(self):
-        supervisor = self._mock_supervisor(agents=["BudgetAgent"])
+    async def test_budget_only_does_not_include_itinerary(self):
+        supervisor = self._mock_supervisor(agents=["BudgetAgent", "ItineraryAgent"])
         state = {
-            "messages": [HumanMessage(content="What's the budget?")],
+            "messages": [HumanMessage(content="How much would a week in Bali cost?")],
+            "trip_request": {
+                "scope": "focused",
+                "destinations": ["bali"],
+                "date_window": {"duration_days": 7},
+                "travelers": {"adults": 1},
+                "requested_capabilities": ["budget"],
+            },
             "itinerary_components": {},
             "destinations": [],
             "travel_style": "",
@@ -316,8 +326,7 @@ class TestSupervisorNode:
         result = await supervisor_node(state, supervisor_agent=supervisor)
 
         routing = result["itinerary_components"]["routing"]
-        assert "BudgetAgent" in routing
-        assert "ItineraryAgent" in routing
+        assert routing == ["BudgetAgent"]
 
     async def test_preserves_existing_profile(self):
         supervisor = self._mock_supervisor(agents=[], destinations=[])
@@ -642,28 +651,80 @@ class TestDraftItineraryNode:
     async def test_selects_structured_draft_from_discovery_evidence(self):
         mock_llm = MagicMock()
         structured_llm = AsyncMock()
-        structured_llm.ainvoke.return_value = DraftItinerary(
+        structured_llm.ainvoke.return_value = ItinerarySelectionProposal(
+            accommodations=[
+                AccommodationSelectionProposal(
+                    stay_sequence=1,
+                    rate_key="rate-central",
+                )
+            ],
             days=[
-                DraftDay(
-                    start_location=PlaceRef(
-                        name="Hotel Central", address="1 Main Street"
-                    ),
-                    stops=[PlaceRef(name="City Museum", address="2 Museum Road")],
+                DaySelectionProposal(
+                    day_number=2,
+                    stop_source_ids=["activities:place-museum"],
                     preferred_mode="walk",
                 )
             ],
-            mobility_notes=["Use the city travel card."],
         )
         mock_llm.with_structured_output.return_value = structured_llm
+        skeleton = build_trip_skeleton(
+            cities=["paris"], start_date=date(2026, 9, 1), duration_days=3
+        )
+        hotel_payload = {
+            "options": [
+                {
+                    "source_id": "rate-central",
+                    "rate_key": "rate-central",
+                    "name": "Hotel Central",
+                    "check_in": "2026-09-01",
+                    "check_out": "2026-09-03",
+                    "amount": "450",
+                    "currency": "USD",
+                }
+            ]
+        }
+        place_payload = {
+            "places": [
+                {
+                    "source_id": "place-museum",
+                    "place_id": "place-museum",
+                    "name": "City Museum",
+                    "search_context": "museums in paris",
+                    "address": "2 Museum Road",
+                    "category": "museum",
+                }
+            ]
+        }
         state = {
             "messages": [HumanMessage(content="Plan a day")],
-            "destinations": ["test-city"],
+            "trip_request": {
+                "scope": "full_itinerary",
+                "destinations": ["paris"],
+                "date_window": {
+                    "exact_start": "2026-09-01",
+                    "exact_end": "2026-09-03",
+                    "duration_days": 3,
+                },
+                "travelers": {"adults": 2},
+            },
             "itinerary_components": {
                 "routing": ["TransportationAgent", "ItineraryAgent"],
-                "hotels": {"messages": [AIMessage(content="Hotel Central")]},
-                "activities": {"messages": [AIMessage(content="City Museum")]},
-                "readiness": {
-                    "messages": [AIMessage(content="Use the city travel card.")]
+                "trip_skeleton_structured": skeleton.model_dump(mode="json"),
+                "hotels": {
+                    "messages": [
+                        ToolMessage(
+                            content="HOTEL_RESULTS_JSON:\n" + json.dumps(hotel_payload),
+                            tool_call_id="hotel-tool",
+                        )
+                    ]
+                },
+                "activities": {
+                    "messages": [
+                        ToolMessage(
+                            content="PLACE_RESULTS_JSON:\n" + json.dumps(place_payload),
+                            tool_call_id="place-tool",
+                        )
+                    ]
                 },
             },
         }
@@ -672,7 +733,8 @@ class TestDraftItineraryNode:
 
         draft = result["itinerary_components"]["draft_itinerary_structured"]
         assert draft["days"][0]["start_location"]["name"] == "Hotel Central"
-        assert draft["days"][0]["stops"][0]["name"] == "City Museum"
+        assert draft["days"][1]["stops"][0]["name"] == "City Museum"
+        assert draft["days"][1]["stops"][0]["source_id"] == ("activities:place-museum")
         prompt_text = "\n".join(
             message.content for message in structured_llm.ainvoke.await_args.args[0]
         )
@@ -1370,7 +1432,7 @@ class TestRouteAfterHumanReview:
 
     def test_edited_renders(self):
         state = {"hitl_action": "edited"}
-        assert route_after_human_review(state) == "render_handbook"
+        assert route_after_human_review(state) == "draft_itinerary"
 
 
 # ── Safety review HITL interrupt paths ───────────────────────────────────────
@@ -1597,6 +1659,50 @@ class TestHumanReviewInterrupt:
 
     @patch("src.agent.stage4_graph.is_hitl_enabled", return_value=True)
     @patch("src.agent.stage4_graph.interrupt")
+    async def test_typed_edit_reruns_selection_and_dependencies(
+        self, mock_interrupt, _hitl
+    ):
+        mock_interrupt.return_value = {
+            "gate": "human_review",
+            "action": "edited",
+            "feedback": "Move the museum to another available day",
+        }
+        state = {
+            "itinerary_components": {
+                "routing": ["ItineraryAgent"],
+                "itinerary": {"messages": [AIMessage(content="Typed preview")]},
+            }
+        }
+
+        result = await human_review_node(state)
+
+        assert result["hitl_action"] == "edited"
+        assert result["human_feedback"] == "Move the museum to another available day"
+        assert result["itinerary_components"]["routing"] == [
+            "ItineraryAgent",
+            "TransportationAgent",
+            "BudgetAgent",
+        ]
+
+    @patch("src.agent.stage4_graph.is_hitl_enabled", return_value=True)
+    @patch("src.agent.stage4_graph.interrupt")
+    async def test_typed_unsupported_edit_requests_clarification(
+        self, mock_interrupt, _hitl
+    ):
+        mock_interrupt.return_value = {
+            "gate": "human_review",
+            "action": "edited",
+            "feedback": "Change the dates and add a city",
+        }
+
+        result = await human_review_node({"itinerary_components": {}})
+
+        assert result["hitl_action"] == "needs_clarification"
+        assert result["workflow_status"] == "needs_user_input"
+        assert result["pending_questions"]
+
+    @patch("src.agent.stage4_graph.is_hitl_enabled", return_value=True)
+    @patch("src.agent.stage4_graph.interrupt")
     async def test_rejected(self, mock_interrupt, _hitl):
         mock_interrupt.return_value = {"approved": False}
         state = {"itinerary_components": {}}
@@ -1622,6 +1728,7 @@ class TestHumanReviewInterrupt:
         }
         await human_review_node(state)
         call_args = mock_interrupt.call_args[0][0]
+        assert call_args["gate"] == "human_review"
         assert len(call_args["components_available"]) == 8
 
 
@@ -1671,162 +1778,3 @@ class TestBudgetNodeStructured:
 
 
 # ── Render handbook node tests ───────────────────────────────────────────────
-
-
-class TestRenderHandbookNode:
-    def _mock_llm(self):
-        """Create a mock LLM that returns defaults for all structured extractions."""
-        mock = MagicMock()
-
-        async def _fake_ainvoke(msgs):
-            return mock._default_return
-
-        mock_structured = AsyncMock()
-        mock_structured.ainvoke = _fake_ainvoke
-
-        def _with_structured_output(model_cls, **kwargs):
-            # Return the default instance of whatever model is requested
-            mock._default_return = model_cls()
-            return mock_structured
-
-        mock.with_structured_output = _with_structured_output
-        return mock
-
-    async def test_empty_components_returns_no_data_message(self, monkeypatch):
-        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
-        mock_llm = self._mock_llm()
-        state = {
-            "messages": [HumanMessage(content="render")],
-            "itinerary_components": {},
-            "destinations": [],
-            "travel_style": "",
-            "group_type": "",
-            "dietary_restrictions": [],
-            "accessibility_needs": [],
-        }
-        result = await render_handbook_node(state, llm=mock_llm)
-        assert result["current_agent"] == "render_handbook"
-        assert "no agent data" in result["messages"][0].content.lower()
-
-    async def test_renders_handbook_with_agent_data(self, monkeypatch, tmp_path):
-        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
-        # Patch the renderer to write to tmp_path
-        monkeypatch.setattr(
-            "src.agent.stage4_graph.HandbookRenderer.write_outputs",
-            lambda self, handbook, output_dir="outputs": {
-                "html": tmp_path / "handbook.html",
-                "markdown": tmp_path / "handbook.md",
-                "json": tmp_path / "handbook.json",
-            },
-        )
-
-        mock_llm = self._mock_llm()
-        state = {
-            "messages": [HumanMessage(content="Plan Tokyo trip")],
-            "itinerary_components": {
-                "flights": {
-                    "messages": [AIMessage(content="Found JFK→NRT for $800")],
-                },
-                "hotels": {
-                    "messages": [AIMessage(content="Shinjuku hotel $120/night")],
-                },
-                "readiness": {
-                    "messages": [AIMessage(content="Tokyo is safe. Level 1.")],
-                },
-                "restaurants": {
-                    "messages": [AIMessage(content="Ramen shop rated 4.8")],
-                },
-                "activities": {
-                    "messages": [AIMessage(content="Visit Senso-ji temple")],
-                },
-                "transportation": {
-                    "messages": [AIMessage(content="JR Pass recommended")],
-                },
-                "budget": {
-                    "messages": [AIMessage(content="Total: $3500")],
-                },
-                "itinerary": {
-                    "messages": [AIMessage(content="Day 1: Arrive Narita")],
-                },
-            },
-            "destinations": ["tokyo"],
-            "travel_style": "mid-range",
-            "group_type": "couple",
-            "dietary_restrictions": [],
-            "accessibility_needs": [],
-        }
-        result = await render_handbook_node(state, llm=mock_llm)
-        assert result["current_agent"] == "render_handbook"
-        assert "Handbook Generated" in result["messages"][0].content
-        assert "handbook_paths" in result
-
-    async def test_renders_with_budget_structured(self, monkeypatch, tmp_path):
-        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
-        monkeypatch.setattr(
-            "src.agent.stage4_graph.HandbookRenderer.write_outputs",
-            lambda self, handbook, output_dir="outputs": {
-                "html": tmp_path / "h.html",
-                "markdown": tmp_path / "h.md",
-                "json": tmp_path / "h.json",
-            },
-        )
-
-        mock_llm = self._mock_llm()
-        state = {
-            "messages": [HumanMessage(content="Plan trip")],
-            "itinerary_components": {
-                "flights": {
-                    "messages": [AIMessage(content="Flight data")],
-                },
-                "budget_structured": {
-                    "flights": 800,
-                    "accommodation": 1200,
-                    "transport": 200,
-                    "meals": 500,
-                    "activities": 300,
-                    "misc": 100,
-                    "total": 3100,
-                    "per_person": 1550,
-                    "summary": "Mid-range budget",
-                },
-            },
-            "destinations": ["paris"],
-            "travel_style": "mid-range",
-            "group_type": "",
-            "dietary_restrictions": [],
-            "accessibility_needs": [],
-        }
-        result = await render_handbook_node(state, llm=mock_llm)
-        assert result["current_agent"] == "render_handbook"
-        assert "handbook_paths" in result
-
-    async def test_renders_with_tool_messages(self, monkeypatch, tmp_path):
-        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
-        monkeypatch.setattr(
-            "src.agent.stage4_graph.HandbookRenderer.write_outputs",
-            lambda self, handbook, output_dir="outputs": {
-                "html": tmp_path / "h.html",
-                "markdown": tmp_path / "h.md",
-                "json": tmp_path / "h.json",
-            },
-        )
-
-        mock_llm = self._mock_llm()
-        state = {
-            "messages": [HumanMessage(content="Plan")],
-            "itinerary_components": {
-                "readiness": {
-                    "messages": [
-                        ToolMessage(content="Safety data from API", tool_call_id="t1"),
-                        AIMessage(content="Tokyo is very safe"),
-                    ],
-                },
-            },
-            "destinations": ["tokyo"],
-            "travel_style": "",
-            "group_type": "",
-            "dietary_restrictions": [],
-            "accessibility_needs": [],
-        }
-        result = await render_handbook_node(state, llm=mock_llm)
-        assert result["current_agent"] == "render_handbook"

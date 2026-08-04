@@ -218,8 +218,20 @@ outputs/
 # Files
 documentation_history.txt
 
-# Personal documents
-docs/
+# Personal documents and non-source document artifacts
+personal/
+*.doc
+*.docx
+*.xls
+*.xlsx
+*.ppt
+*.pptx
+~$*
+*.tmp
+*.temp
+*.swp
+docs/_generated/
+docs/tasks/active/**/artifacts/
 
 # LangGraph API runtime state
 .langgraph_api/

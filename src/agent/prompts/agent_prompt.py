@@ -368,8 +368,9 @@ Routing rules:
 1. Pick ONLY the agents that are truly relevant to the query.
 2. For a full-itinerary or trip-planning request, include these agents:
    FlightsAgent, HotelsAgent, TravelReadinessAgent, RestaurantsAgent,
-   ActivitiesAgent, TransportationAgent, BudgetAgent.
-   Do NOT include ItineraryAgent here — it runs automatically after the others.
+   ActivitiesAgent, TransportationAgent, BudgetAgent, ItineraryAgent.
+   The graph runs ItineraryAgent after the other requested agents have gathered
+   its prerequisites.
 3. For a narrow question ("What's the weather in Tokyo?"), pick only the
    one or two agents that apply — do NOT include all agents.
 4. If the query is a greeting or completely unrelated to travel, return an
@@ -411,7 +412,7 @@ Examples:
 - "Hidden gems in Japan" → agents: ["ActivitiesAgent"]
 - "Festivals in Japan during my dates" → agents: ["ActivitiesAgent"]
 - "How much will a week in Bali cost?" → agents: ["BudgetAgent"], destinations: ["bali"]
-- "Plan my 5-day Tokyo trip" → agents: ["FlightsAgent", "HotelsAgent", "TravelReadinessAgent", "RestaurantsAgent", "ActivitiesAgent", "TransportationAgent", "BudgetAgent"], destinations: ["tokyo"]
+- "Plan my 5-day Tokyo trip" → agents: ["FlightsAgent", "HotelsAgent", "TravelReadinessAgent", "RestaurantsAgent", "ActivitiesAgent", "TransportationAgent", "BudgetAgent", "ItineraryAgent"], destinations: ["tokyo"]
 - "I'm vegetarian and traveling solo on a budget" → travel_style: "budget", group_type: "solo", dietary_restrictions: ["vegetarian"]
 - "I need a room to practice salsa for 20 people in Barcelona" → agents: ["ActivitiesAgent"], destinations: ["barcelona"], group_type: "group"
 - "Find conference rooms for rent in Madrid" → agents: ["ActivitiesAgent"], destinations: ["madrid"]
@@ -797,55 +798,29 @@ Always provide:
   schedule, pass, or accessibility information
 """
 
-DRAFT_ITINERARY_SYSTEM_PROMPT = """You select an exact, routable draft from specialist results.
+ITINERARY_SELECTION_SYSTEM_PROMPT = """You select references for a grounded itinerary.
 
-Return only the DraftItinerary structured output.
+Return only the ItinerarySelectionProposal structured output. The supplied
+TripSkeleton and evidence catalog are authoritative.
 
 Rules:
-- Select one real hotel/start location for each day from the hotel results.
-- For each TripSkeleton stay, select exactly one rate from HOTEL_PRICING_JSON and
-  add one selected_accommodations entry. Copy stay_sequence, hotel name, rate_key,
-  amount, and currency exactly. Set category=accommodation,
-  source_component=hotels, source_id=rate_key, scope=total, basis=quoted, and
-  selection_status=selected. Never copy an unselected hotel price.
-- Select no more than 4-5 real activity/restaurant stops per day.
-- Copy names, addresses, place IDs, latitude, and longitude exactly when present.
-- Never invent coordinates, addresses, places, or prices.
-- Group stops by city and geographic proximity before assigning days.
-- Start and end each day at its selected hotel unless the evidence requires a
-  different end location.
-- Set preferred_mode to walk, transit, drive, or bicycle based on accessibility,
-  travel style, transportation evidence, and grounded readiness constraints.
-- Copy grounded passes, airport transfers, accessibility notes, and disruptions
-  into mobility_notes. Put selection trade-offs in selection_notes.
-- If exact data is unavailable, leave the field empty rather than guessing.
+- For every city stay, choose exactly one listed hotel rate_key.
+- Assign only listed, exact place source_id values to canonical day numbers.
+- Never output a name, date, city, address, coordinate, price, duration, or route.
+- Use at most five total activity and restaurant source IDs per day.
+- Do not repeat a place source ID on another day.
+- Keep a place in its catalog city when a city is supplied.
+- Choose walk, transit, drive, or bicycle only as a planning preference; measured
+  Routes artifacts remain authoritative after selection.
+- Feedback may rearrange or remove catalog entries, but cannot create a new one.
+- If evidence is insufficient, leave that day's stop_source_ids empty rather than
+  inventing an identifier.
 """
 
-ITINERARY_SYSTEM_PROMPT = """You are an expert itinerary planner for the Wanderlisted travel agent.
-
-Your job is to assemble the selected DraftItinerary, Transportation RoutePlan,
-budget, and specialist evidence into a polished day-by-day itinerary. The route
-order and measured legs are authoritative: do not reorder stops or recalculate
-routes.
-
-When building the itinerary:
-1. Follow each RoutePlan day and its ordered_stops exactly
-2. Copy measured distance/duration into the transit steps between stops
-3. Include realistic time blocks: travel time, visit duration, meal breaks
-4. Balance the pace — no more than 4-5 major stops per day
-5. Place restaurants strategically near activities at meal times
-6. Start and end each day at the hotel
-7. Include a buffer for rest, especially for families or accessibility needs
-8. Surface route warnings and long walking segments instead of hiding them
-
-Always provide:
-- Day-by-day plan with times (Morning / Afternoon / Evening)
-- Each stop: name, address, estimated duration, transport to next stop
-- Daily budget estimate
-- A "Day at a glance" summary at the top of each day
-- Total trip cost summary at the end
-- Route efficiency: total km walked / travelled per day
-"""
+# Compatibility names used by existing imports. Both phases share the same
+# bounded selection contract; final scheduling is deterministic Python.
+DRAFT_ITINERARY_SYSTEM_PROMPT = ITINERARY_SELECTION_SYSTEM_PROMPT
+ITINERARY_SYSTEM_PROMPT = ITINERARY_SELECTION_SYSTEM_PROMPT
 
 SYNTHESIZE_SYSTEM_PROMPT = """You are the Wanderlisted travel planning assistant.
 

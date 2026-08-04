@@ -12,20 +12,38 @@ import type { InterruptData } from "@/lib/types";
 export function HumanReviewGate({ data }: { data: InterruptData }) {
   const sessionId = useChatStore((s) => s.sessionId);
   const setInterruptData = useChatStore((s) => s.setInterruptData);
+  const setComponents = useChatStore((s) => s.setComponents);
+  const setBudget = useChatStore((s) => s.setBudget);
   const [feedback, setFeedback] = useState("");
   const [showFeedback, setShowFeedback] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   const handleDecision = async (action: "approved" | "edited" | "rejected") => {
-    if (!sessionId) return;
-    setInterruptData(null);
-    await resumeChat({
-      session_id: sessionId,
-      decision: {
-        gate: "human_review",
-        action,
-        ...(feedback.trim() ? { feedback: feedback.trim() } : {}),
-      },
-    });
+    if (!sessionId || submitting) return;
+    setSubmitting(true);
+    setError("");
+    try {
+      const result = await resumeChat({
+        session_id: sessionId,
+        decision: {
+          gate: "human_review",
+          action,
+          ...(feedback.trim() ? { feedback: feedback.trim() } : {}),
+        },
+      });
+      setComponents(result.components);
+      setBudget(result.budget);
+      setInterruptData(result.interrupted ? result.interrupt_data : null);
+    } catch (resumeError) {
+      setError(
+        resumeError instanceof Error
+          ? resumeError.message
+          : "Itinerary review could not be resumed.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -53,9 +71,12 @@ export function HumanReviewGate({ data }: { data: InterruptData }) {
             />
           )}
 
+          {error && <p className="text-sm text-destructive">{error}</p>}
+
           <div className="flex gap-3 pt-2">
             <Button
               onClick={() => handleDecision("approved")}
+              disabled={submitting}
               className="flex-1 gap-2"
             >
               <Check className="h-4 w-4" />
@@ -63,6 +84,7 @@ export function HumanReviewGate({ data }: { data: InterruptData }) {
             </Button>
             <Button
               variant="secondary"
+              disabled={submitting}
               onClick={() => {
                 if (showFeedback && feedback.trim()) {
                   handleDecision("edited");
@@ -78,6 +100,7 @@ export function HumanReviewGate({ data }: { data: InterruptData }) {
             <Button
               variant="outline"
               onClick={() => handleDecision("rejected")}
+              disabled={submitting}
               size="icon"
             >
               <X className="h-4 w-4" />
