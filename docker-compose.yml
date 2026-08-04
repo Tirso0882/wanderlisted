@@ -7,7 +7,22 @@ services:
     volumes:
       - logs:/app/logs
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      ENVIRONMENT: development
+      CHECKPOINT_BACKEND: postgres
+      CHECKPOINT_DATABASE_URL: postgresql://wanderlisted:localdev@postgres:5432/wanderlisted
+      CHECKPOINT_AUTO_SETUP: "true"
+      SESSION_REGISTRY_BACKEND: postgres
+      SESSION_REGISTRY_DATABASE_URL: postgresql://wanderlisted:localdev@postgres:5432/wanderlisted
+      SESSION_REGISTRY_AUTO_SETUP: "true"
+      RATE_LIMIT_BACKEND: redis
+      REDIS_URL: redis://redis:6379
+      SESSION_SIGNING_KEY: ${SESSION_SIGNING_KEY:-local-development-only-signing-key-change-me-1234567890}
+      SESSION_COOKIE_SECURE: "false"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
       interval: 30s
@@ -19,6 +34,11 @@ services:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   postgres:
     image: postgres:16-alpine
@@ -30,6 +50,11 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wanderlisted -d wanderlisted"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
 volumes:
   pgdata:

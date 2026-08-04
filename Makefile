@@ -44,9 +44,7 @@ help:
 	@echo ""
 
 install:
-	python -m venv .venv
-	.venv/bin/pip install -U pip
-	.venv/bin/pip install -r requirements.txt
+	uv sync --frozen --all-groups
 
 dev:
 	HITL_SAFETY_REVIEW=false HITL_HUMAN_REVIEW=false \
@@ -66,13 +64,13 @@ coverage:
 	@echo "Coverage report: htmlcov/index.html"
 
 lint:
-	.venv/bin/ruff check src/ tests/ scripts/
+	.venv/bin/ruff check src/ tests/ scripts/ edd/
 
 lint-fix:
-	.venv/bin/ruff check src/ tests/ scripts/ --fix
+	.venv/bin/ruff check src/ tests/ scripts/ edd/ --fix
 
 fmt:
-	.venv/bin/ruff format src/ tests/ scripts/
+	.venv/bin/ruff format src/ tests/ scripts/ edd/
 
 # ── AI-native documentation ───────────────────────────────────────
 docs-check:
@@ -105,8 +103,10 @@ docker-down:
 
 # ── Evaluation ────────────────────────────────────────────────────
 eval-layer1:
-	.venv/bin/pytest tests/test_evaluators.py tests/test_edd_budget.py -x --tb=short -q
+	.venv/bin/pytest tests/test_evaluators.py tests/test_edd_*.py tests/test_readiness_evaluation_dataset.py -x --tb=short -q
 	.venv/bin/python -m edd.budget.l1_run
+	.venv/bin/python -m edd.itinerary.l1_run
+	.venv/bin/python -m edd.offline_baselines verify
 
 # ── Agent Harness (individual agent testing with HTML reports) ────
 # Optional: ARGS="--dest Paris --open"  (extra flags passed to harness)
@@ -126,7 +126,7 @@ smoke-simple:
 
 # ── Frontend ──────────────────────────────────────────────────────
 frontend-install:
-	cd frontend && pnpm install
+	cd frontend && pnpm install --frozen-lockfile
 
 frontend:
 	cd frontend && pnpm dev
