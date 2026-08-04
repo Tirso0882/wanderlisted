@@ -1,13 +1,24 @@
 "use client";
 
-import { Calendar, Clock, ExternalLink } from "lucide-react";
+import { useState } from "react";
+import {
+  AlertTriangle,
+  Calendar,
+  CircleAlert,
+  Clock,
+  ExternalLink,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency } from "@/lib/format-currency";
 import { WeatherStrip } from "./weather-strip";
-import type { DayPlan, TimeBlock } from "@/lib/types";
-import { useState } from "react";
+import type {
+  DayPlan,
+  PlaceCard,
+  TimeBlock,
+  TransitStep,
+} from "@/lib/types";
 
 const PERIOD_LABELS: Record<string, { label: string; emoji: string }> = {
   morning: { label: "Morning", emoji: "🌅" },
@@ -15,109 +26,195 @@ const PERIOD_LABELS: Record<string, { label: string; emoji: string }> = {
   evening: { label: "Evening", emoji: "🌙" },
 };
 
+function StopCard({
+  place,
+  label,
+  unscheduled = false,
+}: {
+  place: PlaceCard;
+  label?: string;
+  unscheduled?: boolean;
+}) {
+  const scheduled =
+    place.scheduled_start && place.scheduled_end
+      ? `${place.scheduled_start}–${place.scheduled_end}`
+      : "";
+
+  return (
+    <div className="flex gap-3 rounded-lg border bg-card p-3 transition-colors hover:bg-accent/50">
+      {place.photo_urls?.[0] && (
+        <img
+          src={place.photo_urls[0]}
+          alt={place.name}
+          className="h-16 w-16 shrink-0 rounded-md object-cover"
+          loading="lazy"
+        />
+      )}
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            {label && (
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {label}
+              </p>
+            )}
+            <p className="text-sm font-medium leading-tight">{place.name}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {scheduled && (
+              <Badge variant="outline" className="font-mono text-[11px]">
+                {scheduled}
+              </Badge>
+            )}
+            {place.estimated_cost_usd > 0 && !unscheduled && (
+              <span className="shrink-0 text-xs font-semibold text-primary">
+                {formatCurrency(place.estimated_cost_usd, "USD")}
+              </span>
+            )}
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">{place.category}</p>
+        {place.description && (
+          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+            {place.description}
+          </p>
+        )}
+        <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+          {place.rating !== null && place.rating > 0 && (
+            <span>⭐ {place.rating.toFixed(1)}</span>
+          )}
+          {place.estimated_duration_minutes > 0 && (
+            <span className="flex items-center gap-0.5">
+              <Clock className="h-3 w-3" />
+              {place.estimated_duration_minutes}m
+            </span>
+          )}
+          {place.google_maps_url && (
+            <a
+              href={place.google_maps_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-0.5 text-primary hover:underline"
+            >
+              Map <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TransitRow({ step }: { step: TransitStep }) {
+  const scheduled =
+    step.scheduled_start && step.scheduled_end
+      ? `${step.scheduled_start}–${step.scheduled_end}`
+      : "";
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+      {scheduled && <span className="font-mono">{scheduled}</span>}
+      <span className="capitalize">{step.mode}</span>
+      <span>•</span>
+      <span className="min-w-0 flex-1 truncate">
+        {step.from_place} → {step.to_place}
+      </span>
+      {step.duration_text && (
+        <>
+          <span>•</span>
+          <span>{step.duration_text}</span>
+        </>
+      )}
+      {step.fare_estimate_usd > 0 && (
+        <span className="ml-auto font-medium">
+          {formatCurrency(step.fare_estimate_usd, "USD")}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function TimeBlockCard({ block }: { block: TimeBlock }) {
   const period = PERIOD_LABELS[block.period] ?? {
     label: block.period,
     emoji: "📍",
   };
+  const timeline = [
+    ...block.activities.map((place, index) => ({
+      kind: "place" as const,
+      place,
+      label: undefined,
+      key: place.source_id || `activity-${index}`,
+      time: place.scheduled_start || "",
+    })),
+    ...(block.restaurant
+      ? [
+          {
+            kind: "place" as const,
+            place: block.restaurant,
+            label: "Meal",
+            key: block.restaurant.source_id || "restaurant",
+            time: block.restaurant.scheduled_start || "",
+          },
+        ]
+      : []),
+    ...block.transit.map((step, index) => ({
+      kind: "transit" as const,
+      step,
+      key: `transit-${step.route_leg_index ?? index}`,
+      time: step.scheduled_start || "",
+    })),
+  ].sort((left, right) => {
+    if (!left.time || !right.time) return 0;
+    return left.time.localeCompare(right.time);
+  });
 
   return (
     <div className="space-y-2">
-      <h4 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <h4 className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         <span>{period.emoji}</span>
         {period.label}
+        {block.start_time && block.end_time && (
+          <span className="font-mono font-normal normal-case">
+            {block.start_time}–{block.end_time}
+          </span>
+        )}
         {block.subtotal_usd > 0 && (
           <Badge variant="outline" className="ml-auto text-xs font-normal">
-            ~{formatCurrency(block.subtotal_usd, "USD")}
+            {formatCurrency(block.subtotal_usd, "USD")}
           </Badge>
         )}
       </h4>
 
-      {block.activities.map((activity, i) => (
-        <div
-          key={i}
-          className="flex gap-3 rounded-lg border bg-card p-3 transition-colors hover:bg-accent/50"
-        >
-          {activity.photo_urls?.[0] && (
-            <img
-              src={activity.photo_urls[0]}
-              alt={activity.name}
-              className="h-16 w-16 shrink-0 rounded-md object-cover"
-              loading="lazy"
-            />
-          )}
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-2">
-              <p className="text-sm font-medium leading-tight">
-                {activity.name}
-              </p>
-              {activity.estimated_cost_usd > 0 && (
-                <span className="shrink-0 text-xs font-semibold text-primary">
-                  {formatCurrency(activity.estimated_cost_usd, "USD")}
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">{activity.category}</p>
-            {activity.description && (
-              <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                {activity.description}
-              </p>
-            )}
-            <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground">
-              {activity.rating !== null && activity.rating > 0 && (
-                <span>⭐ {activity.rating.toFixed(1)}</span>
-              )}
-              {activity.estimated_duration_minutes > 0 && (
-                <span className="flex items-center gap-0.5">
-                  <Clock className="h-3 w-3" />
-                  {activity.estimated_duration_minutes}m
-                </span>
-              )}
-              {activity.google_maps_url && (
-                <a
-                  href={activity.google_maps_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-0.5 text-primary hover:underline"
-                >
-                  Map <ExternalLink className="h-3 w-3" />
-                </a>
-              )}
-            </div>
-          </div>
-        </div>
-      ))}
-
-      {/* Transit steps */}
-      {block.transit.map((step, i) => (
-        <div
-          key={`transit-${i}`}
-          className="flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground"
-        >
-          <span className="capitalize">{step.mode}</span>
-          <span>•</span>
-          <span className="truncate">
-            {step.from_place} → {step.to_place}
-          </span>
-          {step.duration_text && (
-            <>
-              <span>•</span>
-              <span>{step.duration_text}</span>
-            </>
-          )}
-          {step.fare_estimate_usd > 0 && (
-            <span className="ml-auto font-medium">
-              {formatCurrency(step.fare_estimate_usd, "USD")}
-            </span>
-          )}
-        </div>
-      ))}
+      {timeline.map((entry) =>
+        entry.kind === "place" ? (
+          <StopCard
+            key={entry.key}
+            place={entry.place}
+            label={entry.label}
+          />
+        ) : (
+          <TransitRow key={entry.key} step={entry.step} />
+        ),
+      )}
     </div>
   );
 }
 
+const FEASIBILITY_STYLES = {
+  verified:
+    "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+  needs_review:
+    "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+  infeasible:
+    "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+};
+
 function DayCard({ day }: { day: DayPlan }) {
   const [expanded, setExpanded] = useState(true);
+  const warnings = day.feasibility_warnings ?? [];
+  const assumptions = day.assumptions ?? [];
+  const unscheduled = day.unscheduled_stops ?? [];
 
   return (
     <Card>
@@ -125,19 +222,23 @@ function DayCard({ day }: { day: DayPlan }) {
         className="cursor-pointer pb-2"
         onClick={() => setExpanded(!expanded)}
       >
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-sm">
+        <div className="flex items-start justify-between gap-3">
+          <CardTitle className="flex flex-wrap items-center gap-2 text-sm">
             <Calendar className="h-4 w-4" />
             Day {day.day_number} — {day.city}
-            <span className="font-normal text-muted-foreground">
-              {day.date}
-            </span>
+            <span className="font-normal text-muted-foreground">{day.date}</span>
           </CardTitle>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {day.feasibility_status && (
+              <Badge
+                className={FEASIBILITY_STYLES[day.feasibility_status]}
+              >
+                {day.feasibility_status.replaceAll("_", " ")}
+              </Badge>
+            )}
             {day.weather && (
               <span className="text-sm" title={day.weather.condition}>
-                {day.weather.emoji}{" "}
-                {Math.round(day.weather.temp_high_c)}°/
+                {day.weather.emoji} {Math.round(day.weather.temp_high_c)}°/
                 {Math.round(day.weather.temp_low_c)}°
               </span>
             )}
@@ -161,12 +262,48 @@ function DayCard({ day }: { day: DayPlan }) {
             </p>
           )}
 
-          {day.time_blocks.map((block, i) => (
-            <div key={i}>
-              {i > 0 && <Separator className="my-3" />}
+          {warnings.length > 0 && (
+            <div className="rounded-lg border border-amber-300/60 bg-amber-50 p-3 text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+              <div className="mb-1 flex items-center gap-2 text-xs font-semibold">
+                <AlertTriangle className="h-4 w-4" />
+                Feasibility review needed
+              </div>
+              <ul className="space-y-1 pl-5 text-xs">
+                {warnings.map((warning) => (
+                  <li key={warning} className="list-disc">
+                    {warning}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {day.time_blocks.map((block, index) => (
+            <div key={`${block.period}-${index}`}>
+              {index > 0 && <Separator className="my-3" />}
               <TimeBlockCard block={block} />
             </div>
           ))}
+
+          {unscheduled.length > 0 && (
+            <div className="space-y-2 rounded-lg border border-dashed border-red-300 p-3 dark:border-red-900">
+              <div className="flex items-center gap-2 text-sm font-semibold text-red-700 dark:text-red-300">
+                <CircleAlert className="h-4 w-4" />
+                Unscheduled stops
+              </div>
+              <p className="text-xs text-muted-foreground">
+                These selected places did not fit known hours or the planning
+                window and are excluded from the timed schedule.
+              </p>
+              {unscheduled.map((place, index) => (
+                <StopCard
+                  key={place.source_id || `unscheduled-${index}`}
+                  place={place}
+                  unscheduled
+                />
+              ))}
+            </div>
+          )}
 
           {day.route_map_url && (
             <div className="overflow-hidden rounded-lg border">
@@ -182,10 +319,28 @@ function DayCard({ day }: { day: DayPlan }) {
             </div>
           )}
 
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
             {day.walking_km > 0 && <span>🚶 {day.walking_km} km walking</span>}
             {day.cultural_tip && <span>💡 {day.cultural_tip}</span>}
+            {day.cost_coverage && (
+              <span className="capitalize">
+                Cost coverage: {day.cost_coverage}
+              </span>
+            )}
           </div>
+
+          {assumptions.length > 0 && (
+            <details className="text-xs text-muted-foreground">
+              <summary className="cursor-pointer font-medium">Planning assumptions</summary>
+              <ul className="mt-2 space-y-1 pl-5">
+                {assumptions.map((assumption) => (
+                  <li key={assumption} className="list-disc">
+                    {assumption}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
         </CardContent>
       )}
     </Card>
@@ -204,10 +359,9 @@ export function ItineraryTab({ days }: { days: DayPlan[] }) {
     );
   }
 
-  // Collect all weather data
   const weatherDays = days
-    .map((d) => d.weather)
-    .filter((w): w is NonNullable<typeof w> => w !== null);
+    .map((day) => day.weather)
+    .filter((weather): weather is NonNullable<typeof weather> => weather !== null);
 
   return (
     <div className="space-y-4">
