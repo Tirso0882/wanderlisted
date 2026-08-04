@@ -127,6 +127,11 @@ class _ResumeGraph:
         return SimpleNamespace(values={"messages": [HumanMessage(content="plan")]})
 
 
+class _AllowLimiter:
+    async def check(self, _principal_id: str) -> bool:
+        return True
+
+
 async def test_resume_endpoint_passes_typed_budget_decision_to_langgraph():
     graph = _ResumeGraph()
     request = ResumeRequest(
@@ -138,7 +143,12 @@ async def test_resume_endpoint_passes_typed_budget_decision_to_langgraph():
         },
     )
 
-    response = await resume_chat(request, graph=graph)
+    response = await resume_chat(
+        request,
+        owner_id="90f5daf68c5b48bf97dd053bc80869ef",
+        rate_limiter=_AllowLimiter(),
+        graph=graph,
+    )
 
     command = graph.ainvoke.await_args.args[0]
     assert command.resume == {

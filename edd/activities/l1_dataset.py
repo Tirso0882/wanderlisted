@@ -233,7 +233,9 @@ DATASET: list[dict] = [
             "locations": [{"singapore"}],
             "interests": [{"science", "interactive"}],
             "activity_type": [{"museum", "tourist attraction"}],
-            "group_fit": [{"child friendly", "kid friendly", "family friendly", "children"}],
+            "group_fit": [
+                {"child friendly", "kid friendly", "family friendly", "children"}
+            ],
         },
     },
     {
@@ -264,7 +266,10 @@ DATASET: list[dict] = [
         "query": "Find K-pop and contemporary Korean culture activities in Seoul.",
         "expected": {
             "locations": [{"seoul"}],
-            "interests": [{"k pop", "korean pop"}, {"korean culture", "contemporary korean"}],
+            "interests": [
+                {"k pop", "korean pop"},
+                {"korean culture", "contemporary korean"},
+            ],
             "activity_type": [{"tourist attraction", "live music venue", "museum"}],
         },
     },
@@ -398,7 +403,9 @@ DATASET: list[dict] = [
         "expected": {
             "locations": [{"nice"}],
             "activity_type": [{"park", "tourist attraction", "museum"}],
-            "group_fit": [{"enfants", "child friendly", "kid friendly", "family friendly"}],
+            "group_fit": [
+                {"enfants", "child friendly", "kid friendly", "family friendly"}
+            ],
         },
     },
     {

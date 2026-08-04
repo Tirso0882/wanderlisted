@@ -1,0 +1,101 @@
+{
+  "artifact_sha256": "435d89a47414dd4f8d2602dbd1741562340b11ded468e1fbbf8acfeb4abfc8a7",
+  "baseline_name": "2026-08-04-system-refactor-offline-v1",
+  "cache_status": "not_used",
+  "commands": [
+    "python -m pytest tests/test_edd_flights.py -q"
+  ],
+  "component": "flights",
+  "created_at": "2026-08-04T09:15:33.935445+00:00",
+  "dataset_case_count": 40,
+  "dataset_version": "2.0.0",
+  "evidence_kind": "evaluator_contract_only",
+  "external_calls": 0,
+  "kind": "edd-offline-contract-baseline",
+  "metrics": {
+    "contract_tests_failed": 0,
+    "contract_tests_passed": 9,
+    "dataset_cases_executed": null,
+    "dataset_cases_passed": null
+  },
+  "model_quality_claim": false,
+  "schema_version": 1,
+  "sources": [
+    {
+      "path": "edd/offline_baselines.py",
+      "sha256": "74bedc6fdf609f7e3eae0ed0d9b8f321927ef41270a36ede13d171514c2b560e"
+    },
+    {
+      "path": "pyproject.toml",
+      "sha256": "5e9bed415b7342b63eaffbf7e9e4090256b5af91ce23392b69574bbd1e501735"
+    },
+    {
+      "path": "uv.lock",
+      "sha256": "bf593afeed76ba288579160b87be49e1bbae31bf20b2033185358bb6c35585ce"
+    },
+    {
+      "path": "tests/test_edd_flights.py",
+      "sha256": "862a014ae463e9835fce1ae837300db87f64cacc29be2f3a52e674eb254d06d2"
+    },
+    {
+      "path": "edd/flights/l1_dataset.py",
+      "sha256": "4a3146ef06e12924f3c73fa7f8cc81d3be3b5c0aee37066deab8907e9e7d44da"
+    },
+    {
+      "path": "edd/flights/l1_evaluate.py",
+      "sha256": "cd7bbd3d4596733dc889fd88c25a581652b53a22a9abede6dcc4fdd9eabd0149"
+    },
+    {
+      "path": "edd/baseline_config.py",
+      "sha256": "70751b65946c5fe472f797b340343f50ad510e8703243176429298e7d5875c8f"
+    },
+    {
+      "path": "edd/flights/run_utils.py",
+      "sha256": "fa135d4dc74f7757327d1db304fb3755046268e85437427a924c79a37483f38d"
+    },
+    {
+      "path": "edd/harness.py",
+      "sha256": "31b73fe1de12617e1c6626ee5f43286583d0857f2442302f7f2a7a37dc254a21"
+    },
+    {
+      "path": "src/agent/llm.py",
+      "sha256": "17fde43f0108fd33cbf92b568351b9ba7b2b9bfc02f6347395e5f42472a84397"
+    },
+    {
+      "path": "src/agent/prompts/agent_prompt.py",
+      "sha256": "b952cb36485891dff69f8539b217fd124bca0909878063c8dd0f09d958b47fb1"
+    },
+    {
+      "path": "src/agent/agents/flights_agent.py",
+      "sha256": "31cffe8833556453f8374fc9041376e458a1c9254fc75e21e2b3d7183b94ebec"
+    },
+    {
+      "path": "src/tools/flights_duffel.py",
+      "sha256": "36d5c4a8af7c110ebc921ebaada8c66150dbbd0931ea4aea9489fc9e4532793c"
+    },
+    {
+      "path": "src/tools/iata.py",
+      "sha256": "010db9fe3dcde8ef911625fd969454e947ab8dfd5d8ed9125258e15e5252aa01"
+    },
+    {
+      "path": "src/tools/iata_repository.py",
+      "sha256": "b013a96697c344d3319a998c7aa17c9e2f121b96213c61b368bfef34b13323af"
+    },
+    {
+      "path": "src/data/iata_codes.csv",
+      "sha256": "4ca3f277af76523a8dcf16a40420fcaa620cd21aaa4481e391dcf1ff2b6d85e0"
+    },
+    {
+      "path": "src/data/iata/aliases.csv",
+      "sha256": "8ab9cd0d6f27f46ef82b0c7d379457cb3c9cd0603c5686f7775fe9a2b1c8292d"
+    },
+    {
+      "path": "src/data/iata/primary_airports.csv",
+      "sha256": "7e41ed92822f7db4b0c5c83d88b2cee6025c57e662fd5c3d110ac68ab0c6f0ba"
+    },
+    {
+      "path": "src/data/iata/countries.csv",
+      "sha256": "36aea787cf211aabf2b4ea0c1abca081cfd316a6dc627ad850edd3cecd48280d"
+    }
+  ]
+}

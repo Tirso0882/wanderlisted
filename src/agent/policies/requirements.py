@@ -9,15 +9,15 @@ from src.models.trip_request import (
     TripRequest,
 )
 
-_FULL_CAPABILITIES = frozenset(
+# A generic request to plan a trip is consent to build the destination plan,
+# not to search bookable inventory or research entry requirements. Those
+# capability owners have additional critical inputs and are activated only
+# when intake extracts them explicitly.
+_DEFAULT_PLANNING_CAPABILITIES = frozenset(
     {
-        RequestedCapability.FLIGHTS,
-        RequestedCapability.HOTELS,
-        RequestedCapability.TRAVEL_READINESS,
         RequestedCapability.RESTAURANTS,
         RequestedCapability.ACTIVITIES,
         RequestedCapability.TRANSPORTATION,
-        RequestedCapability.BUDGET,
         RequestedCapability.ITINERARY,
     }
 )
@@ -46,11 +46,11 @@ _AGENT_ORDER = (
 
 
 def effective_capabilities(request: TripRequest) -> frozenset[RequestedCapability]:
-    """Return explicit capabilities or the full-plan defaults."""
+    """Return explicit capabilities or the destination-planning defaults."""
     if request.requested_capabilities:
         return frozenset(request.requested_capabilities)
     if request.scope == RequestScope.FULL_ITINERARY:
-        return _FULL_CAPABILITIES
+        return _DEFAULT_PLANNING_CAPABILITIES
     return frozenset()
 
 
@@ -113,11 +113,15 @@ def missing_required_fields(request: TripRequest) -> list[str]:
         elif not request.date_window.is_usable and "date_window" not in missing:
             missing.append("date_window")
 
-    if capabilities & {RequestedCapability.BUDGET, RequestedCapability.ITINERARY}:
+    if RequestedCapability.BUDGET in capabilities:
         if not request.date_window.is_usable and "date_window" not in missing:
             missing.append("date_window")
         if request.travelers.adults is None and "adults" not in missing:
             missing.append("adults")
+
+    if RequestedCapability.ITINERARY in capabilities:
+        if not request.date_window.is_usable and "date_window" not in missing:
+            missing.append("date_window")
 
     return missing
 

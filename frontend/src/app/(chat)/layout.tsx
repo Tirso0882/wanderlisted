@@ -5,6 +5,9 @@ export default function ChatLayout({
 }: {
   children: React.ReactNode;
 }) {
+  if (process.env.CHAT_UI_V2_ENABLED?.trim().toLowerCase() === "true") {
+    return children;
+  }
   return (
     <div className="flex h-screen flex-col overflow-hidden">
       <TopBar />

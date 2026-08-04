@@ -328,6 +328,46 @@ class TestSupervisorNode:
         routing = result["itinerary_components"]["routing"]
         assert routing == ["BudgetAgent"]
 
+    async def test_generic_city_break_overrides_broad_supervisor_routing(self):
+        supervisor = self._mock_supervisor(
+            agents=[
+                "FlightsAgent",
+                "HotelsAgent",
+                "TravelReadinessAgent",
+                "RestaurantsAgent",
+                "ActivitiesAgent",
+                "TransportationAgent",
+                "BudgetAgent",
+                "ItineraryAgent",
+            ]
+        )
+        state = {
+            "messages": [HumanMessage(content="Plan a city break in Wroclaw")],
+            "trip_request": {
+                "scope": "full_itinerary",
+                "destinations": ["wroclaw"],
+                "date_window": {
+                    "exact_start": "2026-10-08",
+                    "exact_end": "2026-10-10",
+                },
+            },
+            "itinerary_components": {},
+            "destinations": ["wroclaw"],
+            "travel_style": "",
+            "group_type": "",
+            "accessibility_needs": [],
+            "dietary_restrictions": [],
+        }
+
+        result = await supervisor_node(state, supervisor_agent=supervisor)
+
+        assert result["itinerary_components"]["routing"] == [
+            "RestaurantsAgent",
+            "ActivitiesAgent",
+            "TransportationAgent",
+            "ItineraryAgent",
+        ]
+
     async def test_preserves_existing_profile(self):
         supervisor = self._mock_supervisor(agents=[], destinations=[])
         state = {
@@ -1089,6 +1129,28 @@ class TestRouteAfterSupervisor:
         targets = {s.node for s in result}
         assert targets == {"flights"}
 
+    def test_generic_city_break_starts_only_destination_discovery(self):
+        state = {
+            "messages": [HumanMessage(content="Plan a city break in Wroclaw")],
+            "trip_request": {
+                "scope": "full_itinerary",
+                "destinations": ["wroclaw"],
+            },
+            "itinerary_components": {
+                "routing": [
+                    "RestaurantsAgent",
+                    "ActivitiesAgent",
+                    "TransportationAgent",
+                    "ItineraryAgent",
+                ]
+            },
+        }
+
+        result = route_after_supervisor(state)
+
+        assert isinstance(result, list)
+        assert [send.node for send in result] == ["restaurants", "activities"]
+
     def test_readiness_runs_before_parallel_dispatch(self):
         state = {
             "messages": [HumanMessage(content="Tokyo etiquette")],
@@ -1160,17 +1222,21 @@ class TestRouteAfterSupervisor:
         state = {"itinerary_components": {"routing": ["HotelsAgent"]}}
         assert route_after_supervisor(state) == "trip_skeleton"
 
-    def test_transportation_only_routes_directly(self):
+    def test_transportation_only_routes_through_trip_prerequisites(self):
         state = {"itinerary_components": {"routing": ["TransportationAgent"]}}
-        assert route_after_supervisor(state) == "transportation"
+        assert route_after_supervisor(state) == "trip_skeleton"
 
     def test_budget_only_routes_to_budget(self):
         state = {"itinerary_components": {"routing": ["BudgetAgent"]}}
         assert route_after_supervisor(state) == "budget"
 
-    def test_itinerary_only_routes_to_itinerary(self):
+    def test_itinerary_only_routes_through_trip_prerequisites(self):
         state = {"itinerary_components": {"routing": ["ItineraryAgent"]}}
-        assert route_after_supervisor(state) == "itinerary"
+        assert route_after_supervisor(state) == "trip_skeleton"
+
+    def test_budget_and_itinerary_route_through_trip_prerequisites(self):
+        state = {"itinerary_components": {"routing": ["BudgetAgent", "ItineraryAgent"]}}
+        assert route_after_supervisor(state) == "trip_skeleton"
 
 
 class TestRouteAfterReadinessPreflight:

@@ -2,25 +2,58 @@ import asyncio
 import json
 import os
 import uuid
-from collections import defaultdict
-from contextlib import asynccontextmanager
-from time import time
-from typing import Annotated, Literal
+from contextlib import AsyncExitStack, asynccontextmanager
+from datetime import UTC, datetime, timedelta
+from typing import Annotated, Callable, Literal
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi import FastAPI, Depends, HTTPException, Path, Query, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.graph.state import CompiledStateGraph
-from langsmith import traceable
-from langsmith import Client
+from langsmith import Client, traceable
+from langsmith.run_helpers import get_current_run_tree
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from custom_logging import AppLogger
 from src.agent.stage4_graph import create_multiagent_travel_graph
+from src.api.auth import (
+    BrowserAuthSettings,
+    BrowserPrincipalMiddleware,
+    BrowserPrincipalSigner,
+    private_thread_id,
+)
+from src.api.checkpointing import (
+    CheckpointSettings,
+    open_checkpointer,
+)
+from src.api.clerk_auth import (
+    ClerkAuthSettings,
+    ClerkIdentityMiddleware,
+    ClerkJWTValidator,
+    current_account_owner,
+    opaque_account_owner,
+)
+from src.api.clerk_webhooks import (
+    ClerkWebhookError,
+    ClerkWebhookSettings,
+    verify_clerk_webhook,
+)
+from src.api.rate_limit import (
+    RateLimiter,
+    RateLimiterUnavailable,
+    RateLimitSettings,
+    open_rate_limiter,
+)
+from src.api.session_registry import (
+    SessionRecord,
+    SessionRegistry,
+    SessionRegistrySettings,
+    open_session_registry,
+)
 from src.models import BudgetBreakdown, BudgetReviewDecision
 import config as app_config
 
@@ -37,6 +70,18 @@ logger = AppLogger(
     logger_name="api",
     level=os.environ.get("LOG_LEVEL", "INFO"),
 )
+
+_auth_settings = BrowserAuthSettings.from_environment(os.environ)
+_principal_signer = BrowserPrincipalSigner(_auth_settings)
+if _auth_settings.ephemeral_key:
+    logger.warning(
+        "Using an ephemeral browser-principal signing key; local sessions will "
+        "not survive an API restart"
+    )
+
+_clerk_settings = ClerkAuthSettings.from_environment(os.environ)
+_clerk_validator = ClerkJWTValidator(_clerk_settings)
+_clerk_webhook_settings = ClerkWebhookSettings.from_environment(os.environ)
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -82,19 +127,61 @@ def _public_components(
     return public or None
 
 
+def _current_langsmith_run_id() -> str | None:
+    """Return the active traced run ID, or None when tracing is disabled."""
+    run_tree = get_current_run_tree()
+    return str(run_tree.id) if run_tree is not None else None
+
+
 # ── Graph dependency (replaces global mutable state) ────────────────────────
 class _GraphDependency:
     """Lazy-initialized graph singleton, injectable via FastAPI Depends."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        graph_factory: Callable = create_multiagent_travel_graph,
+        settings_factory: Callable[[], CheckpointSettings] | None = None,
+        checkpointer_context_factory: Callable = open_checkpointer,
+    ) -> None:
         self._graph: CompiledStateGraph | None = None
+        self._graph_factory = graph_factory
+        self._settings_factory = settings_factory or (
+            lambda: CheckpointSettings.from_environment(os.environ)
+        )
+        self._checkpointer_context_factory = checkpointer_context_factory
+        self._exit_stack: AsyncExitStack | None = None
+        self.backend: str | None = None
 
     async def initialize(self) -> None:
-        from langgraph.checkpoint.memory import InMemorySaver
+        if self._graph is not None:
+            return
 
-        checkpointer = InMemorySaver()
-        self._graph = create_multiagent_travel_graph(checkpointer=checkpointer)
-        logger.info("Multi-agent graph initialized")
+        settings = self._settings_factory()
+        exit_stack = AsyncExitStack()
+        try:
+            checkpointer = await exit_stack.enter_async_context(
+                self._checkpointer_context_factory(settings)
+            )
+            graph = self._graph_factory(checkpointer=checkpointer)
+        except BaseException:
+            await exit_stack.aclose()
+            raise
+
+        self._exit_stack = exit_stack
+        self._graph = graph
+        self.backend = settings.backend
+        logger.info(
+            f"Multi-agent graph initialized with {settings.backend} checkpoints"
+        )
+
+    async def shutdown(self) -> None:
+        self._graph = None
+        self.backend = None
+        if self._exit_stack is not None:
+            exit_stack = self._exit_stack
+            self._exit_stack = None
+            await exit_stack.aclose()
 
     def __call__(self) -> CompiledStateGraph:
         if self._graph is None:
@@ -106,27 +193,212 @@ _graph_dep = _GraphDependency()
 
 
 # ── Rate limiter ────────────────────────────────────────────────────────────
-class _RateLimiter:
-    def __init__(self, max_requests: int = 20, window_seconds: int = 60) -> None:
-        self.max_requests = max_requests
-        self.window = window_seconds
-        self._hits: dict[str, list[float]] = defaultdict(list)
+class _RateLimiterDependency:
+    def __init__(
+        self,
+        *,
+        settings_factory: Callable[[], RateLimitSettings] | None = None,
+        limiter_context_factory: Callable = open_rate_limiter,
+    ) -> None:
+        self._settings_factory = settings_factory or (
+            lambda: RateLimitSettings.from_environment(os.environ)
+        )
+        self._limiter_context_factory = limiter_context_factory
+        self._limiter: RateLimiter | None = None
+        self._exit_stack: AsyncExitStack | None = None
+        self.backend: str | None = None
 
-    def check(self, client_id: str) -> bool:
-        now = time()
-        self._hits[client_id] = [
-            ts for ts in self._hits[client_id] if now - ts < self.window
-        ]
-        if len(self._hits[client_id]) >= self.max_requests:
-            return False
-        self._hits[client_id].append(now)
-        return True
+    async def initialize(self) -> None:
+        if self._limiter is not None:
+            return
+        settings = self._settings_factory()
+        exit_stack = AsyncExitStack()
+        try:
+            limiter = await exit_stack.enter_async_context(
+                self._limiter_context_factory(settings)
+            )
+        except BaseException:
+            await exit_stack.aclose()
+            raise
+        self._limiter = limiter
+        self._exit_stack = exit_stack
+        self.backend = settings.backend
+        logger.info(f"Rate limiter initialized with {settings.backend} backend")
+
+    async def shutdown(self) -> None:
+        self._limiter = None
+        self.backend = None
+        if self._exit_stack is not None:
+            exit_stack = self._exit_stack
+            self._exit_stack = None
+            await exit_stack.aclose()
+
+    def __call__(self) -> RateLimiter:
+        if self._limiter is None:
+            raise RuntimeError("Rate limiter not initialized")
+        return self._limiter
 
 
-_rate_limiter = _RateLimiter(
-    max_requests=int(os.environ.get("RATE_LIMIT_MAX", "20")),
-    window_seconds=int(os.environ.get("RATE_LIMIT_WINDOW", "60")),
-)
+_rate_limiter_dep = _RateLimiterDependency()
+
+
+class _SessionRegistryDependency:
+    """Own the session-index pool for the FastAPI lifespan."""
+
+    def __init__(
+        self,
+        *,
+        settings_factory: Callable[[], SessionRegistrySettings] | None = None,
+        registry_context_factory: Callable = open_session_registry,
+    ) -> None:
+        self._settings_factory = settings_factory or (
+            lambda: SessionRegistrySettings.from_environment(os.environ)
+        )
+        self._registry_context_factory = registry_context_factory
+        self._registry: SessionRegistry | None = None
+        self._exit_stack: AsyncExitStack | None = None
+        self.backend: str | None = None
+        self.retention_days = 365
+
+    async def initialize(self) -> None:
+        if self._registry is not None:
+            return
+        settings = self._settings_factory()
+        exit_stack = AsyncExitStack()
+        try:
+            registry = await exit_stack.enter_async_context(
+                self._registry_context_factory(settings)
+            )
+        except BaseException:
+            await exit_stack.aclose()
+            raise
+        self._registry = registry
+        self._exit_stack = exit_stack
+        self.backend = settings.backend
+        self.retention_days = settings.retention_days
+        logger.info(f"Session registry initialized with {settings.backend} backend")
+
+    async def shutdown(self) -> None:
+        self._registry = None
+        self.backend = None
+        if self._exit_stack is not None:
+            exit_stack = self._exit_stack
+            self._exit_stack = None
+            await exit_stack.aclose()
+
+    def __call__(self) -> SessionRegistry:
+        if self._registry is None:
+            raise RuntimeError("Session registry not initialized")
+        return self._registry
+
+
+_session_registry_dep = _SessionRegistryDependency()
+
+
+def _optional_session_registry() -> SessionRegistry | None:
+    """Allow direct unit calls and disabled-lifespan tests to remain hermetic."""
+
+    try:
+        return _session_registry_dep()
+    except RuntimeError:
+        return None
+
+
+def _required_account_owner() -> str:
+    account_owner = current_account_owner()
+    if not account_owner:
+        raise HTTPException(status_code=401, detail="Sign in to use saved trips.")
+    return account_owner
+
+
+async def _resolve_session_record(
+    *,
+    owner_id: str,
+    session_id: str,
+    account_owner_id: str | None,
+    registry: SessionRegistry | None,
+) -> tuple[str, SessionRecord | None]:
+    if registry is not None:
+        record = await registry.find_accessible(
+            session_id=session_id,
+            browser_owner_key=owner_id,
+            account_owner_key=account_owner_id,
+        )
+        if record is not None:
+            return record.checkpoint_thread_id, record
+    return private_thread_id(owner_id, session_id), None
+
+
+async def _record_session_turn(
+    registry: SessionRegistry | None,
+    *,
+    session_id: str,
+    thread_id: str,
+    owner_id: str,
+    account_owner_id: str | None,
+    existing: SessionRecord | None,
+    first_message: str,
+    locale: str,
+    message_count: int,
+) -> SessionRecord | None:
+    if registry is None:
+        return existing
+    return await registry.register_turn(
+        session_id=session_id,
+        checkpoint_thread_id=thread_id,
+        browser_owner_key=(
+            existing.browser_owner_key if existing is not None else owner_id
+        ),
+        account_owner_key=account_owner_id,
+        first_message=first_message,
+        locale=locale if locale in {"en", "pl"} else "en",
+        message_count=message_count,
+    )
+
+
+async def _delete_checkpoint_thread(
+    graph: CompiledStateGraph,
+    thread_id: str,
+    *,
+    strict: bool = False,
+) -> bool:
+    checkpointer = getattr(graph, "checkpointer", None)
+    delete = getattr(checkpointer, "adelete_thread", None)
+    if delete is None:
+        if strict:
+            raise RuntimeError("Checkpoint backend cannot delete owned data")
+        logger.warning("Checkpoint backend does not expose thread deletion")
+        return False
+    await delete(thread_id)
+    return True
+
+
+def _owner_id(request: Request) -> str:
+    owner_id = getattr(request.state, "owner_id", None)
+    if not owner_id:
+        raise HTTPException(status_code=401, detail="Browser identity is required.")
+    return owner_id
+
+
+def _thread_config(owner_id: str, session_id: str) -> dict:
+    return {"configurable": {"thread_id": private_thread_id(owner_id, session_id)}}
+
+
+async def _enforce_rate_limit(
+    rate_limiter: RateLimiter,
+    owner_id: str,
+) -> None:
+    try:
+        allowed = await rate_limiter.check(owner_id)
+    except RateLimiterUnavailable:
+        logger.error("Shared rate limiter unavailable; request denied")
+        raise HTTPException(
+            status_code=503, detail="Request protection is temporarily unavailable."
+        )
+    if not allowed:
+        raise HTTPException(
+            status_code=429, detail="Rate limit exceeded. Try again shortly."
+        )
 
 
 # ── Error-handling middleware ───────────────────────────────────────────────
@@ -159,8 +431,29 @@ class _RequestIDMiddleware(BaseHTTPMiddleware):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await _graph_dep.initialize()
-    yield
-    logger.info("Shutting down — cleaning up resources")
+    try:
+        await _rate_limiter_dep.initialize()
+        try:
+            await _session_registry_dep.initialize()
+            try:
+                registry = _session_registry_dep()
+                stale_before = datetime.now(UTC) - timedelta(
+                    days=_session_registry_dep.retention_days
+                )
+                stale_threads = await registry.purge_inactive_saved(stale_before)
+                graph = _graph_dep()
+                for thread_id in stale_threads:
+                    await _delete_checkpoint_thread(graph, thread_id)
+                if stale_threads:
+                    logger.info(f"Removed {len(stale_threads)} inactive saved sessions")
+                yield
+            finally:
+                await _session_registry_dep.shutdown()
+        finally:
+            await _rate_limiter_dep.shutdown()
+    finally:
+        await _graph_dep.shutdown()
+        logger.info("Shutting down — checkpoint and rate-limit resources closed")
 
 
 # ── App ─────────────────────────────────────────────────────────────────────
@@ -177,12 +470,15 @@ _origins = (
 
 app.add_middleware(_ErrorHandlerMiddleware)
 app.add_middleware(_RequestIDMiddleware)
+app.add_middleware(BrowserPrincipalMiddleware, signer=_principal_signer)
+if _clerk_settings.enabled:
+    app.add_middleware(ClerkIdentityMiddleware, validator=_clerk_validator)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
 )
 
 
@@ -191,6 +487,9 @@ class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=2000)
     session_id: str | None = Field(
         default=None,
+        min_length=1,
+        max_length=128,
+        pattern=r"^[A-Za-z0-9_-]+$",
         description="Session ID for conversation continuity. Omit to start a new session.",
     )
     target_agent: str | None = Field(
@@ -201,6 +500,13 @@ class ChatRequest(BaseModel):
             "Valid: FlightsAgent, HotelsAgent, TravelReadinessAgent, "
             "RestaurantsAgent, ActivitiesAgent, TransportationAgent, "
             "BudgetAgent, ItineraryAgent."
+        ),
+    )
+    ui_locale: Literal["en", "pl"] | None = Field(
+        default=None,
+        description=(
+            "Selected interface locale used only when the message language and "
+            "conversation history are ambiguous."
         ),
     )
 
@@ -257,6 +563,10 @@ class ChatResponse(BaseModel):
         default=None,
         description="All structured agent results (flights, hotels, restaurants, etc.).",
     )
+    locale: Literal["en", "pl"] = Field(
+        default="en",
+        description="Resolved assistant response locale for this turn.",
+    )
 
 
 class SessionInfo(BaseModel):
@@ -264,27 +574,76 @@ class SessionInfo(BaseModel):
     message_count: int
 
 
+class SessionSummary(BaseModel):
+    id: str
+    title: str
+    created_at: datetime
+    updated_at: datetime
+    locale: Literal["en", "pl"]
+    message_count: int
+
+
+class SessionListResponse(BaseModel):
+    items: list[SessionSummary]
+    next_cursor: str | None = None
+
+
+class AccountPreferences(BaseModel):
+    locale: Literal["en", "pl"]
+
+
+class AccountPreferencesResponse(BaseModel):
+    locale: Literal["en", "pl"] | None = None
+
+
+class ClaimSessionsRequest(BaseModel):
+    session_ids: list[str] = Field(min_length=1, max_length=50)
+
+    @field_validator("session_ids")
+    @classmethod
+    def validate_session_ids(cls, values: list[str]) -> list[str]:
+        validated: list[str] = []
+        for value in values:
+            if (
+                not value
+                or len(value) > 128
+                or not all(
+                    character.isalnum() or character in {"_", "-"}
+                    for character in value
+                )
+            ):
+                raise ValueError("session_ids contain an invalid ID")
+            if value not in validated:
+                validated.append(value)
+        return validated
+
+
+class ClaimSessionsResponse(BaseModel):
+    claimed: int
+
+
 # ── Core graph runner ──────────────────────────────────────────────────────
 @traceable(run_type="chain", name="wanderlisted_chat")
 async def _run_agent(
     message: str,
-    session_id: str,
+    thread_id: str,
     graph: CompiledStateGraph,
     target_agent: str | None = None,
+    ui_locale: Literal["en", "pl"] | None = None,
 ) -> dict:
     """Run the multi-agent supervisor graph and return response data."""
-    import uuid as _uuid
-
-    run_id = str(_uuid.uuid4())
+    run_id = _current_langsmith_run_id()
 
     graph_input: dict = {"messages": [HumanMessage(content=message)]}
     if target_agent:
         graph_input["target_agent"] = target_agent
+    if ui_locale:
+        graph_input["ui_locale"] = ui_locale
 
     result = await asyncio.wait_for(
         graph.ainvoke(
             graph_input,
-            config={"configurable": {"thread_id": session_id}},
+            config={"configurable": {"thread_id": thread_id}},
         ),
         timeout=_REQUEST_TIMEOUT,
     )
@@ -312,29 +671,68 @@ async def _run_agent(
         "interrupt_data": interrupt_data if isinstance(interrupt_data, dict) else None,
         "budget": components.get("budget_structured"),
         "components": exposed,
+        "locale": result.get("response_locale", ui_locale or "en"),
+        "message_count": len(result.get("messages", [])),
     }
 
 
 # ── Endpoints ──────────────────────────────────────────────────────────────
 @app.post("/api/v1/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest, graph: CompiledStateGraph = Depends(_graph_dep)):
+async def chat(
+    request: ChatRequest,
+    owner_id: str = Depends(_owner_id),
+    rate_limiter: RateLimiter = Depends(_rate_limiter_dep),
+    graph: CompiledStateGraph = Depends(_graph_dep),
+):
     """Chat with the travel agent. Provide a session_id to continue a conversation."""
     session_id = request.session_id or str(uuid.uuid4())
 
-    if not _rate_limiter.check(session_id):
-        raise HTTPException(
-            status_code=429, detail="Rate limit exceeded. Try again shortly."
-        )
+    await _enforce_rate_limit(rate_limiter, owner_id)
+    registry = _optional_session_registry()
+    account_owner_id = current_account_owner()
+    thread_id, record = await _resolve_session_record(
+        owner_id=owner_id,
+        session_id=session_id,
+        account_owner_id=account_owner_id,
+        registry=registry,
+    )
+    record = await _record_session_turn(
+        registry,
+        session_id=session_id,
+        thread_id=thread_id,
+        owner_id=owner_id,
+        account_owner_id=account_owner_id,
+        existing=record,
+        first_message=request.message,
+        locale=request.ui_locale or (record.locale if record else "en"),
+        message_count=record.message_count if record else 0,
+    )
 
     try:
         data = await _run_agent(
-            request.message, session_id, graph, target_agent=request.target_agent
+            request.message,
+            thread_id,
+            graph,
+            target_agent=request.target_agent,
+            ui_locale=request.ui_locale,
         )
     except asyncio.TimeoutError:
         raise HTTPException(
             status_code=504,
             detail="The agent pipeline timed out. Please try a simpler query.",
         )
+
+    await _record_session_turn(
+        registry,
+        session_id=session_id,
+        thread_id=thread_id,
+        owner_id=owner_id,
+        account_owner_id=account_owner_id,
+        existing=record,
+        first_message=request.message,
+        locale=data.get("locale", request.ui_locale or "en"),
+        message_count=data.get("message_count", 0),
+    )
 
     return ChatResponse(
         message=data["message"],
@@ -344,20 +742,41 @@ async def chat(request: ChatRequest, graph: CompiledStateGraph = Depends(_graph_
         interrupt_data=data.get("interrupt_data"),
         budget=data["budget"],
         components=data["components"],
+        locale=data.get("locale", request.ui_locale or "en"),
     )
 
 
 @app.post("/api/v1/chat/stream")
 async def chat_stream(
-    request: ChatRequest, graph: CompiledStateGraph = Depends(_graph_dep)
+    request: ChatRequest,
+    owner_id: str = Depends(_owner_id),
+    rate_limiter: RateLimiter = Depends(_rate_limiter_dep),
+    graph: CompiledStateGraph = Depends(_graph_dep),
 ):
     """Stream agent execution events via SSE."""
     session_id = request.session_id or str(uuid.uuid4())
 
-    if not _rate_limiter.check(session_id):
-        raise HTTPException(
-            status_code=429, detail="Rate limit exceeded. Try again shortly."
-        )
+    await _enforce_rate_limit(rate_limiter, owner_id)
+    registry = _optional_session_registry()
+    account_owner_id = current_account_owner()
+    thread_id, record = await _resolve_session_record(
+        owner_id=owner_id,
+        session_id=session_id,
+        account_owner_id=account_owner_id,
+        registry=registry,
+    )
+    record = await _record_session_turn(
+        registry,
+        session_id=session_id,
+        thread_id=thread_id,
+        owner_id=owner_id,
+        account_owner_id=account_owner_id,
+        existing=record,
+        first_message=request.message,
+        locale=request.ui_locale or (record.locale if record else "en"),
+        message_count=record.message_count if record else 0,
+    )
+    config = {"configurable": {"thread_id": thread_id}}
 
     async def _event_generator():
         yield f"data: {json.dumps({'type': 'session', 'session_id': session_id})}\n\n"
@@ -367,19 +786,25 @@ async def chat_stream(
         queue: asyncio.Queue = asyncio.Queue()
         _SENTINEL = object()
         _KEEPALIVE_INTERVAL = 15  # seconds
+        stream_run_id: str | None = None
 
+        @traceable(run_type="chain", name="wanderlisted_chat_stream")
         async def _stream_graph():
             """Push graph events into the queue; signal completion with _SENTINEL."""
+            nonlocal stream_run_id
+            stream_run_id = _current_langsmith_run_id()
             try:
                 graph_input: dict = {
                     "messages": [HumanMessage(content=request.message)]
                 }
                 if request.target_agent:
                     graph_input["target_agent"] = request.target_agent
+                if request.ui_locale:
+                    graph_input["ui_locale"] = request.ui_locale
 
                 async for node_output in graph.astream(
                     graph_input,
-                    config={"configurable": {"thread_id": session_id}},
+                    config=config,
                     stream_mode="updates",
                 ):
                     for node_name, update in node_output.items():
@@ -448,7 +873,6 @@ async def chat_stream(
                 stream_task.cancel()
 
         # Check for HITL interrupts and send one final structured payload.
-        config = {"configurable": {"thread_id": session_id}}
         state = await graph.aget_state(config)
         interrupt_payload = None
         interrupted = bool(state and state.next)
@@ -468,6 +892,7 @@ async def chat_stream(
         components = values.get("itinerary_components", {})
         done_payload = {
             "type": "done",
+            "run_id": stream_run_id,
             "interrupted": interrupted,
             "interrupt_data": (
                 interrupt_payload if isinstance(interrupt_payload, dict) else None
@@ -476,7 +901,19 @@ async def chat_stream(
             "components": _public_components(
                 components, values.get("component_results")
             ),
+            "locale": values.get("response_locale", request.ui_locale or "en"),
         }
+        await _record_session_turn(
+            registry,
+            session_id=session_id,
+            thread_id=thread_id,
+            owner_id=owner_id,
+            account_owner_id=account_owner_id,
+            existing=record,
+            first_message=request.message,
+            locale=done_payload["locale"],
+            message_count=len(values.get("messages", [])),
+        )
         yield f"data: {json.dumps(done_payload)}\n\n"
 
     return StreamingResponse(
@@ -486,10 +923,216 @@ async def chat_stream(
     )
 
 
+def _session_summary(record: SessionRecord) -> SessionSummary:
+    return SessionSummary(
+        id=record.session_id,
+        title=record.title,
+        created_at=record.created_at,
+        updated_at=record.updated_at,
+        locale=record.locale,
+        message_count=record.message_count,
+    )
+
+
+def _interrupt_from_state(state) -> tuple[bool, dict | None]:
+    interrupted = bool(state and getattr(state, "next", None))
+    if not interrupted:
+        return False, None
+    for task in getattr(state, "tasks", ()):
+        interrupts = getattr(task, "interrupts", ())
+        if interrupts:
+            value = getattr(interrupts[0], "value", None)
+            return True, value if isinstance(value, dict) else None
+    return True, None
+
+
+@app.get("/api/v1/account/preferences", response_model=AccountPreferencesResponse)
+async def get_account_preferences(
+    account_owner_id: str = Depends(_required_account_owner),
+    registry: SessionRegistry = Depends(_session_registry_dep),
+):
+    """Return only non-sensitive account UI preferences."""
+    return AccountPreferencesResponse(
+        locale=await registry.get_preference(account_owner_id)
+    )
+
+
+@app.put("/api/v1/account/preferences", response_model=AccountPreferences)
+async def put_account_preferences(
+    preferences: AccountPreferences,
+    account_owner_id: str = Depends(_required_account_owner),
+    registry: SessionRegistry = Depends(_session_registry_dep),
+):
+    await registry.put_preference(account_owner_id, preferences.locale)
+    return preferences
+
+
+@app.get("/api/v1/sessions", response_model=SessionListResponse)
+async def list_sessions(
+    cursor: str | None = Query(default=None, max_length=1024),
+    limit: int = Query(default=20, ge=1, le=50),
+    account_owner_id: str = Depends(_required_account_owner),
+    registry: SessionRegistry = Depends(_session_registry_dep),
+):
+    """List saved sessions for the verified account with cursor pagination."""
+    try:
+        records, next_cursor = await registry.list_account_sessions(
+            account_owner_id, cursor=cursor, limit=limit
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return SessionListResponse(
+        items=[_session_summary(record) for record in records],
+        next_cursor=next_cursor,
+    )
+
+
+@app.post("/api/v1/account/claim-sessions", response_model=ClaimSessionsResponse)
+async def claim_sessions(
+    claim: ClaimSessionsRequest,
+    owner_id: str = Depends(_owner_id),
+    account_owner_id: str = Depends(_required_account_owner),
+    registry: SessionRegistry = Depends(_session_registry_dep),
+):
+    """Explicitly attach selected sessions from this browser to the account."""
+    claimed = await registry.claim_sessions(
+        browser_owner_key=owner_id,
+        account_owner_key=account_owner_id,
+        session_ids=claim.session_ids,
+    )
+    return ClaimSessionsResponse(claimed=claimed)
+
+
+@app.get("/api/v1/sessions/{session_id}/snapshot")
+async def get_session_snapshot(
+    session_id: Annotated[
+        str, Path(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9_-]+$")
+    ],
+    owner_id: str = Depends(_owner_id),
+    graph: CompiledStateGraph = Depends(_graph_dep),
+):
+    """Restore public conversation, typed results, and a pending HITL gate."""
+    thread_id, record = await _resolve_session_record(
+        owner_id=owner_id,
+        session_id=session_id,
+        account_owner_id=current_account_owner(),
+        registry=_optional_session_registry(),
+    )
+    state = await graph.aget_state({"configurable": {"thread_id": thread_id}})
+    if not state or not state.values.get("messages"):
+        raise HTTPException(status_code=404, detail="Session not found")
+    messages = []
+    for message in state.values["messages"]:
+        if isinstance(message, HumanMessage):
+            messages.append(
+                {"role": "user", "content": _extract_text_content(message.content)}
+            )
+        elif isinstance(message, AIMessage) and message.content:
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": _extract_text_content(message.content),
+                }
+            )
+    components = state.values.get("itinerary_components", {})
+    interrupted, interrupt_data = _interrupt_from_state(state)
+    return {
+        "session": (
+            _session_summary(record).model_dump(mode="json") if record else None
+        ),
+        "messages": messages,
+        "interrupted": interrupted,
+        "interrupt_data": interrupt_data,
+        "budget": jsonable_encoder(components.get("budget_structured")),
+        "components": _public_components(
+            components, state.values.get("component_results")
+        ),
+        "locale": state.values.get(
+            "response_locale", record.locale if record else "en"
+        ),
+    }
+
+
+@app.delete("/api/v1/sessions/{session_id}", status_code=204)
+async def delete_session(
+    session_id: Annotated[
+        str, Path(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9_-]+$")
+    ],
+    owner_id: str = Depends(_owner_id),
+    graph: CompiledStateGraph = Depends(_graph_dep),
+    registry: SessionRegistry = Depends(_session_registry_dep),
+):
+    """Delete one accessible registry record and its checkpoint payload."""
+    account_owner_id = current_account_owner()
+    record = await registry.find_accessible(
+        session_id=session_id,
+        browser_owner_key=owner_id,
+        account_owner_key=account_owner_id,
+    )
+    if record is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    await _delete_checkpoint_thread(graph, record.checkpoint_thread_id, strict=True)
+    deleted = await registry.delete_accessible(
+        session_id=session_id,
+        browser_owner_key=owner_id,
+        account_owner_key=account_owner_id,
+    )
+    if deleted is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return Response(status_code=204)
+
+
+@app.post("/api/v1/webhooks/clerk")
+async def clerk_webhook(
+    request: Request,
+    graph: CompiledStateGraph = Depends(_graph_dep),
+    registry: SessionRegistry = Depends(_session_registry_dep),
+):
+    """Apply verified Clerk lifecycle deletion without storing Clerk PII."""
+    if _clerk_webhook_settings is None or not _clerk_settings.enabled:
+        raise HTTPException(status_code=404, detail="Webhook is not configured")
+    body = await request.body()
+    try:
+        event = verify_clerk_webhook(
+            body,
+            request.headers,
+            settings=_clerk_webhook_settings,
+        )
+    except ClerkWebhookError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if event.get("type") != "user.deleted":
+        return {"received": True, "deleted": 0}
+    data = event.get("data")
+    subject = data.get("id") if isinstance(data, dict) else None
+    if not isinstance(subject, str) or not subject:
+        raise HTTPException(status_code=400, detail="Deleted user ID is missing")
+    account_owner_id = opaque_account_owner(
+        subject, hash_key=_clerk_settings.owner_hash_key
+    )
+    thread_ids = await registry.account_thread_ids(account_owner_id)
+    for thread_id in thread_ids:
+        await _delete_checkpoint_thread(graph, thread_id, strict=True)
+    await registry.delete_account(account_owner_id)
+    return {"received": True, "deleted": len(thread_ids)}
+
+
 @app.get("/api/v1/sessions/{session_id}", response_model=SessionInfo)
-async def get_session(session_id: str, graph: CompiledStateGraph = Depends(_graph_dep)):
+async def get_session(
+    session_id: Annotated[
+        str, Path(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9_-]+$")
+    ],
+    owner_id: str = Depends(_owner_id),
+    graph: CompiledStateGraph = Depends(_graph_dep),
+):
     """Get session info including message count."""
-    config = {"configurable": {"thread_id": session_id}}
+    thread_id, _ = await _resolve_session_record(
+        owner_id=owner_id,
+        session_id=session_id,
+        account_owner_id=current_account_owner(),
+        registry=_optional_session_registry(),
+    )
+    config = {"configurable": {"thread_id": thread_id}}
     state = await graph.aget_state(config)
     if not state or not state.values.get("messages"):
         raise HTTPException(status_code=404, detail="Session not found")
@@ -501,10 +1144,20 @@ async def get_session(session_id: str, graph: CompiledStateGraph = Depends(_grap
 
 @app.get("/api/v1/sessions/{session_id}/history")
 async def get_session_history(
-    session_id: str, graph: CompiledStateGraph = Depends(_graph_dep)
+    session_id: Annotated[
+        str, Path(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9_-]+$")
+    ],
+    owner_id: str = Depends(_owner_id),
+    graph: CompiledStateGraph = Depends(_graph_dep),
 ):
     """Get conversation history for a session."""
-    config = {"configurable": {"thread_id": session_id}}
+    thread_id, _ = await _resolve_session_record(
+        owner_id=owner_id,
+        session_id=session_id,
+        account_owner_id=current_account_owner(),
+        registry=_optional_session_registry(),
+    )
+    config = {"configurable": {"thread_id": thread_id}}
     state = await graph.aget_state(config)
     if not state or not state.values.get("messages"):
         raise HTTPException(status_code=404, detail="Session not found")
@@ -526,9 +1179,19 @@ async def health():
 
 
 @app.get("/api/v1/ready")
-async def readiness(graph: CompiledStateGraph = Depends(_graph_dep)):
+async def readiness(
+    graph: CompiledStateGraph = Depends(_graph_dep),
+    rate_limiter: RateLimiter = Depends(_rate_limiter_dep),
+):
     """Readiness probe — is the graph initialized and able to serve traffic?"""
-    return {"status": "ready", "version": _API_VERSION, "framework": "langgraph"}
+    return {
+        "status": "ready",
+        "version": _API_VERSION,
+        "framework": "langgraph",
+        "checkpoint_backend": _graph_dep.backend,
+        "rate_limit_backend": _rate_limiter_dep.backend,
+        "session_registry_backend": _session_registry_dep.backend,
+    }
 
 
 # ── HITL: Resume interrupted graph execution ────────────────────────────────
@@ -562,12 +1225,17 @@ TypedResumeDecision = Annotated[
 
 class ResumeRequest(BaseModel):
     session_id: str = Field(
-        ..., description="The session/thread ID of the interrupted graph"
+        ...,
+        min_length=1,
+        max_length=128,
+        pattern=r"^[A-Za-z0-9_-]+$",
+        description="The public session ID of the interrupted graph",
     )
     decision: TypedResumeDecision | LegacyResumeDecision = Field(
         ...,
         description="Typed safety, budget, or itinerary-review decision.",
     )
+    ui_locale: Literal["en", "pl"] | None = None
 
 
 class ResumeResponse(BaseModel):
@@ -578,11 +1246,15 @@ class ResumeResponse(BaseModel):
     interrupt_data: dict | None = None
     budget: BudgetBreakdown | None = None
     components: dict | None = None
+    locale: Literal["en", "pl"] = "en"
 
 
 @app.post("/api/v1/chat/resume", response_model=ResumeResponse)
 async def resume_chat(
-    request: ResumeRequest, graph: CompiledStateGraph = Depends(_graph_dep)
+    request: ResumeRequest,
+    owner_id: str = Depends(_owner_id),
+    rate_limiter: RateLimiter = Depends(_rate_limiter_dep),
+    graph: CompiledStateGraph = Depends(_graph_dep),
 ):
     """Resume an interrupted graph execution with a human decision.
 
@@ -592,7 +1264,16 @@ async def resume_chat(
     """
     from langgraph.types import Command
 
-    config = {"configurable": {"thread_id": request.session_id}}
+    await _enforce_rate_limit(rate_limiter, owner_id)
+    registry = _optional_session_registry()
+    account_owner_id = current_account_owner()
+    thread_id, record = await _resolve_session_record(
+        owner_id=owner_id,
+        session_id=request.session_id,
+        account_owner_id=account_owner_id,
+        registry=registry,
+    )
+    config = {"configurable": {"thread_id": thread_id}}
 
     # Verify session exists and is in interrupted state
     state = await graph.aget_state(config)
@@ -600,10 +1281,12 @@ async def resume_chat(
         raise HTTPException(status_code=404, detail="Session not found")
 
     try:
+        command_update = {"ui_locale": request.ui_locale} if request.ui_locale else None
         result = await asyncio.wait_for(
             graph.ainvoke(
                 Command(
-                    resume=request.decision.model_dump(mode="json", exclude_none=True)
+                    resume=request.decision.model_dump(mode="json", exclude_none=True),
+                    update=command_update,
                 ),
                 config,
             ),
@@ -629,6 +1312,29 @@ async def resume_chat(
         )
     components = result.get("itinerary_components", {})
     exposed = _public_components(components, result.get("component_results"))
+    response_locale = result.get(
+        "response_locale",
+        state.values.get("response_locale", request.ui_locale or "en"),
+    )
+    first_human_message = next(
+        (
+            _extract_text_content(message.content)
+            for message in result.get("messages", [])
+            if isinstance(message, HumanMessage)
+        ),
+        "Saved trip",
+    )
+    await _record_session_turn(
+        registry,
+        session_id=request.session_id,
+        thread_id=thread_id,
+        owner_id=owner_id,
+        account_owner_id=account_owner_id,
+        existing=record,
+        first_message=first_human_message,
+        locale=response_locale,
+        message_count=len(result.get("messages", [])),
+    )
 
     return ResumeResponse(
         message=last_message,
@@ -638,6 +1344,7 @@ async def resume_chat(
         interrupt_data=interrupt_data if isinstance(interrupt_data, dict) else None,
         budget=components.get("budget_structured"),
         components=exposed,
+        locale=response_locale,
     )
 
 
@@ -645,23 +1352,36 @@ async def resume_chat(
 
 
 class FeedbackRequest(BaseModel):
-    run_id: str = Field(..., description="LangSmith run ID to attach feedback to")
+    run_id: uuid.UUID = Field(
+        ..., description="Actual LangSmith run ID returned by a traced chat request"
+    )
     score: float = Field(
         ..., ge=0.0, le=1.0, description="1.0 = thumbs up, 0.0 = thumbs down"
     )
     comment: str = Field(
         default="", max_length=1000, description="Optional feedback text"
     )
-    key: str = Field(default="user_rating", description="Feedback key name")
+    key: str = Field(
+        default="user_rating",
+        min_length=1,
+        max_length=64,
+        pattern=r"^[A-Za-z0-9_.-]+$",
+        description="Feedback key name",
+    )
 
 
 @app.post("/api/v1/feedback")
-async def submit_feedback(request: FeedbackRequest):
+async def submit_feedback(
+    request: FeedbackRequest,
+    owner_id: str = Depends(_owner_id),
+    rate_limiter: RateLimiter = Depends(_rate_limiter_dep),
+):
     """Collect user feedback and link to a LangSmith run.
 
     The frontend should store the run_id from a previous chat response
     and POST it here when the user clicks thumbs up/down.
     """
+    await _enforce_rate_limit(rate_limiter, owner_id)
     try:
         client = Client()
         client.create_feedback(
@@ -670,7 +1390,7 @@ async def submit_feedback(request: FeedbackRequest):
             score=request.score,
             comment=request.comment if request.comment else None,
         )
-        return {"status": "ok", "run_id": request.run_id, "key": request.key}
+        return {"status": "ok", "run_id": str(request.run_id), "key": request.key}
     except Exception as exc:
         logger.error(f"Failed to submit feedback: {exc}")
         raise HTTPException(status_code=500, detail="Failed to submit feedback")

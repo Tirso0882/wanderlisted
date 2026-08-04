@@ -21,12 +21,13 @@ from src.models import (
     PriceScope,
     SelectionStatus,
 )
+from src.models.pricing import NonNegativeDecimal
 
 
 class LegacyPriceFact(BaseModel):
     category: BudgetCategory
     source_id: str = Field(min_length=1)
-    amount: Decimal = Field(ge=0)
+    amount: NonNegativeDecimal
     currency: str = Field(min_length=3, max_length=3)
     evidence_text: str = ""
 

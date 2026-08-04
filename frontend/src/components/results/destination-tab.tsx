@@ -11,9 +11,11 @@ import {
   Coins,
   CloudSun,
 } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { localeTag, type AppLocale } from "@/i18n/config";
 import type {
   SafetyInfo,
   CultureGuide,
@@ -31,21 +33,48 @@ const ADVISORY_COLORS: Record<string, string> = {
   red: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
 };
 
+const ADVISORY_LABELS = {
+  unknown: "advisory.unknown",
+  green: "advisory.green",
+  yellow: "advisory.yellow",
+  orange: "advisory.orange",
+  red: "advisory.red",
+} as const;
+
+const CONSTRAINT_LABELS = {
+  safety: "constraint.safety",
+  entry: "constraint.entry",
+  health: "constraint.health",
+  weather: "constraint.weather",
+  culture: "constraint.culture",
+} as const;
+
+function formatCalendarDate(value: string, locale: AppLocale): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return value;
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return new Intl.DateTimeFormat(localeTag(locale), {
+    day: "numeric",
+    month: "short",
+  }).format(date);
+}
+
 function SafetyCard({ safety }: { safety: SafetyInfo }) {
+  const t = useTranslations("destinationDetails");
   return (
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-sm">
             <Shield className="h-4 w-4" />
-            Safety & Travel Advisory
+            {t("safetyTitle")}
           </CardTitle>
           <Badge
             className={
               ADVISORY_COLORS[safety.advisory_level] ?? ADVISORY_COLORS.unknown
             }
           >
-            {safety.advisory_level.toUpperCase()}
+            {t(ADVISORY_LABELS[safety.advisory_level])}
           </Badge>
         </div>
       </CardHeader>
@@ -61,7 +90,7 @@ function SafetyCard({ safety }: { safety: SafetyInfo }) {
           {safety.visa_requirements && (
             <div className="space-y-1">
               <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                <Globe className="h-3 w-3" /> Visa
+                <Globe className="h-3 w-3" /> {t("visa")}
               </h4>
               <p className="text-sm">{safety.visa_requirements}</p>
             </div>
@@ -71,7 +100,7 @@ function SafetyCard({ safety }: { safety: SafetyInfo }) {
           {safety.languages.length > 0 && (
             <div className="space-y-1">
               <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                <Languages className="h-3 w-3" /> Languages
+                <Languages className="h-3 w-3" /> {t("languages")}
               </h4>
               <p className="text-sm">{safety.languages.join(", ")}</p>
             </div>
@@ -80,7 +109,7 @@ function SafetyCard({ safety }: { safety: SafetyInfo }) {
           {/* Currency */}
           <div className="space-y-1">
             <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              <Coins className="h-3 w-3" /> Currency
+              <Coins className="h-3 w-3" /> {t("currency")}
             </h4>
             <p className="text-sm">
               {safety.currency_name} ({safety.currency_symbol}{" "}
@@ -92,7 +121,7 @@ function SafetyCard({ safety }: { safety: SafetyInfo }) {
           {safety.timezones.length > 0 && (
             <div className="space-y-1">
               <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                <Clock className="h-3 w-3" /> Timezone
+                <Clock className="h-3 w-3" /> {t("timezone")}
               </h4>
               <p className="text-sm">{safety.timezones.join(", ")}</p>
             </div>
@@ -105,7 +134,7 @@ function SafetyCard({ safety }: { safety: SafetyInfo }) {
             <Separator />
             <div className="space-y-1">
               <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                <Phone className="h-3 w-3" /> Emergency Numbers
+                <Phone className="h-3 w-3" /> {t("emergencyNumbers")}
               </h4>
               <div className="flex flex-wrap gap-2">
                 {Object.entries(safety.emergency_numbers).map(
@@ -126,7 +155,7 @@ function SafetyCard({ safety }: { safety: SafetyInfo }) {
             <Separator />
             <div className="space-y-1">
               <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                <Heart className="h-3 w-3" /> Health Requirements
+                <Heart className="h-3 w-3" /> {t("healthRequirements")}
               </h4>
               <ul className="space-y-0.5 text-sm text-muted-foreground">
                 {safety.health_requirements.map((req, i) => (
@@ -143,7 +172,7 @@ function SafetyCard({ safety }: { safety: SafetyInfo }) {
             <Separator />
             <div className="space-y-1">
               <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                <AlertTriangle className="h-3 w-3" /> Safety Tips
+                <AlertTriangle className="h-3 w-3" /> {t("safetyTips")}
               </h4>
               <ul className="space-y-0.5 text-sm text-muted-foreground">
                 {safety.safety_tips.map((tip, i) => (
@@ -159,17 +188,18 @@ function SafetyCard({ safety }: { safety: SafetyInfo }) {
 }
 
 function CultureCard({ culture }: { culture: CultureGuide }) {
+  const t = useTranslations("destinationDetails");
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-sm">Culture & Etiquette</CardTitle>
+        <CardTitle className="text-sm">{t("cultureTitle")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Useful phrases */}
         {culture.phrases.length > 0 && (
           <div className="space-y-2">
             <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Useful Phrases
+              {t("usefulPhrases")}
             </h4>
             <div className="grid gap-1 sm:grid-cols-2">
               {culture.phrases.map((phrase, i) => {
@@ -192,7 +222,7 @@ function CultureCard({ culture }: { culture: CultureGuide }) {
         {culture.tipping_guide && (
           <div className="space-y-1">
             <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Tipping
+              {t("tipping")}
             </h4>
             <p className="text-sm text-muted-foreground">
               {culture.tipping_guide}
@@ -204,7 +234,7 @@ function CultureCard({ culture }: { culture: CultureGuide }) {
         {culture.etiquette_tips.length > 0 && (
           <div className="space-y-1">
             <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Etiquette
+              {t("etiquette")}
             </h4>
             <ul className="space-y-0.5 text-sm text-muted-foreground">
               {culture.etiquette_tips.map((tip, i) => (
@@ -218,7 +248,7 @@ function CultureCard({ culture }: { culture: CultureGuide }) {
         {culture.dining_customs.length > 0 && (
           <div className="space-y-1">
             <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Dining Customs
+              {t("diningCustoms")}
             </h4>
             <ul className="space-y-0.5 text-sm text-muted-foreground">
               {culture.dining_customs.map((custom, i) => (
@@ -243,12 +273,17 @@ export function DestinationTab({
   weather?: DayWeather[];
   readiness?: TravelReadinessReport | null;
 }) {
+  const locale = useLocale() as AppLocale;
+  const t = useTranslations("destinationDetails");
+  const numberFormatter = new Intl.NumberFormat(localeTag(locale), {
+    maximumFractionDigits: 0,
+  });
   if (!safety && !culture && weather.length === 0 && !readiness) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <MapPin className="mb-3 h-8 w-8 text-muted-foreground/40" />
         <p className="text-sm text-muted-foreground">
-          Travel essentials will appear here once the readiness check completes.
+          {t("empty")}
         </p>
       </div>
     );
@@ -259,7 +294,7 @@ export function DestinationTab({
       {readiness?.summary && (
         <Card className="lg:col-span-2">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Travel-readiness summary</CardTitle>
+            <CardTitle className="text-sm">{t("summaryTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">{readiness.summary}</p>
@@ -272,15 +307,20 @@ export function DestinationTab({
         <Card className="lg:col-span-2">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <CloudSun className="h-4 w-4" /> Forecast for your travel dates
+              <CloudSun className="h-4 w-4" /> {t("forecastTitle")}
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {weather.map((day) => (
               <div key={day.date} className="rounded-md bg-muted/50 p-3 text-sm">
-                <div className="font-medium">{day.date}</div>
+                <div className="font-medium">{formatCalendarDate(day.date, locale)}</div>
                 <div className="text-muted-foreground">{day.condition}</div>
-                <div>{Math.round(day.temp_low_c)}–{Math.round(day.temp_high_c)}°C · {day.rain_probability_pct}% rain</div>
+                <div>
+                  {numberFormatter.format(Math.round(day.temp_low_c))}–
+                  {numberFormatter.format(Math.round(day.temp_high_c))}°C · {t("rain", {
+                    percent: numberFormatter.format(day.rain_probability_pct),
+                  })}
+                </div>
               </div>
             ))}
           </CardContent>
@@ -289,12 +329,12 @@ export function DestinationTab({
       {readiness && readiness.planning_constraints.length > 0 && (
         <Card className="lg:col-span-2">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Planning constraints</CardTitle>
+            <CardTitle className="text-sm">{t("planningConstraints")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {readiness.planning_constraints.map((constraint, index) => (
               <div key={`${constraint.category}-${index}`} className="flex gap-2 text-sm">
-                <Badge variant="outline">{constraint.category}</Badge>
+                <Badge variant="outline">{t(CONSTRAINT_LABELS[constraint.category])}</Badge>
                 <span>{constraint.summary}</span>
               </div>
             ))}
@@ -305,7 +345,7 @@ export function DestinationTab({
         <Card className="border-amber-300 lg:col-span-2 dark:border-amber-800">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <AlertTriangle className="h-4 w-4 text-amber-600" /> Verification limits
+              <AlertTriangle className="h-4 w-4 text-amber-600" /> {t("verificationLimits")}
             </CardTitle>
           </CardHeader>
           <CardContent>

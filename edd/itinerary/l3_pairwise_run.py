@@ -18,9 +18,7 @@ LINEUP = ("terra", "luna")
 async def main() -> None:
     queries = [case["query"] for case in DATASET]
     arms = {
-        name: load_cached_itinerary_trajectories(
-            queries, model_config=MODELS[name]
-        )
+        name: load_cached_itinerary_trajectories(queries, model_config=MODELS[name])
         for name in LINEUP
     }
     require_judge_approval(layer="Layer 3", estimated_calls=len(DATASET) * 2)

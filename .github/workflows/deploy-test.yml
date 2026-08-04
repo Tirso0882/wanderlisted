@@ -19,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       image_tag: ${{ env.IMAGE_TAG }}
+      api_digest: ${{ steps.digests.outputs.api_digest }}
+      frontend_digest: ${{ steps.digests.outputs.frontend_digest }}
     steps:
       - uses: actions/checkout@v4
 
@@ -34,18 +36,37 @@ jobs:
 
       - name: Build & push API image
         run: |
-          docker build -t ${{ env.ACR_NAME }}.azurecr.io/wanderlisted-api:${{ env.IMAGE_TAG }} .
+          docker build \
+            --label org.opencontainers.image.revision=${{ env.IMAGE_TAG }} \
+            -t ${{ env.ACR_NAME }}.azurecr.io/wanderlisted-api:${{ env.IMAGE_TAG }} \
+            .
           docker push ${{ env.ACR_NAME }}.azurecr.io/wanderlisted-api:${{ env.IMAGE_TAG }}
 
       - name: Build & push Frontend image
         run: |
           docker build \
-            --build-arg API_URL=https://wanderlisted-api-test.${CONTAINER_ENV_FQDN} \
+            --label org.opencontainers.image.revision=${{ env.IMAGE_TAG }} \
             -t ${{ env.ACR_NAME }}.azurecr.io/wanderlisted-frontend:${{ env.IMAGE_TAG }} \
             ./frontend
           docker push ${{ env.ACR_NAME }}.azurecr.io/wanderlisted-frontend:${{ env.IMAGE_TAG }}
-        env:
-          CONTAINER_ENV_FQDN: ${{ secrets.TEST_ENV_FQDN }}
+
+      - name: Resolve immutable image digests
+        id: digests
+        run: |
+          api_digest=$(az acr repository show \
+            --name "${ACR_NAME}" \
+            --image "wanderlisted-api:${IMAGE_TAG}" \
+            --query digest \
+            --output tsv)
+          frontend_digest=$(az acr repository show \
+            --name "${ACR_NAME}" \
+            --image "wanderlisted-frontend:${IMAGE_TAG}" \
+            --query digest \
+            --output tsv)
+          [[ "${api_digest}" =~ ^sha256:[0-9a-f]{64}$ ]]
+          [[ "${frontend_digest}" =~ ^sha256:[0-9a-f]{64}$ ]]
+          echo "api_digest=${api_digest}" >> "${GITHUB_OUTPUT}"
+          echo "frontend_digest=${frontend_digest}" >> "${GITHUB_OUTPUT}"
 
   deploy:
     needs: build-and-push
@@ -67,7 +88,12 @@ jobs:
           resourceGroupName: ${{ env.AZURE_RG }}
           template: ./infra/main.bicep
           parameters: ./infra/parameters.test.bicepparam
-          additionalArguments: --parameters imageTag=${{ env.IMAGE_TAG }}
+          additionalArguments: >-
+            --parameters
+            apiImageDigest=${{ needs.build-and-push.outputs.api_digest }}
+            frontendImageDigest=${{ needs.build-and-push.outputs.frontend_digest }}
+            checkpointDatabaseUrl='${{ secrets.CHECKPOINT_DATABASE_URL }}'
+            sessionSigningKey='${{ secrets.SESSION_SIGNING_KEY }}'
 
       - name: Update API secrets
         run: |

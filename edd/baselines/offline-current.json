@@ -1,0 +1,14 @@
+{
+  "baselines": {
+    "activities": "2026-08-04-bilingual-workspace-offline-v1",
+    "budget": "2026-08-04-bilingual-workspace-offline-v1",
+    "flights": "2026-08-04-bilingual-workspace-offline-v1",
+    "hotels": "2026-08-04-bilingual-workspace-offline-v1",
+    "itinerary": "2026-08-04-bilingual-workspace-offline-v1",
+    "readiness": "2026-08-04-bilingual-workspace-offline-v1",
+    "restaurants": "2026-08-04-bilingual-workspace-offline-v1",
+    "transportation": "2026-08-04-bilingual-workspace-offline-v1"
+  },
+  "kind": "edd-offline-baseline-index",
+  "schema_version": 1
+}

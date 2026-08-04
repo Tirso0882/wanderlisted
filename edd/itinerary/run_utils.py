@@ -31,7 +31,10 @@ def _reject_live_refresh() -> None:
 def classify_itinerary_outcome(trajectory: Trajectory) -> str:
     if trajectory.error:
         lowered = trajectory.error.lower()
-        if any(marker in lowered for marker in ("provider", "timeout", "rate limit", "model")):
+        if any(
+            marker in lowered
+            for marker in ("provider", "timeout", "rate limit", "model")
+        ):
             return "blocked_external"
         return "infra_error"
     return "completed" if trajectory.final_text.strip() else "failed"

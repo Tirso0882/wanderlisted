@@ -63,9 +63,7 @@ class _RecordingProvider:
         self.queries: list[ReadinessQuery] = []
         self.sources: list[ReadinessSource] = []
 
-    async def search_many(
-        self, queries: list[ReadinessQuery]
-    ) -> ReadinessRetrieval:
+    async def search_many(self, queries: list[ReadinessQuery]) -> ReadinessRetrieval:
         self.queries = [query.model_copy(deep=True) for query in queries]
         result = await self.delegate.search_many(queries)
         self.sources = result.sources

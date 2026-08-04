@@ -213,7 +213,34 @@ and daily costs contain only mapped, non-estimated Budget line items. Any future
 capture must first disclose exact provider requests, selection-model and judge
 calls, expected credits, and a budget cap.
 
-### Preserve a named baseline
+### Verify the named zero-call contract baseline
+
+Every specialist has a committed baseline under the shared name
+`2026-08-04-system-refactor-offline-v1`. These artifacts pin the dataset,
+evaluator/test results, behavior-source hashes, Python lock, and the exact
+hermetic commands:
+
+```bash
+.venv/bin/python -m edd.offline_baselines verify
+```
+
+Budget and Itinerary include their full deterministic 16-case Layer-1 pipeline
+results. Flights, Hotels, Restaurants, Activities, Transportation, and Travel
+Readiness are explicitly labeled `evaluator_contract_only`: their offline
+baseline proves evaluator/dataset/source integrity, not current model or provider
+quality. Creation runs zero external calls and refuses live flags:
+
+```bash
+.venv/bin/python -m edd.offline_baselines create \
+  --name <new-offline-baseline-name>
+```
+
+CI reruns the hermetic gates and verifies source fingerprints. A behavior-source
+change makes the named baseline stale and requires a new reviewed name. Do not
+replace missing current trajectories with stale caches or call an offline
+contract artifact a model-quality baseline.
+
+### Preserve a named trajectory baseline
 
 The `.cache/` files above are disposable snapshots for reusing provider results.
 They are not durable baselines. Set `EDD_BASELINE` to promote the exact cached or
@@ -236,7 +263,8 @@ EDD_BASELINE=$BASELINE \
 ```
 
 The same `EDD_BASELINE=<name>` mechanism works for Flights, Hotels, Restaurants,
-Activities, Transportation, Travel Readiness, and Budget. Shared configuration lives in
+Activities, Transportation, Travel Readiness, Budget, and Itinerary, subject to
+each runner's explicit live/cached policy. Shared configuration lives in
 `edd/baseline_config.py`; shared storage and immutability enforcement live in
 `edd/baseline_store.py`.
 

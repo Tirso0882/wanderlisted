@@ -93,7 +93,7 @@ Start with root and nearest `AGENTS.md`, then use `agent-map.yaml` or `make docs
 
 ## Active task packets
 
-No active task packet.
+- [Bilingual production chat workspace — 2026-08-04](tasks/active/bilingual-chat-workspace/TASK.md)
 
 ## Governance
 

@@ -1,32 +1,26 @@
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
+import { createJSONStorage, persist } from "zustand/middleware";
+import type { AppLocale } from "@/i18n/config";
+import { rememberBrowserSession } from "@/lib/api/sessions";
 import { streamChat, type StreamCallbacks } from "@/lib/api/stream";
 import type {
   AgentName,
   AgentStatus,
-  InterruptData,
   BudgetBreakdown,
+  InterruptData,
+  ResumeResponse,
+  SessionSnapshot,
   StructuredComponents,
   TripHandbook,
 } from "@/lib/types";
-
-// ── Message types ───────────────────────────────────────────────────────
 
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: number;
+  stopped?: boolean;
 }
-
-// ── Agent tracking ──────────────────────────────────────────────────────
-
-export interface AgentState {
-  name: AgentName;
-  status: AgentStatus;
-}
-
-// ── View modes ──────────────────────────────────────────────────────────
 
 export type ViewMode =
   | "home"
@@ -40,36 +34,25 @@ export type ViewMode =
   | "itinerary"
   | "full-plan";
 
-// ── Store shape ─────────────────────────────────────────────────────────
+export type ChatErrorKey = "stream" | "network" | "preferences" | "save" | null;
 
 interface ChatState {
-  // Conversation
   messages: ChatMessage[];
   sessionId: string | null;
   runId: string | null;
-
-  // Streaming
+  responseLocale: AppLocale;
   isStreaming: boolean;
   streamingContent: string;
   abortController: AbortController | null;
-
-  // Agent tracking
   agents: Record<AgentName, AgentStatus>;
-
-  // HITL
   interruptData: InterruptData | null;
-
-  // Structured results
   budget: BudgetBreakdown | null;
   components: StructuredComponents | null;
   handbook: TripHandbook | null;
   isMockMode: boolean;
-
-  // View state
   activeView: ViewMode;
-
-  // Actions
-  sendMessage: (content: string) => void;
+  errorKey: ChatErrorKey;
+  sendMessage: (content: string, uiLocale?: AppLocale) => void;
   stopStreaming: () => void;
   clearChat: () => void;
   goHome: () => void;
@@ -78,16 +61,18 @@ interface ChatState {
   setComponents: (components: StructuredComponents | null) => void;
   setBudget: (budget: BudgetBreakdown | null) => void;
   setHandbook: (handbook: TripHandbook | null) => void;
+  setErrorKey: (error: ChatErrorKey) => void;
+  restoreSnapshot: (sessionId: string, snapshot: SessionSnapshot) => void;
+  applyResumeResponse: (response: ResumeResponse) => void;
 }
 
-// ── Helpers ─────────────────────────────────────────────────────────────
-
-let _nextId = 0;
-function msgId(): string {
-  return `msg_${Date.now()}_${++_nextId}`;
+let nextId = 0;
+function messageId(): string {
+  nextId += 1;
+  return `msg_${Date.now()}_${nextId}`;
 }
 
-const INITIAL_AGENTS: Record<AgentName, AgentStatus> = {
+export const INITIAL_AGENTS: Record<AgentName, AgentStatus> = {
   FlightsAgent: "idle",
   HotelsAgent: "idle",
   TravelReadinessAgent: "idle",
@@ -98,48 +83,65 @@ const INITIAL_AGENTS: Record<AgentName, AgentStatus> = {
   ItineraryAgent: "idle",
 };
 
+function isAgentName(value: string): value is AgentName {
+  return Object.prototype.hasOwnProperty.call(INITIAL_AGENTS, value);
+}
+
 function extractHandbook(
   components: StructuredComponents | null,
 ): TripHandbook | null | undefined {
-  if (
-    !components ||
-    !Object.prototype.hasOwnProperty.call(components, "handbook_structured")
-  ) {
-    return undefined;
-  }
+  if (!components || !("handbook_structured" in components)) return undefined;
   const candidate = components.handbook_structured;
-  if (
-    candidate &&
-    typeof candidate === "object" &&
-    Array.isArray(candidate.days)
-  ) {
-    return candidate;
-  }
-  return null;
+  return candidate && typeof candidate === "object" && Array.isArray(candidate.days)
+    ? candidate
+    : null;
 }
 
-/** Detect intent from user message to route the view */
 function detectIntent(message: string): ViewMode | null {
   const lower = message.toLowerCase();
   const patterns: [ViewMode, RegExp][] = [
-    ["full-plan", /\b(full.*trip|complete.*plan|plan.*everything|whole.*trip)\b/],
-    ["flights", /\b(flight|fly|airport|airline|book.*fly|plane)\b/],
-    ["hotels", /\b(hotel|stay|accommodation|lodging|hostel|airbnb|check.?in)\b/],
-    ["destination", /\b(safe|safety|advisory|weather|forecast|visa|entry|health|culture|custom|etiquette|packing?)\b/],
-    ["activities", /\b(activit|thing.*to.*do|attraction|sightseeing|museum|tour|adventure|hidden.*gem|event|festival)\b/],
-    ["restaurants", /\b(restaurant|food|eat|dining|cuisine|meal|lunch|dinner|breakfast|cafe)\b/],
-    ["transport", /\b(transport|getting.*around|taxi|uber|subway|metro|bus|train|rental.*car)\b/],
-    ["budget", /\b(budget|cost|price|expense|money|spend|cheap|afford)\b/],
-    ["itinerary", /\b(itinerary|schedule|plan.*trip|day.*plan|full.*plan)\b/],
+    ["flights", /\b(flight|flights|lot|loty|samolot)\b/],
+    ["hotels", /\b(hotel|hotels|nocleg|noclegi)\b/],
+    ["destination", /\b(safety|visa|weather|bezpieczeń|wiza|pogoda)\b/],
+    ["activities", /\b(activities|attractions|atrakcje|zwiedzanie)\b/],
+    ["restaurants", /\b(restaurant|food|restaurants|jedzenie|restauracje)\b/],
+    ["transport", /\b(transport|route|routes|trasa|trasy)\b/],
+    ["budget", /\b(budget|cost|price|budżet|koszt|cena)\b/],
+    ["itinerary", /\b(itinerary|schedule|plan|harmonogram)\b/],
   ];
-
-  for (const [view, regex] of patterns) {
-    if (regex.test(lower)) return view;
-  }
-  return null;
+  return patterns.find(([, pattern]) => pattern.test(lower))?.[0] ?? null;
 }
 
-// ── Store ───────────────────────────────────────────────────────────────
+function agentsFromComponents(
+  components: StructuredComponents | null,
+): Record<AgentName, AgentStatus> {
+  const next = { ...INITIAL_AGENTS };
+  const mapping: Record<string, AgentName> = {
+    flights: "FlightsAgent",
+    hotels: "HotelsAgent",
+    readiness: "TravelReadinessAgent",
+    readiness_preflight: "TravelReadinessAgent",
+    restaurants: "RestaurantsAgent",
+    activities: "ActivitiesAgent",
+    transportation: "TransportationAgent",
+    budget: "BudgetAgent",
+    itinerary: "ItineraryAgent",
+  };
+  for (const [component, outcome] of Object.entries(
+    components?.component_results ?? {},
+  )) {
+    const name = mapping[component];
+    if (!name) continue;
+    next[name] = ["completed", "partial", "no_inventory"].includes(outcome.status)
+      ? "completed"
+      : ["failed", "blocked_external", "stale"].includes(outcome.status)
+        ? "error"
+        : outcome.status === "running"
+          ? "running"
+          : "idle";
+  }
+  return next;
+}
 
 export const useChatStore = create<ChatState>()(
   persist(
@@ -147,6 +149,7 @@ export const useChatStore = create<ChatState>()(
       messages: [],
       sessionId: null,
       runId: null,
+      responseLocale: "en",
       isStreaming: false,
       streamingContent: "",
       abortController: null,
@@ -156,170 +159,136 @@ export const useChatStore = create<ChatState>()(
       components: null,
       handbook: null,
       isMockMode: false,
-      activeView: "home" as ViewMode,
+      activeView: "home",
+      errorKey: null,
 
-      sendMessage: (content: string) => {
+      sendMessage: (content, uiLocale = "en") => {
         const state = get();
-        if (state.isStreaming) return;
-
-        // Detect which view to show based on user intent. When no specific
-        // intent is detected, fall back to the general conversation view so
-        // the chat stays visible (the home screen has no message list). If the
-        // user is already inside an agent view, keep them there.
-        const detectedView = detectIntent(content);
-        const effectiveView: ViewMode =
+        const trimmed = content.trim();
+        if (!trimmed || state.isStreaming) return;
+        const detectedView = detectIntent(trimmed);
+        const activeView =
           detectedView ?? (state.activeView === "home" ? "full-plan" : state.activeView);
-
-        // Add user message
-        const userMsg: ChatMessage = {
-          id: msgId(),
+        const userMessage: ChatMessage = {
+          id: messageId(),
           role: "user",
-          content,
+          content: trimmed,
           timestamp: Date.now(),
         };
 
         set({
-          messages: [...state.messages, userMsg],
+          messages: [...state.messages, userMessage],
           isStreaming: true,
           streamingContent: "",
           interruptData: null,
-          activeView: effectiveView,
+          activeView,
+          errorKey: null,
         });
 
-        // Start streaming
         const callbacks: StreamCallbacks = {
           onSession: (sessionId) => {
+            rememberBrowserSession(sessionId);
             set({ sessionId });
           },
-          onToken: (token) => {
-            set((s) => ({
-              streamingContent: s.streamingContent + token,
-            }));
-          },
+          onToken: (token) =>
+            set((current) => ({ streamingContent: current.streamingContent + token })),
           onAgentStart: (agentName) => {
-            const name = agentName as AgentName;
-            // Auto-route to the correct view when agent starts
-            const agentViewMap: Record<AgentName, ViewMode> = {
-              FlightsAgent: "flights",
-              HotelsAgent: "hotels",
-              TravelReadinessAgent: "destination",
-              RestaurantsAgent: "restaurants",
-              ActivitiesAgent: "activities",
-              TransportationAgent: "transport",
-              BudgetAgent: "budget",
-              ItineraryAgent: "itinerary",
-            };
-            const targetView = agentViewMap[name];
-            set((s) => ({
-              agents: { ...s.agents, [name]: "running" as AgentStatus },
-              ...(targetView && s.activeView === "home" ? { activeView: targetView } : {}),
+            if (!isAgentName(agentName)) return;
+            set((current) => ({
+              agents: { ...current.agents, [agentName]: "running" },
             }));
           },
-          onToolResult: () => {
-            set((s) => {
-              const updated = { ...s.agents };
-              for (const [key, status] of Object.entries(updated)) {
-                if (status === "running") {
-                  updated[key as AgentName] = "completed";
-                }
+          onToolResult: () =>
+            set((current) => {
+              const agents = { ...current.agents };
+              for (const name of Object.keys(agents) as AgentName[]) {
+                if (agents[name] === "running") agents[name] = "completed";
               }
-              return { agents: updated };
+              return { agents };
+            }),
+          onInterrupt: (_gate, data) => {
+            const current = get();
+            const assistantMessage: ChatMessage[] = current.streamingContent.trim()
+              ? [
+                  {
+                    id: messageId(),
+                    role: "assistant",
+                    content: current.streamingContent,
+                    timestamp: Date.now(),
+                  },
+                ]
+              : [];
+            set({
+              messages: [...current.messages, ...assistantMessage],
+              isStreaming: false,
+              streamingContent: "",
+              abortController: null,
+              interruptData: (typeof data === "object" && data
+                ? data
+                : null) as InterruptData | null,
             });
           },
-          onInterrupt: (gate, data) => {
-            const current = get();
-            const finalContent = current.streamingContent;
-
-            if (finalContent.trim()) {
-              const assistantMsg: ChatMessage = {
-                id: msgId(),
-                role: "assistant",
-                content: finalContent,
-                timestamp: Date.now(),
-              };
-              set((s) => ({
-                messages: [...s.messages, assistantMsg],
-              }));
-            }
-
+          onError: () =>
             set({
               isStreaming: false,
               streamingContent: "",
               abortController: null,
-              interruptData: { gate, ...(typeof data === "object" && data ? data : {}) } as InterruptData,
-            });
-          },
-          onError: (error) => {
-            const assistantMsg: ChatMessage = {
-              id: msgId(),
-              role: "assistant",
-              content: `Error: ${error}`,
-              timestamp: Date.now(),
-            };
-            set((s) => ({
-              messages: [...s.messages, assistantMsg],
-              isStreaming: false,
-              streamingContent: "",
-              abortController: null,
-            }));
-          },
-          onDone: (data: Record<string, unknown>) => {
+              errorKey: "stream",
+            }),
+          onDone: (data) => {
             const current = get();
-            const finalContent = current.streamingContent;
-
-            if (finalContent.trim()) {
-              const assistantMsg: ChatMessage = {
-                id: msgId(),
-                role: "assistant",
-                content: finalContent,
-                timestamp: Date.now(),
-              };
-              set((s) => ({
-                messages: [...s.messages, assistantMsg],
-              }));
-            }
-
-            const interrupted = data?.interrupted as boolean | undefined;
-            const interruptPayload = data?.interrupt_data as InterruptData | undefined;
-            const completedAgents = Object.fromEntries(
-              Object.entries(current.agents).map(([name, status]) => [
-                name,
-                status === "running" ? "completed" : status,
-              ]),
-            ) as Record<AgentName, AgentStatus>;
-            const incomingComponents = data?.components as
+            const assistantMessage: ChatMessage[] = current.streamingContent.trim()
+              ? [
+                  {
+                    id: messageId(),
+                    role: "assistant",
+                    content: current.streamingContent,
+                    timestamp: Date.now(),
+                  },
+                ]
+              : [];
+            const incomingComponents = data.components as
               | StructuredComponents
               | null
               | undefined;
-            const nextComponents =
-              incomingComponents === undefined
-                ? current.components
-                : incomingComponents;
-            const nextHandbook = extractHandbook(nextComponents);
-
+            const components =
+              incomingComponents === undefined ? current.components : incomingComponents;
+            const handbook = extractHandbook(components);
+            const interrupted = data.interrupted as boolean | undefined;
             set({
+              messages: [...current.messages, ...assistantMessage],
               isStreaming: false,
               streamingContent: "",
               abortController: null,
-              runId: (data?.run_id as string) ?? current.runId,
+              runId: (data.run_id as string | null | undefined) ?? current.runId,
+              responseLocale:
+                data.locale === "pl" || data.locale === "en"
+                  ? data.locale
+                  : current.responseLocale,
               interruptData:
                 interrupted === undefined
                   ? current.interruptData
                   : interrupted
-                    ? (interruptPayload ?? current.interruptData)
+                    ? ((data.interrupt_data as InterruptData | null) ??
+                      current.interruptData)
                     : null,
-              budget: (data?.budget as BudgetBreakdown) ?? current.budget,
-              components: nextComponents,
-              ...(nextHandbook !== undefined
-                ? { handbook: nextHandbook }
-                : {}),
-              agents: completedAgents,
+              budget:
+                (data.budget as BudgetBreakdown | null | undefined) ?? current.budget,
+              components,
+              ...(handbook !== undefined ? { handbook } : {}),
+              agents: components
+                ? agentsFromComponents(components)
+                : (Object.fromEntries(
+                    Object.entries(current.agents).map(([name, status]) => [
+                      name,
+                      status === "running" ? "completed" : status,
+                    ]),
+                  ) as Record<AgentName, AgentStatus>),
             });
           },
         };
 
-        // Map activeView to backend agent name for single-agent isolation
-        const viewToAgent: Partial<Record<ViewMode, string>> = {
+        const viewToAgent: Partial<Record<ViewMode, AgentName>> = {
           flights: "FlightsAgent",
           hotels: "HotelsAgent",
           destination: "TravelReadinessAgent",
@@ -329,56 +298,47 @@ export const useChatStore = create<ChatState>()(
           budget: "BudgetAgent",
           itinerary: "ItineraryAgent",
         };
-
-        const currentView = effectiveView;
-        const freshFullItinerary =
-          !state.sessionId &&
-          (currentView === "itinerary" || currentView === "full-plan");
-        const targetAgent = freshFullItinerary
-          ? undefined
-          : viewToAgent[currentView];
-
+        const freshFullPlan =
+          !state.sessionId && (activeView === "itinerary" || activeView === "full-plan");
+        const targetAgent = freshFullPlan ? undefined : viewToAgent[activeView];
         const controller = streamChat(
           {
-            message: content,
+            message: trimmed,
             session_id: state.sessionId ?? undefined,
-            ...(targetAgent ? { target_agent: targetAgent } : {}),
+            target_agent: targetAgent,
+            ui_locale: uiLocale,
           },
           callbacks,
         );
-
-        set({ abortController: controller });
+        set({ abortController: controller, responseLocale: uiLocale });
       },
 
       stopStreaming: () => {
-        const { abortController, streamingContent, messages } = get();
-        abortController?.abort();
-
-        if (streamingContent.trim()) {
-          const assistantMsg: ChatMessage = {
-            id: msgId(),
-            role: "assistant",
-            content: streamingContent + " [stopped]",
-            timestamp: Date.now(),
-          };
-          set({
-            messages: [...messages, assistantMsg],
-            isStreaming: false,
-            streamingContent: "",
-            abortController: null,
-          });
-        } else {
-          set({
-            isStreaming: false,
-            streamingContent: "",
-            abortController: null,
-          });
-        }
+        const current = get();
+        current.abortController?.abort();
+        const stoppedMessage: ChatMessage = {
+          id: messageId(),
+          role: "assistant",
+          content: current.streamingContent,
+          timestamp: Date.now(),
+          stopped: true,
+        };
+        set({
+          messages: [...current.messages, stoppedMessage],
+          isStreaming: false,
+          streamingContent: "",
+          abortController: null,
+          agents: Object.fromEntries(
+            Object.entries(current.agents).map(([name, status]) => [
+              name,
+              status === "running" ? "idle" : status,
+            ]),
+          ) as Record<AgentName, AgentStatus>,
+        });
       },
 
       clearChat: () => {
-        const { abortController } = get();
-        abortController?.abort();
+        get().abortController?.abort();
         set({
           messages: [],
           sessionId: null,
@@ -393,24 +353,70 @@ export const useChatStore = create<ChatState>()(
           handbook: null,
           isMockMode: false,
           activeView: "home",
+          errorKey: null,
         });
       },
 
-      goHome: () => {
-        set({ activeView: "home" });
-      },
-
-      setActiveView: (view) => set({ activeView: view }),
-      setInterruptData: (data) => set({ interruptData: data }),
+      goHome: () => set({ activeView: "home" }),
+      setActiveView: (activeView) => set({ activeView }),
+      setInterruptData: (interruptData) => set({ interruptData }),
       setComponents: (components) => {
         const handbook = extractHandbook(components);
-        set({
-          components,
-          ...(handbook !== undefined ? { handbook } : {}),
-        });
+        set({ components, ...(handbook !== undefined ? { handbook } : {}) });
       },
       setBudget: (budget) => set({ budget }),
       setHandbook: (handbook) => set({ handbook }),
+      setErrorKey: (errorKey) => set({ errorKey }),
+      restoreSnapshot: (sessionId, snapshot) => {
+        rememberBrowserSession(sessionId);
+        const components = snapshot.components;
+        const handbook = extractHandbook(components);
+        set({
+          messages: snapshot.messages.map((message) => ({
+            ...message,
+            id: messageId(),
+            timestamp: Date.now(),
+          })),
+          sessionId,
+          runId: null,
+          responseLocale: snapshot.locale,
+          isStreaming: false,
+          streamingContent: "",
+          abortController: null,
+          agents: agentsFromComponents(components),
+          interruptData: snapshot.interrupted ? snapshot.interrupt_data : null,
+          budget: snapshot.budget,
+          components,
+          handbook: handbook ?? null,
+          activeView: "full-plan",
+          errorKey: null,
+        });
+      },
+      applyResumeResponse: (response) => {
+        const current = get();
+        const components = response.components;
+        const handbook = extractHandbook(components);
+        const assistantMessage: ChatMessage[] = response.message.trim()
+          ? [
+              {
+                id: messageId(),
+                role: "assistant",
+                content: response.message,
+                timestamp: Date.now(),
+              },
+            ]
+          : [];
+        set({
+          messages: [...current.messages, ...assistantMessage],
+          responseLocale: response.locale,
+          components,
+          budget: response.budget,
+          ...(handbook !== undefined ? { handbook } : {}),
+          agents: agentsFromComponents(components),
+          interruptData: response.interrupted ? response.interrupt_data : null,
+          errorKey: null,
+        });
+      },
     }),
     {
       name: "wanderlisted-chat",
@@ -419,15 +425,16 @@ export const useChatStore = create<ChatState>()(
           ? sessionStorage
           : {
               getItem: () => null,
-              setItem: () => {},
-              removeItem: () => {},
+              setItem: () => undefined,
+              removeItem: () => undefined,
             },
       ),
-      version: 3,
+      version: 4,
       migrate: () => ({ messages: [], sessionId: null }),
       partialize: (state) => ({
         messages: state.messages,
         sessionId: state.sessionId,
+        responseLocale: state.responseLocale,
       }),
     },
   ),

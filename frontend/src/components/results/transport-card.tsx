@@ -6,6 +6,19 @@ import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/format-currency";
 import type { TransitStep } from "@/lib/types";
 import type { LucideIcon } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
+import { localeTag, type AppLocale } from "@/i18n/config";
+
+const MODE_LABELS = {
+  walk: "transport.walk",
+  transit: "transport.transit",
+  drive: "transport.drive",
+  train: "transport.train",
+  bus: "transport.bus",
+  ferry: "transport.ferry",
+  bicycle: "transport.bicycle",
+  subway: "transport.subway",
+} as const satisfies Record<TransitStep["mode"], string>;
 
 const MODE_ICONS: Record<string, LucideIcon> = {
   walk: Footprints,
@@ -19,6 +32,8 @@ const MODE_ICONS: Record<string, LucideIcon> = {
 };
 
 export function TransportCard({ step }: { step: TransitStep }) {
+  const locale = useLocale() as AppLocale;
+  const t = useTranslations("cards");
   const Icon = MODE_ICONS[step.mode] ?? Bus;
 
   return (
@@ -43,11 +58,11 @@ export function TransportCard({ step }: { step: TransitStep }) {
 
         <div className="flex flex-col items-end gap-1">
           <Badge variant="secondary" className="text-xs capitalize">
-            {step.mode}
+            {t(MODE_LABELS[step.mode])}
           </Badge>
           {step.fare_estimate_usd > 0 && (
             <span className="text-xs font-medium text-primary">
-              {formatCurrency(step.fare_estimate_usd, "USD")}
+              {formatCurrency(step.fare_estimate_usd, "USD", {}, localeTag(locale))}
             </span>
           )}
         </div>

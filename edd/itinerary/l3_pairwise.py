@@ -9,15 +9,20 @@ from edd.rubrics import (
     pairwise_rubric,
 )
 
-HELPFULNESS_PAIRWISE_RUBRIC = pairwise_rubric(AGENT_SPECS["itinerary"]) + """
+HELPFULNESS_PAIRWISE_RUBRIC = (
+    pairwise_rubric(AGENT_SPECS["itinerary"])
+    + """
 
 Prefer the answer that preserves canonical dates and selected source IDs, reports
 measured route facts without invented fares, and makes feasibility warnings,
 missing constraints, supported daily costs, and unscheduled stops easiest to act on.
 """
+)
 
 
-async def judge_pairwise(judge, trajectory_a: Trajectory, trajectory_b: Trajectory) -> dict:
+async def judge_pairwise(
+    judge, trajectory_a: Trajectory, trajectory_b: Trajectory
+) -> dict:
     outcomes = {
         classify_itinerary_outcome(trajectory_a),
         classify_itinerary_outcome(trajectory_b),

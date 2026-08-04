@@ -7,6 +7,7 @@ import json
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from src.agent.prompts import RESPONSE_LOCALE_CONTEXT_PROMPT
 from src.models import TripRequest
 from src.readiness.models import (
     ReadinessResearchPlan,
@@ -129,6 +130,16 @@ class ReadinessSynthesizer:
         value = await runnable.ainvoke(
             [
                 SystemMessage(content=system_prompt),
+                SystemMessage(
+                    content=RESPONSE_LOCALE_CONTEXT_PROMPT.format(
+                        language=(
+                            "Polish" if trip_request.locale == "pl" else "English"
+                        ),
+                        locale_tag=(
+                            "pl-PL" if trip_request.locale == "pl" else "en-GB"
+                        ),
+                    )
+                ),
                 HumanMessage(
                     content=json.dumps(
                         {

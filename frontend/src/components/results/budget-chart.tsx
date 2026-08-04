@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency } from "@/lib/format-currency";
 import type { BudgetAmounts, BudgetBreakdown, BudgetCategory } from "@/lib/types";
+import { useLocale, useTranslations } from "next-intl";
+import { localeTag, type AppLocale } from "@/i18n/config";
 
 const COLORS = [
   "bg-blue-500",
@@ -14,13 +16,13 @@ const COLORS = [
   "bg-gray-400",
 ];
 
-const BUDGET_LINES: { key: BudgetCategory; label: string }[] = [
-  { key: "flights", label: "Flights" },
-  { key: "accommodation", label: "Accommodation" },
-  { key: "transport", label: "Transport" },
-  { key: "meals", label: "Meals" },
-  { key: "activities", label: "Activities" },
-  { key: "misc", label: "Misc" },
+const BUDGET_LINES: BudgetCategory[] = [
+  "flights",
+  "accommodation",
+  "transport",
+  "meals",
+  "activities",
+  "misc",
 ];
 
 function baseAmounts(budget: BudgetBreakdown): BudgetAmounts {
@@ -39,26 +41,25 @@ function baseAmounts(budget: BudgetBreakdown): BudgetAmounts {
   };
 }
 
-function categoryList(categories: BudgetCategory[] | undefined): string {
-  return (categories ?? []).map((category) => category.replaceAll("_", " ")).join(", ");
-}
-
 export function BudgetChart({ budget }: { budget: BudgetBreakdown }) {
+  const locale = useLocale() as AppLocale;
+  const t = useTranslations("results");
+  const intlLocale = localeTag(locale);
   const amounts = budget.display_breakdown ?? baseAmounts(budget);
   const totalForPercent = amounts.total > 0 ? amounts.total : 1;
-  const missing = categoryList(budget.missing_categories);
-  const estimated = categoryList(budget.estimated_categories);
+  const missing = (budget.missing_categories ?? []).map((category) => t(category)).join(", ");
+  const estimated = (budget.estimated_categories ?? []).map((category) => t(category)).join(", ");
   const reserve =
     budget.display_reserve_recommendation ?? budget.reserve_recommendation ?? 0;
 
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-sm">Budget Breakdown</CardTitle>
+        <CardTitle className="text-sm">{t("budget")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex h-4 w-full overflow-hidden rounded-full">
-          {BUDGET_LINES.map(({ key }, index) => {
+          {BUDGET_LINES.map((key, index) => {
             const percentage = (amounts[key] / totalForPercent) * 100;
             if (percentage < 1) return null;
             return (
@@ -72,14 +73,14 @@ export function BudgetChart({ budget }: { budget: BudgetBreakdown }) {
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          {BUDGET_LINES.map(({ key, label }, index) => {
+          {BUDGET_LINES.map((key, index) => {
             const percentage = ((amounts[key] / totalForPercent) * 100).toFixed(0);
             return (
               <div key={key} className="flex items-center gap-2 text-xs">
                 <div className={`h-2.5 w-2.5 rounded-full ${COLORS[index]}`} />
-                <span className="text-muted-foreground">{label}</span>
+                <span className="text-muted-foreground">{t(key)}</span>
                 <span className="ml-auto font-medium">
-                  {formatCurrency(amounts[key], amounts.currency)} ({percentage}%)
+                  {formatCurrency(amounts[key], amounts.currency, {}, intlLocale)} ({percentage}%)
                 </span>
               </div>
             );
@@ -89,29 +90,29 @@ export function BudgetChart({ budget }: { budget: BudgetBreakdown }) {
         <Separator />
 
         <div className="flex justify-between text-sm">
-          <span className="font-semibold">Total</span>
+          <span className="font-semibold">{t("total")}</span>
           <span className="font-bold text-primary">
-            {formatCurrency(amounts.total, amounts.currency)}
+            {formatCurrency(amounts.total, amounts.currency, {}, intlLocale)}
           </span>
         </div>
         {amounts.per_person > 0 && (
           <div className="flex justify-between text-xs text-muted-foreground">
-            <span>Per person</span>
-            <span>{formatCurrency(amounts.per_person, amounts.currency)}</span>
+            <span>{t("perPerson")}</span>
+            <span>{formatCurrency(amounts.per_person, amounts.currency, {}, intlLocale)}</span>
           </div>
         )}
 
         <div className="space-y-1 text-xs text-muted-foreground">
           <p>
-            Coverage: {(budget.coverage_status ?? "partial").replaceAll("_", " ")}
+            {t("coverage")}: {(budget.coverage_status ?? "partial").replaceAll("_", " ")}
           </p>
-          {missing && <p className="text-destructive">Missing major costs: {missing}</p>}
-          {estimated && <p>Estimated categories: {estimated}</p>}
+          {missing && <p className="text-destructive">{t("missing")}: {missing}</p>}
+          {estimated && <p>{t("estimated")}: {estimated}</p>}
           {budget.contingency_included ? (
-            <p>Traveler contingency is included in the total.</p>
+            <p>{t("total")} · {t("estimated")}</p>
           ) : reserve > 0 ? (
             <p>
-              Suggested reserve (excluded): {formatCurrency(reserve, amounts.currency)}
+              {t("reserveExcluded")}: {formatCurrency(reserve, amounts.currency, {}, intlLocale)}
             </p>
           ) : null}
           {budget.assumptions?.slice(0, 4).map((assumption) => (

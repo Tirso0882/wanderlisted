@@ -3,6 +3,7 @@
 from unittest.mock import AsyncMock, MagicMock
 
 from langchain_core.messages import HumanMessage
+from langchain_core.utils.function_calling import convert_to_openai_tool
 
 from src.agent.nodes.intake import intake_node
 from src.models import (
@@ -20,6 +21,17 @@ def _mock_llm(patch):
     structured.ainvoke.return_value = patch
     llm.with_structured_output.return_value = structured
     return llm, structured
+
+
+def test_intake_tool_schema_uses_provider_supported_decimal_number():
+    schema = convert_to_openai_tool(TripRequestPatch)["function"]["parameters"]
+    amount = schema["properties"]["known_costs"]["anyOf"][0]["items"]["properties"][
+        "money"
+    ]["properties"]["amount"]
+
+    assert amount["type"] == "number"
+    assert amount["minimum"] == 0.0
+    assert "pattern" not in amount
 
 
 async def test_polish_request_stops_before_fanout_for_required_fields():
@@ -126,3 +138,55 @@ async def test_extraction_failure_returns_recoverable_question():
     assert result["workflow_status"] == "needs_user_input"
     assert result["pending_questions"] == ["request_details"]
     assert "could not understand" in result["messages"][0].content.lower()
+
+
+async def test_first_ambiguous_turn_uses_selected_polish_ui_for_clarification():
+    llm, _ = _mock_llm(TripRequestPatch())
+
+    result = await intake_node(
+        {
+            "messages": [HumanMessage(content="OK")],
+            "trip_request": {},
+            "ui_locale": "pl",
+            "response_locale": "pl",
+        },
+        llm=llm,
+    )
+
+    assert result["trip_request"]["locale"] == "en"
+    assert "Zanim rozpocznę" in result["messages"][0].content
+
+
+async def test_city_break_asks_only_for_ambiguous_dates_not_booking_details():
+    llm, structured = _mock_llm(
+        TripRequestPatch(
+            scope=RequestScope.FULL_ITINERARY,
+            destinations=["wroclaw"],
+            date_window=DateWindowPatch(exact_start="2026-10-08"),
+        )
+    )
+
+    result = await intake_node(
+        {
+            "messages": [
+                HumanMessage(
+                    content="Plan a city break in Wroclaw this weekend 8 October"
+                )
+            ],
+            "trip_request": {},
+        },
+        llm=llm,
+    )
+
+    assert result["pending_questions"] == ["date_window"]
+    clarification = result["messages"][0].content
+    assert "exact dates" in clarification
+    assert "passport" not in clarification
+    assert "depart" not in clarification
+    assert "adults" not in clarification
+
+    prompt = "\n".join(
+        message.content for message in structured.ainvoke.await_args.args[0]
+    )
+    assert "plan a city break" in prompt
+    assert "Do NOT add flights, hotels" in prompt

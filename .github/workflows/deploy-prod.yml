@@ -5,9 +5,9 @@ on:
     types: [published]
   workflow_dispatch:
     inputs:
-      image_tag:
-        description: 'Image tag to deploy (defaults to latest main SHA)'
-        required: false
+      image_sha:
+        description: 'Exact 40-character commit SHA already built and verified in test'
+        required: true
 
 env:
   AZURE_RG: wanderlisted-rg
@@ -23,17 +23,19 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Determine image tag
-        id: tag
+      - name: Determine immutable image SHA
+        id: image
         run: |
-          if [ -n "${{ github.event.inputs.image_tag }}" ]; then
-            echo "tag=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
-          elif [ "${{ github.event_name }}" == "release" ]; then
-            echo "tag=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+          if [ "${{ github.event_name }}" = "release" ]; then
+            image_sha=$(git rev-list -n 1 "${{ github.event.release.tag_name }}")
           else
-            echo "tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+            image_sha="${{ github.event.inputs.image_sha }}"
           fi
+          [[ "${image_sha}" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=${image_sha}" >> "${GITHUB_OUTPUT}"
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -45,26 +47,23 @@ jobs:
       - name: Login to ACR
         run: az acr login --name ${{ env.ACR_NAME }}
 
-      # For release tags, rebuild with prod API URL
-      - name: Build & push Frontend (prod)
-        if: github.event_name == 'release'
+      - name: Resolve and verify test-built image digests
+        id: digests
         run: |
-          docker build \
-            --build-arg API_URL=https://wanderlisted-api.${CONTAINER_ENV_FQDN} \
-            -t ${{ env.ACR_NAME }}.azurecr.io/wanderlisted-frontend:${{ steps.tag.outputs.tag }} \
-            ./frontend
-          docker push ${{ env.ACR_NAME }}.azurecr.io/wanderlisted-frontend:${{ steps.tag.outputs.tag }}
-        env:
-          CONTAINER_ENV_FQDN: ${{ secrets.PROD_ENV_FQDN }}
-
-      # Tag existing API image for prod (no rebuild needed)
-      - name: Tag API image for prod
-        if: github.event_name == 'release'
-        run: |
-          az acr import \
-            --name ${{ env.ACR_NAME }} \
-            --source ${{ env.ACR_NAME }}.azurecr.io/wanderlisted-api:${{ steps.tag.outputs.tag }} \
-            --image wanderlisted-api:prod-${{ steps.tag.outputs.tag }}
+          api_digest=$(az acr repository show \
+            --name "${ACR_NAME}" \
+            --image "wanderlisted-api:${{ steps.image.outputs.sha }}" \
+            --query digest \
+            --output tsv)
+          frontend_digest=$(az acr repository show \
+            --name "${ACR_NAME}" \
+            --image "wanderlisted-frontend:${{ steps.image.outputs.sha }}" \
+            --query digest \
+            --output tsv)
+          [[ "${api_digest}" =~ ^sha256:[0-9a-f]{64}$ ]]
+          [[ "${frontend_digest}" =~ ^sha256:[0-9a-f]{64}$ ]]
+          echo "api_digest=${api_digest}" >> "${GITHUB_OUTPUT}"
+          echo "frontend_digest=${frontend_digest}" >> "${GITHUB_OUTPUT}"
 
       - name: Deploy infrastructure
         uses: azure/arm-deploy@v2
@@ -72,7 +71,12 @@ jobs:
           resourceGroupName: ${{ env.AZURE_RG }}
           template: ./infra/main.bicep
           parameters: ./infra/parameters.prod.bicepparam
-          additionalArguments: --parameters imageTag=${{ steps.tag.outputs.tag }}
+          additionalArguments: >-
+            --parameters
+            apiImageDigest=${{ steps.digests.outputs.api_digest }}
+            frontendImageDigest=${{ steps.digests.outputs.frontend_digest }}
+            checkpointDatabaseUrl='${{ secrets.CHECKPOINT_DATABASE_URL }}'
+            sessionSigningKey='${{ secrets.SESSION_SIGNING_KEY }}'
 
       - name: Update API secrets
         run: |
