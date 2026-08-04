@@ -3,20 +3,24 @@
 import { Calendar, MapPin, Users, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useChatStore } from "@/stores/chat-store";
+import { useLocale, useTranslations } from "next-intl";
+import { localeTag, type AppLocale } from "@/i18n/config";
 
 export function TripHeader() {
+  const locale = useLocale() as AppLocale;
+  const t = useTranslations("results");
   const handbook = useChatStore((s) => s.handbook);
 
   if (!handbook) return null;
 
   const startDate = handbook.start_date
-    ? new Date(handbook.start_date).toLocaleDateString("en-US", {
+    ? new Date(handbook.start_date).toLocaleDateString(localeTag(locale), {
         month: "short",
         day: "numeric",
       })
     : null;
   const endDate = handbook.end_date
-    ? new Date(handbook.end_date).toLocaleDateString("en-US", {
+    ? new Date(handbook.end_date).toLocaleDateString(localeTag(locale), {
         month: "short",
         day: "numeric",
         year: "numeric",
@@ -38,7 +42,7 @@ export function TripHeader() {
             {handbook.hero_emoji && (
               <span className="mr-2">{handbook.hero_emoji}</span>
             )}
-            {handbook.trip_title || "Your Trip"}
+            {handbook.trip_title || t("yourTrip")}
           </h1>
 
           <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">

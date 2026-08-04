@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/format-currency";
 import type { PlaceCard } from "@/lib/types";
+import { useLocale, useTranslations } from "next-intl";
+import { localeTag, type AppLocale } from "@/i18n/config";
 
 interface PlaceCardComponentProps {
   place: PlaceCard;
@@ -15,6 +17,8 @@ export function PlaceCardComponent({
   place,
   variant = "activity",
 }: PlaceCardComponentProps) {
+  const locale = useLocale() as AppLocale;
+  const t = useTranslations("cards");
   const photoUrl = place.photo_urls?.[0];
 
   return (
@@ -38,7 +42,7 @@ export function PlaceCardComponent({
           </div>
           {place.estimated_cost_usd > 0 && (
             <span className="shrink-0 text-sm font-bold text-primary">
-              {formatCurrency(place.estimated_cost_usd, "USD")}
+              {formatCurrency(place.estimated_cost_usd, "USD", {}, localeTag(locale))}
             </span>
           )}
         </div>
@@ -53,7 +57,7 @@ export function PlaceCardComponent({
               <span className="text-xs font-medium">{place.rating.toFixed(1)}</span>
               {place.review_count > 0 && (
                 <span className="text-xs text-muted-foreground">
-                  ({place.review_count.toLocaleString()})
+                  ({place.review_count.toLocaleString(localeTag(locale))})
                 </span>
               )}
             </div>
@@ -66,7 +70,7 @@ export function PlaceCardComponent({
           {place.estimated_duration_minutes > 0 && (
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Clock className="h-3 w-3" />
-              {place.estimated_duration_minutes}m
+              {t("durationMinutes", { count: place.estimated_duration_minutes })}
             </div>
           )}
         </div>
@@ -95,7 +99,7 @@ export function PlaceCardComponent({
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
             >
-              {variant === "restaurant" ? "Directions" : "Map"}{" "}
+              {variant === "restaurant" ? t("directions") : t("map")}{" "}
               <ExternalLink className="h-3 w-3" />
             </a>
           )}
@@ -106,7 +110,7 @@ export function PlaceCardComponent({
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:underline"
             >
-              Website <ExternalLink className="h-3 w-3" />
+              {t("website")} <ExternalLink className="h-3 w-3" />
             </a>
           )}
         </div>

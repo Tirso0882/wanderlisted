@@ -6,6 +6,30 @@ import type {
   TravelReadinessReport,
   TripHandbook,
 } from "./itinerary";
+import type { AppLocale } from "@/i18n/config";
+
+export type ComponentOutcomeStatus =
+  | "queued"
+  | "running"
+  | "completed"
+  | "partial"
+  | "needs_user_input"
+  | "no_inventory"
+  | "blocked_external"
+  | "failed"
+  | "stale";
+
+export interface ComponentOutcome {
+  component: string;
+  status: ComponentOutcomeStatus;
+  missing_fields?: string[];
+  message?: string;
+  error_category?: string;
+  error_detail?: string;
+  tools_called?: string[];
+  evidence_count?: number;
+  request_fingerprint?: string;
+}
 
 export interface StructuredComponents extends Record<string, unknown> {
   itinerary_structured?: ItineraryPlan | null;
@@ -13,25 +37,7 @@ export interface StructuredComponents extends Record<string, unknown> {
   budget_structured?: BudgetBreakdown | null;
   readiness?: { data?: TravelReadinessReport | null };
   readiness_preflight?: { data?: TravelReadinessReport | null };
-  component_results?: Record<
-    string,
-    {
-      component: string;
-      status:
-        | "queued"
-        | "running"
-        | "completed"
-        | "partial"
-        | "needs_user_input"
-        | "no_inventory"
-        | "blocked_external"
-        | "failed"
-        | "stale";
-      missing_fields?: string[];
-      message?: string;
-      request_fingerprint?: string;
-    }
-  >;
+  component_results?: Record<string, ComponentOutcome>;
 }
 
 // ── Chat ────────────────────────────────────────────────────────────────
@@ -40,6 +46,7 @@ export interface ChatRequest {
   message: string;
   session_id?: string;
   target_agent?: string;
+  ui_locale?: AppLocale;
 }
 
 export interface ChatResponse {
@@ -50,6 +57,7 @@ export interface ChatResponse {
   interrupt_data: InterruptData | null;
   budget: BudgetBreakdown | null;
   components: StructuredComponents | null;
+  locale: AppLocale;
 }
 
 // ── HITL ────────────────────────────────────────────────────────────────
@@ -63,6 +71,7 @@ export interface InterruptData {
 export interface ResumeRequest {
   session_id: string;
   decision: ResumeDecision;
+  ui_locale?: AppLocale;
 }
 
 export type ResumeDecision =
@@ -88,6 +97,7 @@ export interface ResumeResponse {
   interrupt_data: InterruptData | null;
   budget: BudgetBreakdown | null;
   components: StructuredComponents | null;
+  locale: AppLocale;
 }
 
 // ── Session ─────────────────────────────────────────────────────────────
@@ -95,6 +105,34 @@ export interface ResumeResponse {
 export interface SessionInfo {
   session_id: string;
   message_count: number;
+}
+
+export interface SessionSummary {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  locale: AppLocale;
+  message_count: number;
+}
+
+export interface SessionListResponse {
+  items: SessionSummary[];
+  next_cursor: string | null;
+}
+
+export interface SessionSnapshot {
+  session: SessionSummary | null;
+  messages: HistoryMessage[];
+  interrupted: boolean;
+  interrupt_data: InterruptData | null;
+  budget: BudgetBreakdown | null;
+  components: StructuredComponents | null;
+  locale: AppLocale;
+}
+
+export interface AccountPreferencesResponse {
+  locale: AppLocale | null;
 }
 
 export interface HistoryMessage {

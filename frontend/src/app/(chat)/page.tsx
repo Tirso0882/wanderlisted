@@ -1,44 +1,28 @@
-"use client";
+import { AtlasWorkspace } from "@/components/workspace";
+import { LegacyChatPage } from "@/components/views/legacy-chat-page";
+import { getRequestLocale } from "@/i18n/server";
 
-import { motion, AnimatePresence } from "framer-motion";
-import { useChatStore } from "@/stores/chat-store";
-import { HomeView } from "@/components/views/home-view";
-import { AgentView } from "@/components/views/agent-view";
-import { HitlGateRenderer } from "@/components/hitl/hitl-gate-renderer";
+function enabled(value: string | undefined): boolean {
+  return value?.trim().toLowerCase() === "true";
+}
 
-export default function ChatPage() {
-  const activeView = useChatStore((s) => s.activeView);
-  const interruptData = useChatStore((s) => s.interruptData);
-
-  if (interruptData) {
-    return <HitlGateRenderer />;
+function configuredConsultationUrl(value: string | undefined): string | undefined {
+  if (!value?.trim()) return undefined;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : undefined;
+  } catch {
+    return undefined;
   }
+}
 
-  return (
-    <AnimatePresence mode="wait">
-      {activeView === "home" ? (
-        <motion.div
-          key="home"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.2 }}
-          className="flex flex-1 flex-col overflow-hidden"
-        >
-          <HomeView />
-        </motion.div>
-      ) : (
-        <motion.div
-          key={activeView}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.25 }}
-          className="flex flex-1 flex-col overflow-hidden"
-        >
-          <AgentView />
-        </motion.div>
-      )}
-    </AnimatePresence>
+export default async function ChatPage() {
+  if (!enabled(process.env.CHAT_UI_V2_ENABLED)) return <LegacyChatPage />;
+  const locale = await getRequestLocale();
+  const consultationUrl = configuredConsultationUrl(
+    locale === "pl"
+      ? process.env.CONSULTATION_URL_PL
+      : process.env.CONSULTATION_URL_EN,
   );
+  return <AtlasWorkspace consultationUrl={consultationUrl} />;
 }

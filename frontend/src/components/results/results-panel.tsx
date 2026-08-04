@@ -26,6 +26,7 @@ import type {
   AgentStatus,
   TravelReadinessReport,
 } from "@/lib/types";
+import { useTranslations } from "next-intl";
 
 const TAB_AGENT_MAP: Record<string, AgentName> = {
   flights: "FlightsAgent",
@@ -50,12 +51,26 @@ function TabDot({ status }: { status: AgentStatus }) {
 }
 
 export function ResultsPanel() {
+  const resultsT = useTranslations("results");
+  const agentsT = useTranslations("agents");
   const handbook = useChatStore((s) => s.handbook);
   const budget = useChatStore((s) => s.budget);
   const agents = useChatStore((s) => s.agents);
   const components = useChatStore((s) => s.components);
-  const activeTab = useChatStore((s) => s.activeView);
+  const requestedTab = useChatStore((s) => s.activeView);
   const setActiveTab = useChatStore((s) => s.setActiveView);
+  const supportedTabs = new Set([
+    "overview",
+    "flights",
+    "hotels",
+    "destination",
+    "activities",
+    "restaurants",
+    "transport",
+    "budget",
+    "itinerary",
+  ]);
+  const activeTab = supportedTabs.has(requestedTab) ? requestedTab : "overview";
 
   // Extract data from handbook
   const flights = handbook?.flights ?? [];
@@ -85,15 +100,15 @@ export function ResultsPanel() {
   );
 
   const tabs = [
-    { value: "overview", icon: LayoutGrid, label: "Overview" },
-    { value: "flights", icon: Plane, label: "Flights" },
-    { value: "hotels", icon: Hotel, label: "Hotels" },
-    { value: "destination", icon: ShieldCheck, label: "Travel Essentials" },
-    { value: "activities", icon: Compass, label: "Activities" },
-    { value: "restaurants", icon: Utensils, label: "Food" },
-    { value: "transport", icon: Bus, label: "Transit" },
-    { value: "budget", icon: DollarSign, label: "Budget" },
-    { value: "itinerary", icon: ClipboardList, label: "Itinerary" },
+    { value: "overview", icon: LayoutGrid, label: resultsT("overview") },
+    { value: "flights", icon: Plane, label: agentsT("FlightsAgent") },
+    { value: "hotels", icon: Hotel, label: agentsT("HotelsAgent") },
+    { value: "destination", icon: ShieldCheck, label: resultsT("destination") },
+    { value: "activities", icon: Compass, label: agentsT("ActivitiesAgent") },
+    { value: "restaurants", icon: Utensils, label: agentsT("RestaurantsAgent") },
+    { value: "transport", icon: Bus, label: agentsT("TransportationAgent") },
+    { value: "budget", icon: DollarSign, label: resultsT("budget") },
+    { value: "itinerary", icon: ClipboardList, label: resultsT("itinerary") },
   ];
 
   return (
@@ -138,7 +153,7 @@ export function ResultsPanel() {
                 ))}
               </div>
             ) : (
-              <EmptyTab label="flights" agentName="FlightsAgent" />
+              <EmptyTab agentName="FlightsAgent" />
             )}
           </TabsContent>
 
@@ -150,7 +165,7 @@ export function ResultsPanel() {
                 ))}
               </div>
             ) : (
-              <EmptyTab label="hotels" agentName="HotelsAgent" />
+              <EmptyTab agentName="HotelsAgent" />
             )}
           </TabsContent>
 
@@ -171,7 +186,7 @@ export function ResultsPanel() {
                 ))}
               </div>
             ) : (
-              <EmptyTab label="activities" agentName="ActivitiesAgent" />
+              <EmptyTab agentName="ActivitiesAgent" />
             )}
           </TabsContent>
 
@@ -183,7 +198,7 @@ export function ResultsPanel() {
                 ))}
               </div>
             ) : (
-              <EmptyTab label="restaurants" agentName="RestaurantsAgent" />
+              <EmptyTab agentName="RestaurantsAgent" />
             )}
           </TabsContent>
 
@@ -195,7 +210,7 @@ export function ResultsPanel() {
                 ))}
               </div>
             ) : (
-              <EmptyTab label="transport options" agentName="TransportationAgent" />
+              <EmptyTab agentName="TransportationAgent" />
             )}
           </TabsContent>
 
@@ -205,7 +220,7 @@ export function ResultsPanel() {
                 <BudgetChart budget={budget} />
               </div>
             ) : (
-              <EmptyTab label="budget breakdown" agentName="BudgetAgent" />
+              <EmptyTab agentName="BudgetAgent" />
             )}
           </TabsContent>
 
@@ -219,12 +234,11 @@ export function ResultsPanel() {
 }
 
 function EmptyTab({
-  label,
   agentName,
 }: {
-  label: string;
   agentName: AgentName;
 }) {
+  const t = useTranslations();
   const status = useChatStore((s) => s.agents[agentName]);
 
   return (
@@ -232,14 +246,10 @@ function EmptyTab({
       {status === "running" ? (
         <>
           <div className="mb-3 h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          <p className="text-sm text-muted-foreground">
-            Agent is working on {label}...
-          </p>
+          <p className="text-sm text-muted-foreground">{t("loading.assembling")}</p>
         </>
       ) : (
-        <p className="text-sm text-muted-foreground">
-          No {label} yet. They will appear here as the agents work.
-        </p>
+        <p className="text-sm text-muted-foreground">{t("results.emptyBody")}</p>
       )}
     </div>
   );

@@ -1,37 +1,50 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
+import { getRequestMessages } from "@/i18n/server";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const { messages } = await getRequestMessages();
+  return {
+    title: messages.meta.title,
+    description: messages.meta.description,
+  };
+}
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+function enabled(value: string | undefined): boolean {
+  return value?.trim().toLowerCase() === "true";
+}
 
-export const metadata: Metadata = {
-  title: "Wanderlisted — AI Travel Planner",
-  description:
-    "Plan your perfect trip with AI-powered itinerary generation. Real-time flight, hotel, and activity recommendations.",
-};
-
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const { locale, messages } = await getRequestMessages();
+  const clerkPublishableKey = (
+    process.env.CLERK_PUBLISHABLE_KEY ??
+    process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+  )?.trim();
+  const clerkEnabled =
+    enabled(process.env.CLERK_ENABLED) &&
+    Boolean(clerkPublishableKey) &&
+    Boolean(process.env.CLERK_SECRET_KEY?.trim());
+
   return (
     <html
-      lang="en"
+      lang={locale === "pl" ? "pl-PL" : "en-GB"}
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className="h-full antialiased"
     >
       <body className="h-full flex flex-col overflow-hidden">
-        <Providers>{children}</Providers>
+        <Providers
+          locale={locale}
+          messages={messages}
+          clerkEnabled={clerkEnabled}
+          clerkPublishableKey={clerkPublishableKey}
+        >
+          {children}
+        </Providers>
       </body>
     </html>
   );

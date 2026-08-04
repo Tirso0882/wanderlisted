@@ -5,8 +5,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/format-currency";
 import type { FlightOption } from "@/lib/types";
+import { useLocale, useTranslations } from "next-intl";
+import { localeTag, type AppLocale } from "@/i18n/config";
+
+const CABIN_LABELS = {
+  economy: "cabin.economy",
+  premium_economy: "cabin.premiumEconomy",
+  business: "cabin.business",
+  first: "cabin.first",
+} as const;
 
 export function FlightCard({ flight }: { flight: FlightOption }) {
+  const locale = useLocale() as AppLocale;
+  const t = useTranslations("cards");
   const outFirst = flight.outbound[0];
   const outLast = flight.outbound[flight.outbound.length - 1];
   const totalMinutes = flight.outbound.reduce(
@@ -22,10 +33,10 @@ export function FlightCard({ flight }: { flight: FlightOption }) {
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-sm">
             <Plane className="h-4 w-4" />
-            {outFirst?.carrier ?? "Airline"} {outFirst?.flight_number ?? ""}
+            {outFirst?.carrier ?? t("airline")} {outFirst?.flight_number ?? ""}
           </CardTitle>
           <span className="text-lg font-bold text-primary">
-            {formatCurrency(flight.total_price_usd, flight.currency || "USD")}
+            {formatCurrency(flight.total_price_usd, flight.currency || "USD", {}, localeTag(locale))}
           </span>
         </div>
       </CardHeader>
@@ -41,7 +52,7 @@ export function FlightCard({ flight }: { flight: FlightOption }) {
           <div className="flex flex-1 flex-col items-center">
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Clock className="h-3 w-3" />
-              {hours}h {mins}m
+              {t("durationHoursMinutes", { hours, minutes: mins })}
             </div>
             <div className="relative w-full">
               <div className="h-px bg-border" />
@@ -49,7 +60,7 @@ export function FlightCard({ flight }: { flight: FlightOption }) {
             </div>
             {outFirst?.stops > 0 && (
               <p className="text-xs text-muted-foreground">
-                {outFirst.stops} stop{outFirst.stops > 1 ? "s" : ""}
+                {t("stops", { count: outFirst.stops })}
               </p>
             )}
           </div>
@@ -64,7 +75,7 @@ export function FlightCard({ flight }: { flight: FlightOption }) {
         {/* Cabin class + currency */}
         <div className="flex items-center gap-2">
           <Badge variant="secondary" className="text-xs capitalize">
-            {outFirst?.cabin_class?.replace("_", " ") ?? "economy"}
+            {t(CABIN_LABELS[outFirst?.cabin_class ?? "economy"])}
           </Badge>
           <Badge variant="outline" className="text-xs">
             {flight.currency}
@@ -80,7 +91,7 @@ export function FlightCard({ flight }: { flight: FlightOption }) {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
             >
-              Book <ExternalLink className="h-3 w-3" />
+              {t("book")} <ExternalLink className="h-3 w-3" />
             </a>
           )}
           {flight.skyscanner_url && (

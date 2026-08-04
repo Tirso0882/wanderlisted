@@ -1,7 +1,5 @@
 import type { ChatRequest, SSEEventType } from "@/lib/types";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
-
 export interface StreamCallbacks {
   onSession?: (sessionId: string) => void;
   onToken?: (token: string) => void;
@@ -25,11 +23,12 @@ export function streamChat(
 
   (async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/v1/chat/stream`, {
+      const res = await fetch("/api/v1/chat/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(request),
         signal: controller.signal,
+        credentials: "same-origin",
       });
 
       if (!res.ok) {

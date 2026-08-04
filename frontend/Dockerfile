@@ -10,10 +10,6 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Build-time env vars (overridden per environment)
-ARG API_URL=http://localhost:8000
-ENV API_URL=${API_URL}
-
 RUN corepack enable && pnpm build
 
 # ── Stage 3: Runtime ───────────────────────────────────────────────
@@ -36,5 +32,6 @@ EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+ENV API_URL=http://localhost:8000
 
 CMD ["node", "server.js"]
