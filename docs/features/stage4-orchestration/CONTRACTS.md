@@ -20,11 +20,11 @@ source_paths: [src/agent/state.py, src/models/component_result.py, src/api/main.
 
 ## Routing contract
 
-Every node has an explicit inbound path, outbound route/edge, failure/terminal behavior, and test. Dependent routing checks structured status, current workflow state, and fingerprints. Pre-interrupt provider work is checkpointed.
+Every node has an explicit inbound path, outbound route/edge, failure/terminal behavior, and test. Dependent routing checks structured status, current workflow state, and fingerprints. Generic destination planning does not imply flight, hotel, entry-readiness, or budget execution. Pre-interrupt provider work is checkpointed.
 
 ## Public API contract
 
-`POST /api/v1/chat` and `/chat/stream` share session/thread identity and expose sanitized structured components. `/chat/resume` accepts discriminated safety, budget, or human-review decisions, with a bounded legacy approval shape. Internal messages/provider payloads are not public components. `/health` is liveness; `/ready` confirms graph initialization.
+`POST /api/v1/chat` and `/chat/stream` share a validated public session ID. A signed HttpOnly browser-principal cookie owns that ID, and every checkpoint/history/resume lookup uses a derived opaque internal thread ID. Traced chat responses and SSE `done` events return the actual enclosing LangSmith run ID; when tracing is disabled they return `null`, never a fabricated identifier. `/chat/resume` accepts discriminated safety, budget, or human-review decisions, with a bounded legacy approval shape. Internal identities, messages, and provider payloads are not public components. `/health` is liveness; `/ready` confirms graph initialization and reports only non-secret checkpoint/rate-limit backend names.
 
 ## Frontend contract
 

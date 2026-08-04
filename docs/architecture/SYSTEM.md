@@ -17,7 +17,9 @@ Wanderlisted turns a conversational travel request into evidence-backed structur
 
 ## Runtime boundary
 
-FastAPI exposes chat, SSE streaming, session/history, health/readiness, feedback, and HITL resume endpoints. A compiled LangGraph with a checkpointer owns session execution. `TravelAgentState` keeps conversation messages separate from machine-readable `component_results` and `itinerary_components`.
+FastAPI exposes chat, streaming, history, account/session, webhook, health, feedback, and HITL endpoints. A signed HttpOnly browser principal owns each public session ID; the API derives an opaque owner-scoped checkpoint thread ID before calling LangGraph. Optional Clerk identity adds an opaque account owner after server-side JWT validation without replacing guest ownership. A compiled graph with a checkpointer owns session execution, while PostgreSQL indexes session metadata only. `TravelAgentState` keeps messages separate from machine-readable `component_results` and `itinerary_components`.
+
+The Next.js server is the browser-to-API trust boundary: it removes browser-supplied authorization and, when Clerk is fully configured, forwards only a server-obtained Clerk token. The feature-gated Atlas Sunrise workspace localizes interface copy in English or Polish while preserving historical messages, provider facts, routes, prices, typed statuses, limitations, and evidence unchanged.
 
 ## Primary lifecycle
 
@@ -58,6 +60,8 @@ See [`CONTEXT_MAP.md`](../domain/CONTEXT_MAP.md) for permitted handoffs.
 - Parallel dictionary writes require declared reducers. Independent workers write unique keys.
 - Evidence identifiers and request/artifact fingerprints prevent cross-run or stale-data mixing.
 - Static runtime prompts live only in `src/agent/prompts/agent_prompt.py`.
+- `ui_locale` is a presentation fallback. Clear message language selects the response locale; ambiguous turns retain the last clear conversation language. Intake changes `TripRequest.locale` only on clear language evidence.
+- The session registry stores opaque owner keys, immutable checkpoint thread IDs, deterministic titles, timestamps, locale, and message count. Checkpoints remain authoritative for messages, interrupts, and artifacts.
 
 ## Reliability and trust boundaries
 
@@ -65,7 +69,11 @@ Providers and model outputs are untrusted inputs. Tools normalize provider paylo
 
 ## Current operational limits
 
-The API process contains in-memory rate limiting, while graph persistence depends on the configured checkpointer. Docker Compose includes Redis/Postgres, but the current application/infra must be verified before assuming those services provide durable production state. Horizontal scaling is unsafe until persistence and rate limiting are explicitly shared and tested.
+The API uses PostgreSQL checkpoints whenever `CHECKPOINT_BACKEND=postgres`; production rejects process-local memory checkpoints. The saver is opened for the FastAPI lifespan, initializes its schema idempotently, and closes during shutdown. Local Compose exercises the PostgreSQL path. Azure receives the database URL as a secure deployment parameter, but the managed database, backups, retention, and recovery remain environment prerequisites rather than resources owned by this repository.
+
+Deployed environments require the stable session-signing secret, PostgreSQL session registry, and Redis-backed rate limiting. Redis decisions are atomic across workers/replicas and fail closed on backend errors, so the API may scale horizontally. Direct development may use bounded in-process implementations. Anonymous browser ownership remains the base identity; cross-device history exists only after explicit session claiming into an enabled Clerk account. The internal single-replica Redis container is still an availability dependency and should be replaced or given an explicit recovery owner before a high-availability claim.
+
+Clerk application setup, keys, passwordless email and Google connections, allowed origins, webhook delivery, consultation URLs, and production enablement are external rollout prerequisites. `CHAT_UI_V2_ENABLED` and `CLERK_ENABLED` default off in deployed parameter files.
 
 ## Change protocol
 

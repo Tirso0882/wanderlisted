@@ -17,6 +17,7 @@ source_paths: [tests, edd, src/evaluation]
 - Provider fixtures: sanitized representative responses with stable fake IDs.
 - Golden/EDD cases: versioned inputs, expected behavior/labels, scenario metadata.
 - Cached trajectories: ignored local artifacts keyed by dataset/config/source fingerprint.
+- Offline contract baselines: committed zero-call manifests that pin dataset/evaluator/source fingerprints and clearly distinguish deterministic pipeline evidence from evaluator-only evidence.
 - Human labels: versioned, reviewer-owned calibration truth without personal data.
 
 ## Requirements

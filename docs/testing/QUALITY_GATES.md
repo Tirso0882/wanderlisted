@@ -21,7 +21,7 @@ source_paths: [.github/workflows/ci.yml, Makefile, tests]
 
 ## Pull-request gate
 
-CI secret scan, lint/format, unit suite/coverage policy, deterministic Layer-1 evaluation, documentation contract, and PR Docker build pass. No job may invoke provider/model/Azure/Tavily/paid judge paths.
+CI secret scan, Ruff lint/format across `src/`, `tests/`, `scripts/`, and all `edd/`, unit suite/coverage policy, every hermetic specialist Layer-1 gate, fresh named offline-baseline fingerprints, documentation contract, frontend lint/type-check/unit/mocked-browser/production-build gates, and PR Docker build pass. Catalog key parity, both locales, reduced motion, responsive panes, guest/account gates, and truthful streaming behavior remain credential-free. Python jobs install the frozen `uv.lock`; frontend installs the frozen pnpm lock. No job may invoke provider/model/Azure/Tavily/paid judge paths.
 
 ## Release gate
 

@@ -31,3 +31,5 @@ Inspect each runner before execution: some cache misses can capture live data ev
 ## Reporting
 
 Record dataset/fingerprint, configuration, cache/live status, per-metric results, denominators, exclusions, external failures, uncertainty, and cost. Do not generalize beyond the evaluated cases.
+
+Committed zero-call baselines may report deterministic pipeline outcomes or evaluator-contract health. They must identify which was executed, record zero external calls, and explicitly deny a model-quality claim for specialists whose current trajectories were not evaluated. Never promote a stale cache merely to fill a baseline slot.

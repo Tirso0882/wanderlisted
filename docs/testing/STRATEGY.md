@@ -32,6 +32,8 @@ Test behavior at its owning boundary, then add contract tests where typed data c
 
 Cover success, empty/no inventory, invalid input, partial evidence, external blocked, duplicate/mismatch, stale artifact, interrupt/resume, and the reported regression as applicable. Assert typed statuses/fields and exact owner behavior rather than only output strings.
 
+System resilience evidence must exercise a replacement graph instance against the same shared checkpoint backend without repeating pre-interrupt provider work, independent threads across instances, SSE final payloads that retain completed evidence beside partial/blocked outcomes, and concurrent shared-limit behavior. These hermetic tests are release prerequisites but do not replace an approval-gated deployed restart or load canary.
+
 ## Commands
 
 Use repository executables and narrowest scope:
@@ -44,4 +46,4 @@ cd frontend && pnpm lint && pnpm build
 make docs-check
 ```
 
-Never enable integration/live paths or real credentials implicitly.
+Repository-wide CI uses `uv sync --frozen --all-groups`, `pnpm install --frozen-lockfile`, Ruff over `src/ tests/ scripts/ edd/`, all `tests/test_edd_*.py`, and the hermetic Budget/Itinerary Layer-1 runners. The other component `l1_run.py` entry points may capture live data on a cache miss and therefore are never invoked by CI. Never enable integration/live paths or real credentials implicitly.

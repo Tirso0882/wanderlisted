@@ -21,6 +21,7 @@ source_paths: [src/agent/nodes/intake.py, src/agent/policies/requirements.py, sr
 ## BR-INT-002 — Required inputs before dependent work
 
 - **Rule:** Missing capability-specific critical fields return `needs_user_input` before provider/model fan-out.
+- **Rule:** A generic city-break or itinerary request defaults to destination planning (restaurants, activities, local transportation, and itinerary). Flight, hotel, entry-readiness, and budget fields become blocking only when that optional capability was explicitly requested.
 - **Reason:** Guessed dates, destination, passport, or occupancy create unsafe/costly output.
 - **Failure:** End the turn with focused questions.
 - **Evidence:** Requirement-policy missing field list.
@@ -35,6 +36,7 @@ source_paths: [src/agent/nodes/intake.py, src/agent/policies/requirements.py, sr
 ## BR-INT-004 — Focused work stays focused
 
 - **Rule:** A focused request runs only necessary readiness/prerequisites and requested capability; it does not launch a full itinerary implicitly.
+- **Rule:** Generic planning language is not implicit consent for bookable inventory, personalized entry research, or budget calculation.
 - **Reason:** Limit latency, cost, and unwanted output.
 - **Failure:** Extra calls are a routing defect.
 - **Evidence:** Requested scope/capabilities and trajectory.
