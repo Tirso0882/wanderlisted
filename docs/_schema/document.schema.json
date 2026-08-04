@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "wanderlisted-document-metadata-v1",
+  "title": "Wanderlisted canonical document metadata",
+  "type": "object",
+  "required": [
+    "id",
+    "doc_type",
+    "status",
+    "authority",
+    "owners",
+    "applies_to",
+    "load_when",
+    "source_paths"
+  ],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$"},
+    "doc_type": {
+      "type": "string",
+      "enum": [
+        "architecture",
+        "adr",
+        "domain",
+        "rules",
+        "feature",
+        "contract",
+        "evaluation",
+        "testing",
+        "operations",
+        "task",
+        "task_execution",
+        "task_handoff",
+        "reference"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "active", "deprecated", "superseded", "archived"]
+    },
+    "authority": {
+      "type": "string",
+      "enum": ["normative", "descriptive", "generated"]
+    },
+    "owners": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "applies_to": {"type": "array", "items": {"type": "string"}},
+    "load_when": {"type": "array", "items": {"type": "string"}},
+    "source_paths": {"type": "array", "items": {"type": "string"}},
+    "supersedes": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": false
+}

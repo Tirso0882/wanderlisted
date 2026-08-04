@@ -1,0 +1,181 @@
+version: 1
+
+budgets:
+  automatic_instruction_bytes: 8192
+  root_agents_max_bytes: 5120
+  scoped_agents_max_bytes: 8192
+  copilot_adapter_max_bytes: 512
+  skill_max_bytes: 6144
+  default_task_documents_bytes: 24576
+
+read_order:
+  - worktree_status_and_diff
+  - root_AGENTS.md
+  - nearest_scoped_AGENTS.md
+  - docs/agent-map.yaml
+  - matching_active_task_packet
+  - Critical_documents
+  - Recommended_documents_within_budget
+  - Optional_documents_only_for_open_questions
+  - focused_tests_then_source
+
+priority_definitions:
+  Critical: Required to preserve the owning contract or safety boundary.
+  Recommended: Load when the route or trigger matches and budget remains.
+  Optional: Historical, operational detail, or deep reference loaded on demand.
+
+documents:
+  docs/architecture/SYSTEM.md: {priority: Critical, byte_limit: 6144}
+  docs/architecture/AI_WORKFLOW.md: {priority: Critical, byte_limit: 5120}
+  docs/architecture/DATA_AND_INTEGRATIONS.md: {priority: Recommended, byte_limit: 5120}
+  docs/architecture/DEPLOYMENT_VIEW.md: {priority: Critical, byte_limit: 5120}
+  docs/adr/0007-travel-readiness-ownership-and-fail-closed-preflight.md: {priority: Optional, byte_limit: 4096}
+  docs/reference/README.md: {priority: Optional, byte_limit: 4096}
+  docs/domain/GLOSSARY.md: {priority: Optional, byte_limit: 4096}
+  docs/domain/CONTEXT_MAP.md: {priority: Critical, byte_limit: 4096}
+  docs/domain/request-and-scope.md: {priority: Recommended, byte_limit: 3072}
+  docs/domain/readiness.md: {priority: Critical, byte_limit: 3072}
+  docs/domain/discovery.md: {priority: Recommended, byte_limit: 3072}
+  docs/domain/budgeting.md: {priority: Critical, byte_limit: 3072}
+  docs/domain/itinerary.md: {priority: Critical, byte_limit: 3072}
+  docs/domain/orchestration.md: {priority: Critical, byte_limit: 3072}
+  docs/domain/delivery.md: {priority: Recommended, byte_limit: 3072}
+  docs/domain/evaluation.md: {priority: Recommended, byte_limit: 3072}
+  docs/rules/intake-and-routing.md: {priority: Critical, byte_limit: 5120}
+  docs/rules/readiness-and-safety.md: {priority: Critical, byte_limit: 5120}
+  docs/rules/selection-and-pricing.md: {priority: Critical, byte_limit: 5120}
+  docs/rules/budget.md: {priority: Critical, byte_limit: 6144}
+  docs/rules/itinerary.md: {priority: Critical, byte_limit: 6144}
+  docs/rules/hitl-and-external-calls.md: {priority: Critical, byte_limit: 5120}
+  docs/features/stage4-orchestration/FEATURE.md: {priority: Critical, byte_limit: 5120}
+  docs/features/stage4-orchestration/CONTRACTS.md: {priority: Critical, byte_limit: 4096}
+  docs/features/travel-readiness/FEATURE.md: {priority: Critical, byte_limit: 5120}
+  docs/features/travel-readiness/CONTRACTS.md: {priority: Recommended, byte_limit: 4096}
+  docs/features/travel-readiness/EVALUATION.md: {priority: Recommended, byte_limit: 3072}
+  docs/features/budget/FEATURE.md: {priority: Critical, byte_limit: 5120}
+  docs/features/budget/CONTRACTS.md: {priority: Critical, byte_limit: 4096}
+  docs/features/budget/EVALUATION.md: {priority: Recommended, byte_limit: 3072}
+  docs/features/itinerary/FEATURE.md: {priority: Critical, byte_limit: 5120}
+  docs/features/itinerary/CONTRACTS.md: {priority: Critical, byte_limit: 4096}
+  docs/features/itinerary/EVALUATION.md: {priority: Recommended, byte_limit: 3072}
+  docs/features/handbook/FEATURE.md: {priority: Critical, byte_limit: 4096}
+  docs/features/handbook/CONTRACTS.md: {priority: Recommended, byte_limit: 3072}
+  docs/features/hotelbeds/FEATURE.md: {priority: Critical, byte_limit: 5120}
+  docs/features/hotelbeds/CONTRACTS.md: {priority: Critical, byte_limit: 4096}
+  docs/testing/STRATEGY.md: {priority: Recommended, byte_limit: 5120}
+  docs/testing/QUALITY_GATES.md: {priority: Critical, byte_limit: 4096}
+  docs/testing/AI_EVALUATION.md: {priority: Critical, byte_limit: 4096}
+  docs/testing/TEST_DATA.md: {priority: Recommended, byte_limit: 3072}
+  docs/operations/CONFIGURATION.md: {priority: Critical, byte_limit: 5120}
+  docs/operations/DEPLOYMENT.md: {priority: Critical, byte_limit: 6144}
+  docs/operations/DOCKER_PRODUCTION_GUIDE.md: {priority: Optional, byte_limit: 4096}
+  docs/operations/RELEASE_CHECKLIST.md: {priority: Critical, byte_limit: 5120}
+  docs/operations/RUNBOOK.md: {priority: Recommended, byte_limit: 5120}
+  docs/operations/OBSERVABILITY.md: {priority: Recommended, byte_limit: 4096}
+  docs/operations/INCIDENT_RESPONSE.md: {priority: Recommended, byte_limit: 4096}
+  docs/operations/COST_CONTROLS.md: {priority: Critical, byte_limit: 4096}
+
+routes:
+  - id: documentation-system
+    paths: ["AGENTS.md", ".agents/**", ".github/**", "docs/**", "scripts/docs/**", "tests/test_docs_contract.py"]
+    triggers: [documentation, agent-instructions, copilot, codex, skill, context-budget]
+    documents:
+      Critical: [docs/architecture/AI_WORKFLOW.md, docs/testing/QUALITY_GATES.md]
+      Recommended: [docs/architecture/SYSTEM.md, docs/domain/CONTEXT_MAP.md]
+      Optional: [docs/domain/GLOSSARY.md, docs/reference/README.md]
+
+  - id: orchestration
+    paths: ["src/agent/**", "src/api/**"]
+    triggers: [graph, stage4, routing, state, reducer, api, stream, resume]
+    documents:
+      Critical: [docs/features/stage4-orchestration/FEATURE.md, docs/features/stage4-orchestration/CONTRACTS.md, docs/domain/orchestration.md, docs/rules/intake-and-routing.md]
+      Recommended: [docs/architecture/SYSTEM.md, docs/rules/hitl-and-external-calls.md, docs/testing/STRATEGY.md]
+      Optional: [docs/domain/GLOSSARY.md]
+
+  - id: request-scope
+    paths: ["src/models/trip_request.py", "src/agent/nodes/intake.py", "src/agent/policies/requirements.py"]
+    triggers: [intake, trip-request, missing-fields, focused-request]
+    documents:
+      Critical: [docs/domain/request-and-scope.md, docs/rules/intake-and-routing.md]
+      Recommended: [docs/features/stage4-orchestration/CONTRACTS.md]
+      Optional: []
+
+  - id: readiness
+    paths: ["src/readiness/**", "src/agent/agents/travel_readiness_agent.py", "edd/readiness/**", "tests/test_readiness*.py", "tests/test_api_readiness_contract.py"]
+    triggers: [readiness, safety, advisory, entry, visa, health, weather, culture, packing]
+    documents:
+      Critical: [docs/features/travel-readiness/FEATURE.md, docs/domain/readiness.md, docs/rules/readiness-and-safety.md]
+      Recommended: [docs/features/travel-readiness/CONTRACTS.md, docs/features/travel-readiness/EVALUATION.md, docs/adr/0007-travel-readiness-ownership-and-fail-closed-preflight.md]
+      Optional: [docs/architecture/DATA_AND_INTEGRATIONS.md]
+
+  - id: discovery
+    paths: ["src/agent/agents/flights_agent.py", "src/agent/agents/hotels_agent.py", "src/agent/agents/restaurants_agent.py", "src/agent/agents/activities_agent.py", "src/agent/agents/transportation_agent.py", "src/tools/**"]
+    triggers: [flights, hotels, activities, restaurants, transportation, provider, inventory]
+    documents:
+      Critical: [docs/domain/discovery.md, docs/rules/selection-and-pricing.md]
+      Recommended: [docs/architecture/DATA_AND_INTEGRATIONS.md, docs/testing/STRATEGY.md]
+      Optional: [docs/operations/COST_CONTROLS.md]
+
+  - id: hotelbeds
+    paths: ["src/tools/hotels_hotelbeds.py", "tests/test_hotels_hotelbeds.py", "tests/test_hotel_stay_nodes.py", "edd/hotels/**"]
+    triggers: [hotelbeds, checkrate, recheck, rate-key, hotel-price]
+    documents:
+      Critical: [docs/features/hotelbeds/FEATURE.md, docs/features/hotelbeds/CONTRACTS.md, docs/rules/selection-and-pricing.md]
+      Recommended: [docs/architecture/DATA_AND_INTEGRATIONS.md]
+      Optional: []
+
+  - id: budget
+    paths: ["src/budget/**", "src/models/budget.py", "src/models/pricing.py", "src/agent/agents/budget_agent.py", "edd/budget/**", "tests/test_budget*.py", "tests/test_api_budget_contract.py"]
+    triggers: [budget, pricing, currency, contingency, target, overage]
+    documents:
+      Critical: [docs/features/budget/FEATURE.md, docs/features/budget/CONTRACTS.md, docs/domain/budgeting.md, docs/rules/budget.md, docs/rules/selection-and-pricing.md]
+      Recommended: [docs/features/budget/EVALUATION.md, docs/testing/STRATEGY.md]
+      Optional: [docs/operations/COST_CONTROLS.md]
+
+  - id: itinerary
+    paths: ["src/itinerary/**", "src/models/itinerary.py", "src/agent/agents/itinerary_agent.py", "edd/itinerary/**", "tests/test_itinerary*.py", "tests/test_api_itinerary_contract.py"]
+    triggers: [itinerary, schedule, feasibility, draft, route-plan, artifact-fingerprint]
+    documents:
+      Critical: [docs/features/itinerary/FEATURE.md, docs/features/itinerary/CONTRACTS.md, docs/domain/itinerary.md, docs/rules/itinerary.md, docs/rules/selection-and-pricing.md]
+      Recommended: [docs/features/itinerary/EVALUATION.md, docs/testing/STRATEGY.md]
+      Optional: [docs/domain/GLOSSARY.md]
+
+  - id: handbook
+    paths: ["src/agent/renderer.py", "src/agent/templates/**", "tests/test_itinerary_renderer.py"]
+    triggers: [handbook, renderer, html, markdown, json, palette]
+    documents:
+      Critical: [docs/features/handbook/FEATURE.md, docs/domain/delivery.md, docs/rules/itinerary.md]
+      Recommended: [docs/features/handbook/CONTRACTS.md]
+      Optional: []
+
+  - id: frontend
+    paths: ["frontend/**"]
+    triggers: [frontend, nextjs, ui, component, store, hitl-ui]
+    documents:
+      Critical: [docs/domain/delivery.md, docs/features/stage4-orchestration/CONTRACTS.md]
+      Recommended: [docs/testing/STRATEGY.md, docs/features/itinerary/CONTRACTS.md]
+      Optional: [docs/features/handbook/CONTRACTS.md]
+
+  - id: tests
+    paths: ["tests/**"]
+    triggers: [test, pytest, regression, validation]
+    documents:
+      Critical: [docs/testing/STRATEGY.md, docs/testing/QUALITY_GATES.md]
+      Recommended: [docs/testing/TEST_DATA.md]
+      Optional: []
+
+  - id: evaluation
+    paths: ["edd/**", "src/evaluation/**", "scripts/eval_agents.py"]
+    triggers: [evaluation, edd, judge, pairwise, calibration, langsmith, baseline]
+    documents:
+      Critical: [docs/testing/AI_EVALUATION.md, docs/operations/COST_CONTROLS.md]
+      Recommended: [docs/domain/evaluation.md, docs/testing/TEST_DATA.md]
+      Optional: []
+
+  - id: deployment
+    paths: ["infra/**", "Dockerfile", "docker-compose.yml", ".dockerignore", ".github/workflows/**"]
+    triggers: [deployment, infrastructure, azure, bicep, container-apps, docker, release]
+    documents:
+      Critical: [docs/architecture/DEPLOYMENT_VIEW.md, docs/operations/CONFIGURATION.md, docs/operations/DEPLOYMENT.md, docs/operations/RELEASE_CHECKLIST.md]
+      Recommended: [docs/operations/RUNBOOK.md, docs/operations/OBSERVABILITY.md, docs/operations/COST_CONTROLS.md]
+      Optional: [docs/operations/DOCKER_PRODUCTION_GUIDE.md, docs/operations/INCIDENT_RESPONSE.md]
