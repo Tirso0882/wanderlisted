@@ -62,7 +62,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-      - run: pip install PyYAML==6.0.3 pytest==9.0.2 ruff==0.15.10
+      - run: pip install PyYAML==6.0.3 python-dotenv==1.2.2 pytest==9.0.2 ruff==0.15.10
       - run: python scripts/docs/check_docs.py
       - run: pytest tests/test_docs_contract.py -q
       - run: ruff check scripts/docs/ tests/test_docs_contract.py
