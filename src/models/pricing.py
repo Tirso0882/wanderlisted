@@ -5,8 +5,25 @@ from __future__ import annotations
 from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
+from typing import Annotated
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, WithJsonSchema, field_validator
+
+
+# Pydantic normally publishes Decimal as number-or-string and adds a regex with
+# negative lookahead to the string branch. Azure/OpenAI tool schemas reject that
+# lookaround. These annotations change only the validation JSON schema; runtime
+# values remain Decimal and retain their deterministic numeric constraints.
+NonNegativeDecimal = Annotated[
+    Decimal,
+    Field(ge=0),
+    WithJsonSchema({"type": "number", "minimum": 0}, mode="validation"),
+]
+PositiveDecimal = Annotated[
+    Decimal,
+    Field(gt=0),
+    WithJsonSchema({"type": "number", "exclusiveMinimum": 0}, mode="validation"),
+]
 
 
 class BudgetCategory(StrEnum):
@@ -41,7 +58,7 @@ class SelectionStatus(StrEnum):
 class Money(BaseModel):
     """Non-negative monetary amount in one ISO-4217-like currency code."""
 
-    amount: Decimal = Field(ge=0)
+    amount: NonNegativeDecimal
     currency: str = Field(min_length=3, max_length=3)
 
     @field_validator("currency", mode="before")
@@ -65,7 +82,7 @@ class PriceEvidence(BaseModel):
     scope: PriceScope = PriceScope.TOTAL
     basis: PriceBasis = PriceBasis.QUOTED
     selection_status: SelectionStatus = SelectionStatus.CANDIDATE
-    quantity: Decimal = Field(default=Decimal("1"), gt=0)
+    quantity: PositiveDecimal = Field(default_factory=lambda: Decimal("1"))
     observed_at: datetime | None = None
     evidence_text: str = ""
 

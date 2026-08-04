@@ -54,11 +54,13 @@ from langsmith import traceable
 from custom_logging import AppLogger
 from src.agent.llm import get_llm
 from src.agent.nodes import component_gate_node, intake_node, trip_skeleton_node
+from src.agent.localization import normalize_locale, resolve_response_locale
 from src.agent.policies import classify_component_result, requested_agents
 from src.agent.state import TravelAgentState
 from src.agent.prompts import (
     HOTEL_STAY_SEARCH_PROMPT,
     READINESS_CONSTRAINTS_CONTEXT_PROMPT,
+    RESPONSE_LOCALE_CONTEXT_PROMPT,
     SHALLOW_REPLY_SYSTEM_PROMPT,
     SPECIALIST_RESULTS_CONTEXT_PROMPT,
     SUPERVISOR_EXISTING_DATA_PROMPT,
@@ -186,6 +188,11 @@ def is_hitl_enabled(gate: str) -> bool:
     return _hitl_cfg.get(gate, True)
 
 
+def _localized(state: TravelAgentState, english: str, polish: str) -> str:
+    """Select deterministic UI prose without translating sourced evidence."""
+    return polish if normalize_locale(state.get("response_locale")) == "pl" else english
+
+
 # ── Helper functions (module-level, testable) ─────────────────────────────
 
 
@@ -219,6 +226,17 @@ def build_trip_request_context(state: TravelAgentState) -> str:
         canonical_request=json.dumps(
             request.model_dump(mode="json"), ensure_ascii=False
         )
+    )
+
+
+def build_response_locale_context(state: TravelAgentState) -> str:
+    """Build the canonical per-turn language instruction for model contexts."""
+    if not (state.get("response_locale") or state.get("ui_locale")):
+        return ""
+    locale = normalize_locale(state.get("response_locale") or state.get("ui_locale"))
+    return RESPONSE_LOCALE_CONTEXT_PROMPT.format(
+        language="Polish" if locale == "pl" else "English",
+        locale_tag="pl-PL" if locale == "pl" else "en-GB",
     )
 
 
@@ -285,6 +303,10 @@ def build_context_messages(
                 parts.append(f"[{label}]\n{summary}")
 
     msgs = list(state["messages"])
+
+    locale_context = build_response_locale_context(state)
+    if locale_context:
+        msgs.insert(0, SystemMessage(content=locale_context))
 
     request_context = build_trip_request_context(state)
     if request_context:
@@ -417,7 +439,11 @@ async def safety_review_node(state: TravelAgentState) -> dict:
         return {
             "messages": [
                 AIMessage(
-                    content="Official safety evidence could not be validated, so discovery was not started."
+                    content=_localized(
+                        state,
+                        "Official safety evidence could not be validated, so discovery was not started.",
+                        "Nie udało się zweryfikować oficjalnych danych o bezpieczeństwie, więc wyszukiwanie nie zostało uruchomione.",
+                    )
                 )
             ],
             "current_agent": "safety_review",
@@ -430,7 +456,11 @@ async def safety_review_node(state: TravelAgentState) -> dict:
         return {
             "messages": [
                 AIMessage(
-                    content="Official safety evidence could not be validated, so discovery was not started."
+                    content=_localized(
+                        state,
+                        "Official safety evidence could not be validated, so discovery was not started.",
+                        "Nie udało się zweryfikować oficjalnych danych o bezpieczeństwie, więc wyszukiwanie nie zostało uruchomione.",
+                    )
                 )
             ],
             "current_agent": "safety_review",
@@ -528,14 +558,22 @@ async def safety_review_node(state: TravelAgentState) -> dict:
             {
                 "type": "safety_warning",
                 "gate": "safety_review",
+                "locale": normalize_locale(state.get("response_locale")),
                 "advisory_level": str(report.safety.advisory_level),
                 "summary": safety_snippet,
-                "message": (
+                "message": _localized(
+                    state,
                     "⚠️ SAFETY ADVISORY: The destination has a high-risk travel advisory. "
-                    "Review the safety information and decide whether to proceed."
+                    "Review the safety information and decide whether to proceed.",
+                    "⚠️ OSTRZEŻENIE: Dla tego miejsca obowiązuje ostrzeżenie o wysokim "
+                    "ryzyku. Sprawdź informacje i zdecyduj, czy kontynuować.",
                 ),
                 "details": safety_snippet,
-                "action_required": "Respond with true to proceed or false to cancel.",
+                "action_required": _localized(
+                    state,
+                    "Choose whether to continue or cancel.",
+                    "Wybierz, czy kontynuować, czy anulować.",
+                ),
             }
         )
         decision = _normalize_hitl_decision(raw_decision)
@@ -544,9 +582,12 @@ async def safety_review_node(state: TravelAgentState) -> dict:
             return {
                 "messages": [
                     AIMessage(
-                        content=(
-                            "🛑 Trip planning cancelled due to safety advisory. "
-                            "Consider alternative destinations or check back when conditions improve."
+                        content=_localized(
+                            state,
+                            "🛑 Trip planning cancelled due to the safety advisory. "
+                            "Consider another destination or check again later.",
+                            "🛑 Planowanie zostało anulowane z powodu ostrzeżenia. "
+                            "Rozważ inne miejsce lub sprawdź sytuację później.",
                         )
                     )
                 ],
@@ -598,9 +639,13 @@ async def budget_review_node(state: TravelAgentState) -> dict:
             {
                 "type": "budget_warning",
                 "gate": "budget_review",
-                "message": (
+                "locale": normalize_locale(state.get("response_locale")),
+                "message": _localized(
+                    state,
                     f"Estimated trip cost (USD {budget.total:,.2f}) exceeds the "
-                    f"target (USD {budget.target_budget:,.2f}) by USD {overspend:,.2f}."
+                    f"target (USD {budget.target_budget:,.2f}) by USD {overspend:,.2f}.",
+                    f"Szacowany koszt podróży (USD {budget.total:,.2f}) przekracza "
+                    f"cel (USD {budget.target_budget:,.2f}) o USD {overspend:,.2f}.",
                 ),
                 "summary": budget.summary,
                 "estimated_total": budget.total,
@@ -615,12 +660,24 @@ async def budget_review_node(state: TravelAgentState) -> dict:
                 ),
                 "display_currency": budget.display_currency,
                 "display_conversion_available": budget.display_conversion_available,
-                "suggestions": [
-                    "Review the selected flight and hotel rates",
-                    "Reduce trip duration or optional paid activities",
-                    "Set a higher target only if that reflects your actual limit",
-                ],
-                "action_required": "Proceed, adjust the target, or cancel.",
+                "suggestions": (
+                    [
+                        "Sprawdź wybrane ceny lotów i hoteli",
+                        "Skróć podróż lub ogranicz opcjonalne płatne atrakcje",
+                        "Podnieś cel tylko wtedy, gdy odpowiada Twojemu limitowi",
+                    ]
+                    if normalize_locale(state.get("response_locale")) == "pl"
+                    else [
+                        "Review the selected flight and hotel rates",
+                        "Reduce trip duration or optional paid activities",
+                        "Set a higher target only if that reflects your actual limit",
+                    ]
+                ),
+                "action_required": _localized(
+                    state,
+                    "Proceed, adjust the target, or cancel.",
+                    "Kontynuuj, zmień cel lub anuluj.",
+                ),
             }
         )
         normalised = _normalize_hitl_decision(raw_decision)
@@ -640,7 +697,11 @@ async def budget_review_node(state: TravelAgentState) -> dict:
             return {
                 "messages": [
                     AIMessage(
-                        content="Budget review cancelled the remaining planning workflow."
+                        content=_localized(
+                            state,
+                            "Budget review cancelled the remaining planning workflow.",
+                            "Anulowanie budżetu zakończyło dalsze planowanie.",
+                        )
                     )
                 ],
                 "current_agent": "budget_review",
@@ -731,14 +792,23 @@ async def human_review_node(state: TravelAgentState) -> dict:
         {
             "type": "itinerary_review",
             "gate": "human_review",
-            "summary": "Review the validated, typed itinerary before handbook generation.",
-            "message": "📋 Your travel plan is ready for review before generating the final handbook.",
+            "locale": normalize_locale(state.get("response_locale")),
+            "summary": _localized(
+                state,
+                "Review the validated itinerary before handbook generation.",
+                "Sprawdź zweryfikowany plan przed utworzeniem przewodnika.",
+            ),
+            "message": _localized(
+                state,
+                "📋 Your travel plan is ready for review before generating the final handbook.",
+                "📋 Twój plan podróży jest gotowy do sprawdzenia przed utworzeniem przewodnika.",
+            ),
             "components_available": summary_parts,
             "itinerary_preview": itinerary_preview[:2000],
-            "action_required": (
-                "Respond with true to generate the handbook, "
-                "provide feedback text to proceed with notes, "
-                "or false to cancel."
+            "action_required": _localized(
+                state,
+                "Approve, request changes, or cancel.",
+                "Zatwierdź, poproś o zmiany lub anuluj.",
             ),
         }
     )
@@ -748,9 +818,10 @@ async def human_review_node(state: TravelAgentState) -> dict:
         return {
             "messages": [
                 AIMessage(
-                    content=(
-                        "📝 Handbook generation cancelled. Let me know what you'd like to change "
-                        "and I'll adjust the itinerary."
+                    content=_localized(
+                        state,
+                        "📝 Handbook generation cancelled. Tell me what to change and I will adjust the itinerary.",
+                        "📝 Tworzenie przewodnika anulowano. Napisz, co zmienić, a poprawię plan.",
                     )
                 )
             ],
@@ -897,6 +968,12 @@ async def triage_node(state: TravelAgentState, *, llm) -> dict:
     """Lightweight classifier: decide if the query needs the full pipeline (deep)
     or can be answered directly (shallow)."""
     last_message = state["messages"][-1]
+    latest_text = _extract_text_content(last_message.content)
+    resolution = resolve_response_locale(
+        latest_text,
+        ui_locale=state.get("ui_locale", "en"),
+        last_clear_locale=state.get("last_clear_locale") or None,
+    )
     response = await llm.ainvoke(
         [
             SystemMessage(content=TRIAGE_SYSTEM_PROMPT),
@@ -906,7 +983,12 @@ async def triage_node(state: TravelAgentState, *, llm) -> dict:
     classification = _extract_text_content(response.content).strip().lower()
     # Default to deep if the LLM returns anything unexpected
     route = "shallow" if classification == "shallow" else "deep"
-    return {"current_agent": f"triage:{route}"}
+    return {
+        "current_agent": f"triage:{route}",
+        "response_locale": resolution.locale,
+        "last_clear_locale": resolution.clear_locale
+        or state.get("last_clear_locale", ""),
+    }
 
 
 @traceable(
@@ -957,12 +1039,24 @@ async def supervisor_node(state: TravelAgentState, *, supervisor_agent) -> dict:
         existing_summary = SUPERVISOR_EXISTING_DATA_PROMPT.format(
             data_summary="\n".join(data_parts)
         )
+    locale_context = build_response_locale_context(state)
+    if locale_context:
+        existing_summary = f"{locale_context}\n{existing_summary}".strip()
 
     # Single-agent isolation: skip LLM routing, force to target agent only
     target = state.get("target_agent", "")
     if target and target in AGENT_TO_NODE:
+        locale = normalize_locale(state.get("response_locale"))
         return {
-            "messages": [AIMessage(content=f"Routing to {target}...")],
+            "messages": [
+                AIMessage(
+                    content=(
+                        f"Przekazuję do {target}…"
+                        if locale == "pl"
+                        else f"Routing to {target}…"
+                    )
+                )
+            ],
             "current_agent": "supervisor",
             "itinerary_components": {
                 **components,
@@ -1269,9 +1363,17 @@ def _latest_human_question(state: TravelAgentState) -> str:
 
 
 def _readiness_component_result(
-    run, component_name: str
+    run, component_name: str, state: TravelAgentState
 ) -> tuple[ComponentResult, dict]:
-    message = AIMessage(content=run.message)
+    traveler_message = run.message
+    if normalize_locale(state.get("response_locale")) == "pl":
+        traveler_message = (
+            "Zebrałem dostępne informacje o przygotowaniu do podróży. "
+            "Sprawdź źródła, zakres i ograniczenia w panelu podróży."
+            if run.report is not None
+            else "Nie udało się zebrać wymaganych informacji o przygotowaniu do podróży. Sprawdź wskazane braki i ograniczenia."
+        )
+    message = AIMessage(content=traveler_message)
     if run.report is None:
         outcome = ComponentResult(
             component=component_name,
@@ -1318,9 +1420,14 @@ async def readiness_preflight_node(state: TravelAgentState, *, executor) -> dict
     """Run official advisory research before any paid discovery fan-out."""
     latest = _latest_human_question(state)
     request = TripRequest.model_validate(state.get("trip_request", {}))
+    request = request.model_copy(
+        update={"locale": normalize_locale(state.get("response_locale"))}
+    )
     try:
         run = await executor.preflight(question=latest, trip_request=request)
-        outcome, component = _readiness_component_result(run, "readiness_preflight")
+        outcome, component = _readiness_component_result(
+            run, "readiness_preflight", state
+        )
         return {
             "messages": component["messages"],
             "current_agent": "readiness_preflight",
@@ -1333,7 +1440,11 @@ async def readiness_preflight_node(state: TravelAgentState, *, executor) -> dict
         _log.warning("Readiness preflight failed: %s: %s", type(exc).__name__, exc)
         outcome = classify_component_result("readiness_preflight", [], error=exc)
         message = AIMessage(
-            content="I could not verify official safety advisories, so discovery was not started."
+            content=_localized(
+                state,
+                "I could not verify official safety advisories, so discovery was not started.",
+                "Nie udało mi się zweryfikować oficjalnych ostrzeżeń, więc wyszukiwanie nie zostało uruchomione.",
+            )
         )
         return {
             "messages": [message],
@@ -1352,6 +1463,9 @@ async def readiness_node(state: TravelAgentState, *, executor) -> dict:
     """Run focused or post-preflight readiness details without place discovery."""
     latest = _latest_human_question(state)
     request = TripRequest.model_validate(state.get("trip_request", {}))
+    request = request.model_copy(
+        update={"locale": normalize_locale(state.get("response_locale"))}
+    )
     try:
         preflight_data = (
             state.get("itinerary_components", {})
@@ -1372,7 +1486,7 @@ async def readiness_node(state: TravelAgentState, *, executor) -> dict:
             )
         else:
             run = await executor.research(question=latest, trip_request=request)
-        outcome, component = _readiness_component_result(run, "readiness")
+        outcome, component = _readiness_component_result(run, "readiness", state)
         return {
             "messages": component["messages"],
             "current_agent": "readiness",
@@ -1383,7 +1497,11 @@ async def readiness_node(state: TravelAgentState, *, executor) -> dict:
         _log.warning("Readiness pipeline failed: %s: %s", type(exc).__name__, exc)
         outcome = classify_component_result("readiness", [], error=exc)
         message = AIMessage(
-            content="I could not complete travel-readiness research because a provider is unavailable."
+            content=_localized(
+                state,
+                "I could not complete travel-readiness research because a provider is unavailable.",
+                "Nie udało mi się ukończyć przygotowania podróży, ponieważ dostawca jest niedostępny.",
+            )
         )
         return {
             "messages": [message],
@@ -1565,7 +1683,12 @@ async def draft_itinerary_node(
             else [f"{type(exc).__name__}: {exc}"]
         )
         message = AIMessage(
-            content="Itinerary selection failed validation: " + "; ".join(errors)
+            content=_localized(
+                state,
+                "Itinerary selection failed validation: ",
+                "Wybór planu nie przeszedł walidacji: ",
+            )
+            + "; ".join(errors)
         )
         outcome = ComponentResult(
             component="draft_itinerary",
@@ -1684,7 +1807,13 @@ async def budget_node(state: TravelAgentState, *, agent: BudgetAgent) -> dict:
         )
     except Exception as exc:
         _log.warning("Budget pipeline failed: %s: %s", type(exc).__name__, exc)
-        message = AIMessage(content="Budget calculation failed validation.")
+        message = AIMessage(
+            content=_localized(
+                state,
+                "Budget calculation failed validation.",
+                "Obliczenie budżetu nie przeszło walidacji.",
+            )
+        )
         outcome = classify_component_result("budget", [], error=exc)
         return {
             "messages": [message],
@@ -1697,7 +1826,13 @@ async def budget_node(state: TravelAgentState, *, agent: BudgetAgent) -> dict:
             "component_results": {"budget": outcome.model_dump(mode="json")},
         }
 
-    message = AIMessage(content=run.message)
+    message = AIMessage(
+        content=(
+            "Budżet został obliczony na podstawie dostępnych cen i oznaczonych założeń. Szczegóły oraz zakres danych znajdziesz w panelu podróży."
+            if normalize_locale(state.get("response_locale")) == "pl"
+            else run.message
+        )
+    )
     report = run.report.model_dump(mode="json")
     outcome = ComponentResult(
         component="budget",
@@ -1796,7 +1931,12 @@ async def itinerary_node(
             else [f"{type(exc).__name__}: {exc}"]
         )
         message = AIMessage(
-            content="Itinerary compilation failed validation: " + "; ".join(errors)
+            content=_localized(
+                state,
+                "Itinerary compilation failed validation: ",
+                "Kompilacja planu nie przeszła walidacji: ",
+            )
+            + "; ".join(errors)
         )
         outcome = ComponentResult(
             component="itinerary",
@@ -1917,7 +2057,11 @@ async def render_handbook_node(
         )
     except (TypeError, ValueError) as exc:
         message = AIMessage(
-            content="Handbook generation failed typed-artifact validation."
+            content=_localized(
+                state,
+                "Handbook generation failed typed-artifact validation.",
+                "Tworzenie przewodnika nie przeszło walidacji danych.",
+            )
         )
         outcome = ComponentResult(
             component="handbook",
@@ -1974,7 +2118,13 @@ async def render_handbook_node(
         handbook = renderer.build_handbook(state)
         paths = await asyncio.to_thread(renderer.write_outputs, handbook)
     except (OSError, TypeError, ValueError) as exc:
-        message = AIMessage(content="Handbook rendering failed.")
+        message = AIMessage(
+            content=_localized(
+                state,
+                "Handbook rendering failed.",
+                "Renderowanie przewodnika nie powiodło się.",
+            )
+        )
         outcome = ComponentResult(
             component="handbook",
             status=ComponentStatus.FAILED,
@@ -2181,17 +2331,11 @@ def route_after_supervisor(state: TravelAgentState):
     if parallel_requested:
         return [Send(AGENT_TO_NODE[a], state) for a in parallel_requested]
 
-    # Only dependent/sequential agents requested.
-    if "HotelsAgent" in routing:
-        return "trip_skeleton"
-    if DEPENDENT_TRANSPORTATION_AGENT in routing:
-        return "transportation"
-    if "BudgetAgent" in routing:
-        return "budget"
-    if "ItineraryAgent" in routing:
-        return "itinerary"
-
-    return END
+    # Only dependent/sequential agents requested. Use the same prerequisite
+    # router as post-discovery fan-in so transportation and itinerary can never
+    # bypass the canonical skeleton and selected draft. Budget-only requests
+    # remain independent and continue directly to deterministic budgeting.
+    return _route_to_dependent_stage(state)
 
 
 def route_after_readiness_preflight(state: TravelAgentState) -> str:

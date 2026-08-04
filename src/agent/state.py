@@ -35,6 +35,9 @@ class TravelAgentState(MessagesState):
     workflow_status: Annotated[str, _last_value] = "new"
     pending_questions: Annotated[list[str], _last_value] = []
     request_revision: Annotated[int, _last_value] = 0
+    ui_locale: Annotated[str, _last_value] = "en"
+    response_locale: Annotated[str, _last_value] = "en"
+    last_clear_locale: Annotated[str, _last_value] = ""
     start_date: Annotated[str, _last_value] = ""
     end_date: Annotated[str, _last_value] = ""
 

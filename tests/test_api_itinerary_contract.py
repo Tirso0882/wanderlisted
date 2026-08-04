@@ -75,6 +75,11 @@ class _ResumeGraph:
         return SimpleNamespace(values={"messages": [HumanMessage(content="plan")]})
 
 
+class _AllowLimiter:
+    async def check(self, _principal_id: str) -> bool:
+        return True
+
+
 async def test_resume_response_returns_updated_structured_handbook():
     graph = _ResumeGraph()
     request = ResumeRequest(
@@ -82,7 +87,12 @@ async def test_resume_response_returns_updated_structured_handbook():
         decision={"gate": "human_review", "action": "approved"},
     )
 
-    response = await resume_chat(request, graph=graph)
+    response = await resume_chat(
+        request,
+        owner_id="02d1e9f54ec34110bb838d7765432705",
+        rate_limiter=_AllowLimiter(),
+        graph=graph,
+    )
 
     assert response.status == "completed"
     assert response.components["itinerary_structured"]["artifact_fingerprint"] == "fp"

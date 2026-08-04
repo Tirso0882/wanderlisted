@@ -7,15 +7,24 @@ from src.agent.policies.requirements import (
     missing_required_fields,
     requested_agents,
 )
-from src.models import DateWindow, RequestScope, TravelerParty, TripRequest
+from src.models import (
+    DateWindow,
+    ReadinessTopic,
+    RequestScope,
+    RequestedCapability,
+    TravelerParty,
+    TripRequest,
+)
 
 
-def test_polish_full_trip_requires_origin_passport_and_adults():
+def test_explicit_end_to_end_trip_requires_origin_passport_and_adults():
     request = TripRequest(
         scope=RequestScope.FULL_ITINERARY,
         locale="pl",
         origin_country="Kolumbia",
         destinations=["krakow", "warszawa", "wroclaw", "gdansk"],
+        requested_capabilities=list(RequestedCapability),
+        readiness_topics=[ReadinessTopic.ENTRY],
         date_window=DateWindow(
             earliest_start="2026-08-20",
             latest_end="2026-09-20",
@@ -41,6 +50,32 @@ def test_polish_full_trip_requires_origin_passport_and_adults():
         "BudgetAgent",
         "ItineraryAgent",
     ]
+
+
+def test_generic_city_break_defaults_to_destination_planning_only():
+    request = TripRequest(
+        scope=RequestScope.FULL_ITINERARY,
+        destinations=["wroclaw"],
+        date_window=DateWindow(exact_start="2026-10-08"),
+    )
+
+    assert missing_required_fields(request) == ["date_window"]
+    assert requested_agents(request) == [
+        "RestaurantsAgent",
+        "ActivitiesAgent",
+        "TransportationAgent",
+        "ItineraryAgent",
+    ]
+
+    complete = request.model_copy(
+        update={
+            "date_window": DateWindow(
+                exact_start="2026-10-08",
+                exact_end="2026-10-10",
+            )
+        }
+    )
+    assert missing_required_fields(complete) == []
 
 
 def test_legacy_destination_capability_is_rejected():

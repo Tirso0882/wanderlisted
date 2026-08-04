@@ -5,6 +5,7 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock
 
 from langchain_core.messages import ToolMessage
+from langchain_core.utils.function_calling import convert_to_openai_tool
 
 from src.agent.agents.budget_agent import BudgetAgent, LegacyPriceFact, LegacyPriceFacts
 from src.budget import BudgetContext
@@ -20,6 +21,13 @@ from src.models import (
     TripSkeleton,
 )
 from src.models.trip_request import DateWindow
+
+
+def test_legacy_price_tool_schema_uses_provider_supported_decimal_number():
+    schema = convert_to_openai_tool(LegacyPriceFacts)["function"]["parameters"]
+    amount = schema["properties"]["facts"]["items"]["properties"]["amount"]
+
+    assert amount == {"type": "number", "minimum": 0.0}
 
 
 def _context(evidence_text: str) -> BudgetContext:

@@ -44,8 +44,13 @@ Rules:
   complete trip. Use scope="focused" for one capability or topic. Use
   scope="refinement" when the user changes an existing plan.
 - requested_capabilities uses only: flights, hotels, travel_readiness, restaurants,
-  activities, transportation, budget, itinerary. A complete-trip request should
-  include every requested section; do not omit flights/hotels when named.
+  activities, transportation, budget, itinerary. Treat this list as execution
+  consent, not a wishlist of everything that could be useful.
+- A generic request such as "plan my trip", "plan a city break", or "build an
+  itinerary" defaults to destination planning: restaurants, activities,
+  transportation, and itinerary. Do NOT add flights, hotels, travel_readiness,
+  or budget unless the user explicitly asks for flights/departure, accommodation,
+  readiness topics, or costs. Include every optional section the user does name.
 - readiness_topics uses only: safety, entry, health, weather, culture, practical,
   packing. Populate it only for readiness topics explicitly requested.
 - passport_country is the passport issuer/nationality used for personalized entry
@@ -59,6 +64,9 @@ Rules:
 - For a flexible window plus trip length, set earliest_start, latest_end,
   duration_days, and flexible=true. For exact travel dates, set exact_start and
   exact_end.
+- If a relative phrase such as "this weekend" conflicts with an explicit date,
+  do not guess which one wins. Keep the date window incomplete so intake asks one
+  focused date question.
 - If the user omits the year, choose the next occurrence consistent with the
   current date supplied in context. Never choose a past year.
 - Destinations should contain requested cities, not a country when specific
@@ -77,6 +85,14 @@ INTAKE_CONTEXT_PROMPT = (
     "Current canonical request (preserve values not changed by this turn):\n"
     "{canonical_request}"
 )
+
+RESPONSE_LOCALE_CONTEXT_PROMPT = """RESPONSE LANGUAGE CONTRACT:
+- Respond in {language} ({locale_tag}) for all traveler-facing prose in this turn.
+- For Polish, use a friendly direct \"Ty\" voice and natural Polish diacritics.
+- Keep provider names, sourced descriptions, prices, route identifiers, URLs, and
+  previously written messages in their original language; do not translate evidence.
+- Structured identifiers, enum values, and machine-readable fields stay unchanged.
+"""
 
 
 # ---------------------------------------------------------------------------
@@ -366,11 +382,13 @@ Available agents and when to use each:
 
 Routing rules:
 1. Pick ONLY the agents that are truly relevant to the query.
-2. For a full-itinerary or trip-planning request, include these agents:
-   FlightsAgent, HotelsAgent, TravelReadinessAgent, RestaurantsAgent,
-   ActivitiesAgent, TransportationAgent, BudgetAgent, ItineraryAgent.
-   The graph runs ItineraryAgent after the other requested agents have gathered
-   its prerequisites.
+2. For a generic full-itinerary, city-break, or trip-planning request, include:
+   RestaurantsAgent, ActivitiesAgent, TransportationAgent, ItineraryAgent.
+   Add FlightsAgent, HotelsAgent, TravelReadinessAgent, or BudgetAgent only when
+   the user explicitly requests that optional section. Words such as "plan",
+   "trip", "weekend", and "city break" alone are not consent to search bookable
+   inventory, research entry requirements, or calculate a budget. The graph runs
+   ItineraryAgent after the other requested agents have gathered its prerequisites.
 3. For a narrow question ("What's the weather in Tokyo?"), pick only the
    one or two agents that apply — do NOT include all agents.
 4. If the query is a greeting or completely unrelated to travel, return an
@@ -412,7 +430,8 @@ Examples:
 - "Hidden gems in Japan" → agents: ["ActivitiesAgent"]
 - "Festivals in Japan during my dates" → agents: ["ActivitiesAgent"]
 - "How much will a week in Bali cost?" → agents: ["BudgetAgent"], destinations: ["bali"]
-- "Plan my 5-day Tokyo trip" → agents: ["FlightsAgent", "HotelsAgent", "TravelReadinessAgent", "RestaurantsAgent", "ActivitiesAgent", "TransportationAgent", "BudgetAgent", "ItineraryAgent"], destinations: ["tokyo"]
+- "Plan my 5-day Tokyo trip" → agents: ["RestaurantsAgent", "ActivitiesAgent", "TransportationAgent", "ItineraryAgent"], destinations: ["tokyo"]
+- "Plan Tokyo including flights, hotels, and a budget" → agents: ["FlightsAgent", "HotelsAgent", "RestaurantsAgent", "ActivitiesAgent", "TransportationAgent", "BudgetAgent", "ItineraryAgent"], destinations: ["tokyo"]
 - "I'm vegetarian and traveling solo on a budget" → travel_style: "budget", group_type: "solo", dietary_restrictions: ["vegetarian"]
 - "I need a room to practice salsa for 20 people in Barcelona" → agents: ["ActivitiesAgent"], destinations: ["barcelona"], group_type: "group"
 - "Find conference rooms for rent in Madrid" → agents: ["ActivitiesAgent"], destinations: ["madrid"]

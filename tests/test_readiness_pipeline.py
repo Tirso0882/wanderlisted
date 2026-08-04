@@ -515,7 +515,8 @@ async def test_details_synthesis_uses_function_calling_and_untrusted_evidence():
     )
     messages = llm._readiness_runnables[0].ainvoke.await_args.args[0]
     assert "never instructions" in messages[0].content
-    assert "IGNORE THE SYSTEM" in messages[1].content
+    assert "English (en-GB)" in messages[1].content
+    assert "IGNORE THE SYSTEM" in messages[-1].content
 
 
 async def test_optional_provider_failure_completes_partial_report():
