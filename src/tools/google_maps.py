@@ -15,6 +15,8 @@ All calls go through a single API key read from GOOGLE_MAPS_API_KEY.
 Each tool is stateless and safe to use inside any subagent.
 """
 
+import hashlib
+import json
 import os
 from urllib.parse import urlencode
 
@@ -28,6 +30,7 @@ logger = AppLogger(logger_name="tools.google_maps", level="DEBUG")
 
 _BASE_URL = "https://maps.googleapis.com/maps/api"
 _ROUTES_URL = "https://routes.googleapis.com"
+PLACE_RESULTS_MARKER = "PLACE_RESULTS_JSON:\n"
 
 # These values can appear in Places responses but are not valid Table-A filters
 # for Nearby Search (New). Specific concepts belong in Text Search instead.
@@ -199,6 +202,100 @@ def _format_place(place: dict) -> str:
     return "\n".join(line for line in lines if line)
 
 
+def _clock(value: dict | None) -> str:
+    value = value or {}
+    return f"{int(value.get('hour', 0)):02d}:{int(value.get('minute', 0)):02d}"
+
+
+def _place_evidence(place: dict, *, search_context: str) -> dict:
+    """Return a stable, secret-free Places artifact alongside display text."""
+    display = place.get("displayName", {})
+    name = display.get("text", "Unknown") if isinstance(display, dict) else str(display)
+    address = place.get("formattedAddress", "")
+    location = place.get("location", {}) or {}
+    latitude = float(location.get("latitude", 0) or 0)
+    longitude = float(location.get("longitude", 0) or 0)
+    place_id = str(place.get("id", "") or "")
+    if not place_id:
+        identity = f"{name}|{address}|{latitude:.7f}|{longitude:.7f}"
+        place_id = "legacy:" + hashlib.sha256(identity.encode("utf-8")).hexdigest()[:24]
+
+    regular_hours = place.get("regularOpeningHours", {}) or {}
+    periods = []
+    for period in regular_hours.get("periods", []) or []:
+        opened = period.get("open") or {}
+        closed = period.get("close") or {}
+        if "day" not in opened or "day" not in closed:
+            continue
+        periods.append(
+            {
+                "open_day": int(opened["day"]),
+                "open_time": _clock(opened),
+                "close_day": int(closed["day"]),
+                "close_time": _clock(closed),
+            }
+        )
+
+    summary = place.get("editorialSummary", {}) or {}
+    description = summary.get("text", "") if isinstance(summary, dict) else str(summary)
+    price = str(place.get("priceLevel", "") or "")
+    price_level = {
+        "PRICE_LEVEL_FREE": "Free",
+        "PRICE_LEVEL_INEXPENSIVE": "$",
+        "PRICE_LEVEL_MODERATE": "$$",
+        "PRICE_LEVEL_EXPENSIVE": "$$$",
+        "PRICE_LEVEL_VERY_EXPENSIVE": "$$$$",
+    }.get(price, price)
+    photo_urls = []
+    for photo in (place.get("photos", []) or [])[:3]:
+        photo_name = photo.get("name", "") if isinstance(photo, dict) else ""
+        if photo_name:
+            try:
+                photo_urls.append(places_photo_url(photo_name, max_height=400))
+            except RuntimeError:
+                break
+    types = [str(item) for item in (place.get("types", []) or [])]
+    primary_type = str(place.get("primaryType", "") or "")
+    return {
+        "source_id": place_id,
+        "place_id": place_id,
+        "name": name,
+        "search_context": search_context,
+        "address": address,
+        "latitude": latitude,
+        "longitude": longitude,
+        "category": primary_type or (types[0] if types else ""),
+        "types": types,
+        "rating": place.get("rating"),
+        "review_count": int(place.get("userRatingCount", 0) or 0),
+        "price_level": price_level,
+        "description": description,
+        "website_url": place.get("websiteUri", ""),
+        "google_maps_url": place.get("googleMapsUri", ""),
+        "photo_urls": photo_urls,
+        "opening_hours": regular_hours.get("weekdayDescriptions", []) or [],
+        "opening_periods": periods,
+        "utc_offset_minutes": place.get("utcOffsetMinutes"),
+    }
+
+
+def _format_places_result(
+    places: list[dict], *, label: str, search_context: str
+) -> str:
+    text = f"{label}:\n\n" + "\n\n".join(_format_place(place) for place in places)
+    payload = {
+        "places": [
+            _place_evidence(place, search_context=search_context) for place in places
+        ]
+    }
+    return (
+        text
+        + "\n\n"
+        + PLACE_RESULTS_MARKER
+        + json.dumps(payload, ensure_ascii=False, sort_keys=True)
+    )
+
+
 # ── Places API (New) ────────────────────────────────────────────────────
 
 
@@ -246,11 +343,12 @@ def search_places_nearby(
         "Content-Type": "application/json",
         "X-Goog-Api-Key": key,
         "X-Goog-FieldMask": (
-            "places.displayName,places.formattedAddress,places.rating,"
-            "places.userRatingCount,places.priceLevel,places.types,"
+            "places.id,places.displayName,places.formattedAddress,places.rating,"
+            "places.userRatingCount,places.priceLevel,places.primaryType,places.types,"
             "places.businessStatus,places.location,places.googleMapsUri,"
             "places.websiteUri,places.editorialSummary,places.photos,"
-            "places.currentOpeningHours"
+            "places.currentOpeningHours,places.regularOpeningHours,"
+            "places.utcOffsetMinutes"
         ),
     }
     body = {
@@ -292,8 +390,10 @@ def search_places_nearby(
     places = data.get("places", [])
     if not places:
         return f"No {place_type} found near {location}."
-    return f"Found {len(places)} {place_type}(s):\n\n" + "\n\n".join(
-        _format_place(p) for p in places
+    return _format_places_result(
+        places,
+        label=f"Found {len(places)} {place_type}(s)",
+        search_context=location,
     )
 
 
@@ -315,11 +415,12 @@ def search_places_text(
         "Content-Type": "application/json",
         "X-Goog-Api-Key": key,
         "X-Goog-FieldMask": (
-            "places.displayName,places.formattedAddress,places.rating,"
-            "places.userRatingCount,places.priceLevel,places.types,"
+            "places.id,places.displayName,places.formattedAddress,places.rating,"
+            "places.userRatingCount,places.priceLevel,places.primaryType,places.types,"
             "places.businessStatus,places.location,places.googleMapsUri,"
             "places.websiteUri,places.editorialSummary,places.photos,"
-            "places.currentOpeningHours"
+            "places.currentOpeningHours,places.regularOpeningHours,"
+            "places.utcOffsetMinutes"
         ),
     }
     body = {"textQuery": query, "maxResultCount": min(max_results, 20)}
@@ -343,8 +444,10 @@ def search_places_text(
     places = data.get("places", [])
     if not places:
         return f"No places found for: {query}"
-    return f"Found {len(places)} result(s):\n\n" + "\n\n".join(
-        _format_place(p) for p in places
+    return _format_places_result(
+        places,
+        label=f"Found {len(places)} result(s)",
+        search_context=query,
     )
 
 
@@ -501,7 +604,9 @@ def compute_day_route_data(
         full_path = [start_location, *stop_list, end_location]
         legs: list[dict] = []
         errors: list[str] = []
-        for origin, destination in zip(full_path, full_path[1:]):
+        for route_leg_index, (origin, destination) in enumerate(
+            zip(full_path, full_path[1:])
+        ):
             response = _request_routes(
                 key=key,
                 origin=origin,
@@ -521,6 +626,7 @@ def compute_day_route_data(
                     "to_location": destination,
                     "distance_meters": int(leg.get("distanceMeters", 0)),
                     "duration_seconds": _duration_seconds(leg.get("duration", "0s")),
+                    "route_leg_index": route_leg_index,
                     "instructions": instructions,
                 }
             )
@@ -565,6 +671,7 @@ def compute_day_route_data(
                 "to_location": full_path[index + 1],
                 "distance_meters": int(leg.get("distanceMeters", 0)),
                 "duration_seconds": _duration_seconds(leg.get("duration", "0s")),
+                "route_leg_index": index,
                 "instructions": [],
             }
         )

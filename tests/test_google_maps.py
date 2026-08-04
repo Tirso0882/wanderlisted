@@ -286,6 +286,57 @@ class TestSearchPlacesText:
         assert "Found 1" in result
 
     @respx.mock
+    async def test_emits_complete_typed_evidence_without_an_extra_request(
+        self, monkeypatch
+    ):
+        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
+        place = {
+            **_MOCK_PLACE,
+            "id": "place-123",
+            "websiteUri": "https://museum.example",
+            "googleMapsUri": "https://maps.google.com/?cid=123",
+            "editorialSummary": {"text": "Provider summary"},
+            "photos": [{"name": "places/place-123/photos/photo-1"}],
+            "regularOpeningHours": {
+                "weekdayDescriptions": ["Monday: 9:00 AM – 5:00 PM"],
+                "periods": [
+                    {
+                        "open": {"day": 1, "hour": 9, "minute": 0},
+                        "close": {"day": 1, "hour": 17, "minute": 0},
+                    }
+                ],
+            },
+            "utcOffsetMinutes": 120,
+        }
+        route = respx.post("https://places.googleapis.com/v1/places:searchText").mock(
+            return_value=Response(200, json={"places": [place]})
+        )
+
+        result = await search_places_text.ainvoke({"query": "museum in Paris"})
+
+        payload = json.loads(result.split("PLACE_RESULTS_JSON:\n", 1)[1])
+        evidence = payload["places"][0]
+        assert len(route.calls) == 1
+        assert evidence["source_id"] == "place-123"
+        assert evidence["latitude"] == _MOCK_PLACE["location"]["latitude"]
+        assert evidence["opening_hours"] == ["Monday: 9:00 AM – 5:00 PM"]
+        assert evidence["opening_periods"] == [
+            {
+                "open_day": 1,
+                "open_time": "09:00",
+                "close_day": 1,
+                "close_time": "17:00",
+            }
+        ]
+        assert evidence["website_url"] == "https://museum.example"
+        assert evidence["google_maps_url"] == "https://maps.google.com/?cid=123"
+        assert evidence["photo_urls"]
+        assert (
+            "places.regularOpeningHours"
+            in route.calls[0].request.headers["x-goog-fieldmask"]
+        )
+
+    @respx.mock
     async def test_no_results(self, monkeypatch):
         monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
         respx.post("https://places.googleapis.com/v1/places:searchText").mock(

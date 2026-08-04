@@ -1,7 +1,7 @@
 """Integration tests — hit live external APIs.
 
-Run with: pytest tests/test_integration.py -m integration
-Skipped automatically when API keys are missing.
+Run explicitly with: pytest tests/test_integration.py -m integration
+They are deselected by default and skipped when API keys are missing.
 """
 
 import pytest

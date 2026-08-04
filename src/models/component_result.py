@@ -12,6 +12,7 @@ class ComponentStatus(StrEnum):
     QUEUED = "queued"
     RUNNING = "running"
     COMPLETED = "completed"
+    PARTIAL = "partial"
     NEEDS_USER_INPUT = "needs_user_input"
     NO_INVENTORY = "no_inventory"
     BLOCKED_EXTERNAL = "blocked_external"

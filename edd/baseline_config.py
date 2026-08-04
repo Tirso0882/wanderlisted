@@ -11,6 +11,7 @@ from edd.baseline_store import BaselineConfig
 from edd.readiness.l1_dataset import DATASET_VERSION as READINESS_DATASET_VERSION
 from edd.flights.l1_dataset import DATASET_VERSION as FLIGHTS_DATASET_VERSION
 from edd.hotels.l1_dataset import DATASET_VERSION as HOTELS_DATASET_VERSION
+from edd.itinerary.l1_dataset import DATASET_VERSION as ITINERARY_DATASET_VERSION
 from edd.restaurants.l1_dataset import DATASET_VERSION as RESTAURANTS_DATASET_VERSION
 from edd.transportation.l1_dataset import (
     DATASET_VERSION as TRANSPORTATION_DATASET_VERSION,
@@ -154,6 +155,29 @@ BASELINE_CONFIGS = MappingProxyType(
                 _ROOT / "src" / "budget" / "pipeline.py",
                 _ROOT / "src" / "models" / "budget.py",
                 _ROOT / "src" / "models" / "pricing.py",
+                _ROOT / "config" / "config.yaml",
+            ),
+        ),
+        "itinerary": _component_config(
+            "itinerary",
+            dataset_version=ITINERARY_DATASET_VERSION,
+            cache_env_var="EDD_ITINERARY_CACHE_DIR",
+            display_name="Itinerary",
+            secret_env_vars=(
+                "GOOGLE_MAPS_API_KEY",
+                "HOTELBEDS_API_KEY",
+                "HOTELBEDS_API_SECRET",
+            ),
+            sources=(
+                _ROOT / "src" / "agent" / "agents" / "itinerary_agent.py",
+                _ROOT / "src" / "agent" / "stage4_graph.py",
+                _ROOT / "src" / "agent" / "renderer.py",
+                _ROOT / "src" / "itinerary" / "evidence.py",
+                _ROOT / "src" / "itinerary" / "pipeline.py",
+                _ROOT / "src" / "models" / "itinerary.py",
+                _ROOT / "src" / "models" / "trip_skeleton.py",
+                _ROOT / "src" / "tools" / "google_maps.py",
+                _ROOT / "src" / "tools" / "hotels_hotelbeds.py",
                 _ROOT / "config" / "config.yaml",
             ),
         ),

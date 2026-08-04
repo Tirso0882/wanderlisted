@@ -29,6 +29,7 @@ from custom_logging import AppLogger
 logger = AppLogger(logger_name="tools.hotels_hotelbeds", level="DEBUG")
 
 _DEFAULT_BASE_URL = "https://api.test.hotelbeds.com"
+HOTEL_RESULTS_MARKER = "HOTEL_RESULTS_JSON:\n"
 
 
 # ── Authentication ────────────────────────────────────────────────────────
@@ -454,8 +455,14 @@ async def search_hotels_hotelbeds(
 
     observed_at = datetime.now(timezone.utc).isoformat()
     pricing_options = []
+    hotel_evidence_options = []
     for hotel in hotels[:8]:
         currency = hotel.get("currency", "USD")
+        category_code = str(hotel.get("categoryCode", "") or "")
+        star_digits = "".join(
+            character for character in category_code if character.isdigit()
+        )
+        star_rating = min(5, int(star_digits)) if star_digits else 0
         for room in hotel.get("rooms", []):
             for rate in room.get("rates", []):
                 rate_key = rate.get("rateKey", "")
@@ -474,6 +481,24 @@ async def search_hotels_hotelbeds(
                         "observed_at": observed_at,
                     }
                 )
+                hotel_evidence_options.append(
+                    {
+                        "source_id": rate_key,
+                        "rate_key": rate_key,
+                        "name": hotel.get("name", "Unknown Hotel"),
+                        "city_code": city_code.upper().strip(),
+                        "destination_name": hotel.get("destinationName", ""),
+                        "neighbourhood": hotel.get("zoneName", ""),
+                        "latitude": float(hotel.get("latitude", 0) or 0),
+                        "longitude": float(hotel.get("longitude", 0) or 0),
+                        "star_rating": star_rating,
+                        "room_name": room.get("name", ""),
+                        "check_in": check_in_date,
+                        "check_out": check_out_date,
+                        "amount": str(net),
+                        "currency": currency,
+                    }
+                )
     results.append(
         "HOTEL_PRICING_JSON:\n"
         + json.dumps(
@@ -481,6 +506,14 @@ async def search_hotels_hotelbeds(
                 "city_code": city_code.upper().strip(),
                 "options": pricing_options,
             },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+    )
+    results.append(
+        HOTEL_RESULTS_MARKER
+        + json.dumps(
+            {"options": hotel_evidence_options},
             ensure_ascii=False,
             sort_keys=True,
         )
