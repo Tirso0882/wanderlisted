@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import uuid
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
 from fastapi import HTTPException
@@ -50,8 +51,10 @@ async def test_chat_returns_the_actual_current_langsmith_run_id(monkeypatch):
     assert result["run_id"] == expected
 
 
-async def test_traceable_chat_captures_its_real_local_run_context():
-    with tracing_context(enabled="local"):
+async def test_traceable_chat_captures_its_real_local_run_context(monkeypatch):
+    monkeypatch.delenv("LANGSMITH_API_KEY", raising=False)
+    monkeypatch.delenv("LANGCHAIN_API_KEY", raising=False)
+    with tracing_context(enabled="local", client=MagicMock()):
         result = await api._run_agent("plan", "private-thread", _InvokeGraph())
 
     assert uuid.UUID(result["run_id"])
@@ -71,13 +74,23 @@ class _StreamGraph:
     async def astream(self, _value, config=None, stream_mode=None):
         assert config["configurable"]["thread_id"].startswith("session:")
         assert stream_mode == "updates"
-        yield {"budget": {"messages": [AIMessage(content="Streaming result")]}}
+        yield {"supervisor": {"messages": [AIMessage(content="Routing internally")]}}
+        yield {
+            "activities": {
+                "messages": [AIMessage(content='PLACE_RESULTS_JSON:\n{"places": []}')]
+            }
+        }
+        yield {"budget": {"messages": [AIMessage(content="Final public result")]}}
 
     async def aget_state(self, _config):
         return SimpleNamespace(
             next=(),
             values={
-                "messages": [AIMessage(content="Streaming result")],
+                "messages": [
+                    AIMessage(content="Routing to BudgetAgent"),
+                    AIMessage(content='PLACE_RESULTS_JSON:\n{"places": []}'),
+                    AIMessage(content="Final public result"),
+                ],
                 "itinerary_components": {},
                 "component_results": {},
             },
@@ -105,6 +118,20 @@ async def test_stream_done_event_returns_its_actual_trace_run_id(monkeypatch):
 
     assert payloads[-1]["type"] == "done"
     assert payloads[-1]["run_id"] == expected
+    tokens = [payload["token"] for payload in payloads if payload["type"] == "token"]
+    assert tokens == ["Final public result"]
+
+
+def test_public_response_message_drops_internal_artifacts_and_routing():
+    values = {
+        "messages": [
+            AIMessage(content="Useful earlier response"),
+            AIMessage(content="Routing to BudgetAgent"),
+            AIMessage(content="TRIP_SKELETON_JSON:\n{}"),
+        ]
+    }
+
+    assert api._public_response_message(values) == "Useful earlier response"
 
 
 async def test_feedback_uses_the_validated_run_id_returned_by_chat(monkeypatch):

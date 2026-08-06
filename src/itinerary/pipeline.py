@@ -31,6 +31,7 @@ from src.models import (
     PriceScope,
     RouteLeg,
     RoutePlan,
+    RequestedCapability,
     SelectedAccommodation,
     SelectionStatus,
     TimeBlock,
@@ -141,6 +142,22 @@ def _place_ref(place: PlaceEvidence) -> PlaceRef:
     )
 
 
+def _city_anchor(city: str) -> PlaceRef:
+    """Return a non-booking route anchor without inventing accommodation facts."""
+    return PlaceRef(
+        name=f"{city.title()} city centre",
+        source_component="trip_request",
+        source_id=f"city-anchor:{city.casefold()}",
+        address=city,
+        category="city_anchor",
+    )
+
+
+def _is_beach_place(place: PlaceEvidence) -> bool:
+    labels = [place.category, *place.types]
+    return any("beach" in label.casefold() for label in labels)
+
+
 def resolve_selection(
     proposal: ItinerarySelectionProposal,
     context: ItinerarySelectionContext,
@@ -170,10 +187,18 @@ def resolve_selection(
 
     selected_hotels: dict[int, HotelEvidence] = {}
     selected_accommodations: list[SelectedAccommodation] = []
+    hotels_authorized = (
+        RequestedCapability.HOTELS in context.request.requested_capabilities
+        and RequestedCapability.HOTELS not in context.request.declined_capabilities
+    )
     for stay in skeleton.stays:
         selection = accommodation_proposals.get(stay.sequence)
         if selection is None:
-            errors.append(f"stay {stay.sequence} has no selected accommodation")
+            if hotels_authorized:
+                errors.append(f"stay {stay.sequence} has no selected accommodation")
+            continue
+        if not hotels_authorized:
+            errors.append("accommodation was selected without hotel-search consent")
             continue
         hotel = context.catalog.hotels.get(selection.rate_key)
         if hotel is None:
@@ -224,6 +249,7 @@ def resolve_selection(
         )
 
     seen_stops: set[str] = set()
+    beach_days: set[int] = set()
     days: list[DraftDay] = []
     for offset in range(skeleton.duration_days):
         day_number = offset + 1
@@ -231,8 +257,7 @@ def resolve_selection(
         city = _date_city(skeleton, current)
         stay = _stay_for_date(skeleton, current)
         hotel = selected_hotels.get(stay.sequence)
-        if hotel is None:
-            continue
+        anchor = _hotel_ref(hotel) if hotel is not None else _city_anchor(city)
         selection = day_proposals.get(day_number)
         stop_ids = list(selection.stop_source_ids) if selection else []
         if len(stop_ids) > MAX_STOPS_PER_DAY:
@@ -252,16 +277,21 @@ def resolve_selection(
                 )
                 continue
             seen_stops.add(source_id)
+            if _is_beach_place(evidence):
+                beach_days.add(day_number)
             stops.append(_place_ref(evidence))
         days.append(
             DraftDay(
                 day_number=day_number,
                 date=current.isoformat(),
                 city=city,
-                start_location=_hotel_ref(hotel),
-                end_location=_hotel_ref(hotel),
+                start_location=anchor,
+                end_location=anchor,
                 stops=stops,
-                preferred_mode=(selection.preferred_mode if selection else "transit"),
+                preferred_mode=(
+                    context.request.primary_transport_mode
+                    or (selection.preferred_mode if selection else "transit")
+                ),
             )
         )
 
@@ -269,6 +299,10 @@ def resolve_selection(
         errors.append("accommodation proposal references an unknown stay")
     if not seen_stops:
         errors.append("no provider-backed stops were selected")
+    if len(beach_days) < context.request.minimum_beach_days:
+        errors.append(
+            "minimum beach-day requirement is not covered by selected provider evidence"
+        )
     if len(days) != skeleton.duration_days:
         errors.append("canonical day construction is incomplete")
     if errors:
@@ -276,7 +310,17 @@ def resolve_selection(
     return DraftItinerary(
         days=days,
         selected_accommodations=selected_accommodations,
-        selection_notes=[*proposal.selection_notes, *context.catalog.warnings],
+        selection_notes=[
+            *proposal.selection_notes,
+            *context.catalog.warnings,
+            *(
+                [
+                    "Hotel search was not authorized; city-centre route anchors are used and accommodation is not selected or priced."
+                ]
+                if not hotels_authorized
+                else []
+            ),
+        ],
     )
 
 
@@ -568,9 +612,17 @@ class ItineraryPipeline:
             item.stay_sequence: item for item in context.draft.selected_accommodations
         }
         expected_stays = {stay.sequence for stay in context.skeleton.stays}
-        if set(accommodation_by_stay) != expected_stays:
+        hotels_authorized = (
+            RequestedCapability.HOTELS in context.request.requested_capabilities
+            and RequestedCapability.HOTELS not in context.request.declined_capabilities
+        )
+        if hotels_authorized and set(accommodation_by_stay) != expected_stays:
             raise ItineraryValidationError(
                 ["draft accommodations must cover every canonical city stay"]
+            )
+        if not hotels_authorized and accommodation_by_stay:
+            raise ItineraryValidationError(
+                ["draft contains accommodation without hotel-search consent"]
             )
 
         route_days = list(context.route_plan.days if context.route_plan else [])
@@ -605,6 +657,8 @@ class ItineraryPipeline:
         days: list[DayPlan] = []
         plan_warnings: list[str] = []
         missing_constraints: list[str] = []
+        if not hotels_authorized:
+            missing_constraints.append("accommodation_not_selected")
         overall = FeasibilityStatus.VERIFIED
 
         draft_by_day = {item.day_number: item for item in context.draft.days}
@@ -617,14 +671,22 @@ class ItineraryPipeline:
                     [f"draft omitted canonical day {number}"]
                 )
             stay = _stay_for_date(context.skeleton, current)
-            selected_hotel = accommodation_by_stay[stay.sequence]
             end_location = draft_day.end_location or draft_day.start_location
-            if (
-                draft_day.start_location.source_id != selected_hotel.rate_key
-                or end_location.source_id != selected_hotel.rate_key
+            if hotels_authorized:
+                selected_hotel = accommodation_by_stay[stay.sequence]
+                if (
+                    draft_day.start_location.source_id != selected_hotel.rate_key
+                    or end_location.source_id != selected_hotel.rate_key
+                ):
+                    raise ItineraryValidationError(
+                        [f"day {number} hotel locations do not match the selected rate"]
+                    )
+            elif (
+                draft_day.start_location.category != "city_anchor"
+                or end_location.category != "city_anchor"
             ):
                 raise ItineraryValidationError(
-                    [f"day {number} hotel locations do not match the selected rate"]
+                    [f"day {number} requires non-booking city anchors"]
                 )
             route = route_by_day.get(number)
             day_warnings: list[str] = []

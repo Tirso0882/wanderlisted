@@ -10,17 +10,29 @@ from langsmith import traceable
 
 from custom_logging import AppLogger
 from src.agent.policies.requirements import (
+    apply_service_scope_decision,
     build_clarification_message,
+    build_service_scope_offer,
     missing_required_fields,
 )
-from src.agent.localization import detect_clear_language, normalize_locale
+from src.agent.localization import (
+    detect_clear_language,
+    language_name,
+    language_tag,
+    normalize_locale,
+)
 from src.agent.prompts import (
     INTAKE_CONTEXT_PROMPT,
     INTAKE_SYSTEM_PROMPT,
     RESPONSE_LOCALE_CONTEXT_PROMPT,
 )
 from src.agent.state import TravelAgentState
-from src.models import TripRequest, TripRequestPatch, merge_trip_request
+from src.models import (
+    ServiceScopeDecision,
+    TripRequest,
+    TripRequestPatch,
+    merge_trip_request,
+)
 
 _log = AppLogger("agent.nodes.intake")
 
@@ -45,39 +57,46 @@ async def intake_node(state: TravelAgentState, *, llm) -> dict:
     current = TripRequest.model_validate(state.get("trip_request", {}))
     latest = state.get("messages", [])[-1]
     latest_text = _message_text(latest.content)
-    clear_locale = detect_clear_language(latest_text)
+    decision_data = state.get("service_scope_decision")
+    clear_locale = None if decision_data else detect_clear_language(latest_text)
     response_locale = clear_locale or normalize_locale(
-        state.get("response_locale") or state.get("ui_locale") or current.locale
-    )
-    structured_llm = llm.with_structured_output(
-        TripRequestPatch,
-        method="function_calling",
-    )
-
-    context = INTAKE_CONTEXT_PROMPT.format(
-        current_date=date.today().isoformat(),
-        canonical_request=json.dumps(
-            current.model_dump(mode="json"), ensure_ascii=False
-        ),
+        state.get("response_locale")
+        or state.get("last_clear_locale")
+        or state.get("ui_locale")
+        or current.locale
     )
     try:
-        patch = await structured_llm.ainvoke(
-            [
-                SystemMessage(content=INTAKE_SYSTEM_PROMPT),
-                SystemMessage(
-                    content=RESPONSE_LOCALE_CONTEXT_PROMPT.format(
-                        language="Polish" if response_locale == "pl" else "English",
-                        locale_tag="pl-PL" if response_locale == "pl" else "en-GB",
-                    )
+        if decision_data:
+            decision = ServiceScopeDecision.model_validate(decision_data)
+            request = apply_service_scope_decision(current, decision)
+        else:
+            structured_llm = llm.with_structured_output(
+                TripRequestPatch,
+                method="function_calling",
+            )
+            context = INTAKE_CONTEXT_PROMPT.format(
+                current_date=date.today().isoformat(),
+                canonical_request=json.dumps(
+                    current.model_dump(mode="json"), ensure_ascii=False
                 ),
-                SystemMessage(content=context),
-                HumanMessage(content=latest_text),
-            ]
-        )
-        # Locale is conversation metadata, not an extraction guess. Ambiguous
-        # turns must preserve the current canonical request locale.
-        patch = patch.model_copy(update={"locale": clear_locale})
-        request = merge_trip_request(current, patch)
+            )
+            patch = await structured_llm.ainvoke(
+                [
+                    SystemMessage(content=INTAKE_SYSTEM_PROMPT),
+                    SystemMessage(
+                        content=RESPONSE_LOCALE_CONTEXT_PROMPT.format(
+                            language=language_name(response_locale),
+                            locale_tag=language_tag(response_locale),
+                        )
+                    ),
+                    SystemMessage(content=context),
+                    HumanMessage(content=latest_text),
+                ]
+            )
+            # Locale is conversation metadata, not an extraction guess. Ambiguous
+            # turns must preserve the current canonical request locale.
+            patch = patch.model_copy(update={"locale": clear_locale})
+            request = merge_trip_request(current, patch)
     except Exception as exc:
         _log.warning("Trip request extraction failed: %s", exc)
         locale = response_locale
@@ -85,6 +104,8 @@ async def intake_node(state: TravelAgentState, *, llm) -> dict:
             "Nie udało mi się zrozumieć szczegółów podróży. "
             "Opisz proszę miejsce, daty i liczbę podróżnych."
             if locale == "pl"
+            else "No pude entender los detalles del viaje. Indica el destino, las fechas y el número de viajeros."
+            if locale == "es"
             else "I could not understand the trip details. Please provide the "
             "destination, dates, and number of travelers."
         )
@@ -95,21 +116,27 @@ async def intake_node(state: TravelAgentState, *, llm) -> dict:
             "pending_questions": ["request_details"],
             "response_locale": response_locale,
             "last_clear_locale": clear_locale or state.get("last_clear_locale", ""),
+            "service_scope_decision": {},
         }
 
     missing = missing_required_fields(request)
+    service_scope_offer = build_service_scope_offer(request)
     status = "needs_user_input" if missing else "ready"
     result: dict = {
         "current_agent": f"intake:{status}",
         "trip_request": request.model_dump(mode="json"),
         "workflow_status": status,
         "pending_questions": missing,
+        "service_scope_offer": (
+            service_scope_offer.model_dump(mode="json") if service_scope_offer else {}
+        ),
+        "service_scope_decision": {},
         "request_revision": state.get("request_revision", 0) + 1,
         "response_locale": response_locale,
         "last_clear_locale": clear_locale or state.get("last_clear_locale", ""),
         # HITL decisions are scoped to one execution, not future requests.
         "hitl_action": "",
-        "safety_acknowledged": False,
+        "safety_warning": {},
         "budget_adjustment_accepted": False,
         "destinations": request.destinations or state.get("destinations", []),
         "travel_style": request.travel_style or state.get("travel_style", ""),
@@ -120,6 +147,14 @@ async def intake_node(state: TravelAgentState, *, llm) -> dict:
     }
     if missing:
         result["messages"] = [
-            AIMessage(content=build_clarification_message(missing, response_locale))
+            AIMessage(
+                content=build_clarification_message(
+                    missing,
+                    response_locale,
+                    service_scope_offer.offered_capabilities
+                    if service_scope_offer
+                    else (),
+                )
+            )
         ]
     return result

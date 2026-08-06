@@ -54,6 +54,8 @@ class ItineraryAgent(SpecializedAgent):
                 "interests": context.request.interests,
                 "dietary_restrictions": context.request.dietary_restrictions,
                 "accessibility_needs": context.request.accessibility_needs,
+                "minimum_beach_days": context.request.minimum_beach_days,
+                "primary_transport_mode": context.request.primary_transport_mode,
             },
             "evidence_catalog": context.catalog.prompt_payload(),
             "feedback": context.feedback,

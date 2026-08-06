@@ -9,7 +9,7 @@ Transportation, Budget, and Itinerary then consume those artifacts sequentially.
 
 Flow (intake → safety preflight → Send() fan-out → sequential phase):
     START → triage → intake → supervisor → readiness_preflight
-                                        → safety_review (HITL when high risk)
+                                        → safety_warning (non-blocking when high risk)
                                         → readiness details
                                         ──Send──┬── flights ─────┐
                                                 ├── restaurants ─┤ → component_gate
@@ -23,7 +23,6 @@ Flow (intake → safety preflight → Send() fan-out → sequential phase):
                                                                      → render_handbook → END
 
 HITL gates:
-    - safety_review: interrupts when advisory is "do not travel" / "red"
     - budget_review: interrupts on a reliable material target-budget overage
     - human_review: interrupts to let user review/edit day plans before rendering
 
@@ -54,7 +53,12 @@ from langsmith import traceable
 from custom_logging import AppLogger
 from src.agent.llm import get_llm
 from src.agent.nodes import component_gate_node, intake_node, trip_skeleton_node
-from src.agent.localization import normalize_locale, resolve_response_locale
+from src.agent.localization import (
+    language_name,
+    language_tag,
+    normalize_locale,
+    resolve_response_locale,
+)
 from src.agent.policies import classify_component_result, requested_agents
 from src.agent.state import TravelAgentState
 from src.agent.prompts import (
@@ -235,8 +239,8 @@ def build_response_locale_context(state: TravelAgentState) -> str:
         return ""
     locale = normalize_locale(state.get("response_locale") or state.get("ui_locale"))
     return RESPONSE_LOCALE_CONTEXT_PROMPT.format(
-        language="Polish" if locale == "pl" else "English",
-        locale_tag="pl-PL" if locale == "pl" else "en-GB",
+        language=language_name(locale),
+        locale_tag=language_tag(locale),
     )
 
 
@@ -400,24 +404,16 @@ def _normalize_hitl_decision(decision) -> dict:
     return {"approved": bool(decision)}
 
 
-async def safety_review_node(state: TravelAgentState) -> dict:
-    """HITL gate: interrupt when safety advisory is 'do not travel' or 'red'.
-
-    Checks the completed readiness preflight for dangerous advisory levels.
-    If dangerous, pauses execution so the user can acknowledge the risk
-    or cancel the trip.
-
-    Can be disabled explicitly for non-interactive clients.
-    """
+async def safety_warning_node(state: TravelAgentState) -> dict:
+    """Validate official preflight evidence and emit non-blocking risk warnings."""
     components = state.get("itinerary_components", {})
     preflight_component = components.get("readiness_preflight")
 
-    def approved_update(**extra) -> dict:
+    def completed_update(report: TravelReadinessReport) -> dict:
         """Expose verified preflight data under the canonical readiness key."""
         result = {
-            "current_agent": "safety_review",
-            "hitl_action": "approved",
-            **extra,
+            "current_agent": "safety_warning",
+            "safety_warning": {},
         }
         if preflight_component:
             result["itinerary_components"] = {"readiness": preflight_component}
@@ -428,7 +424,58 @@ async def safety_review_node(state: TravelAgentState) -> dict:
                 readiness_outcome = dict(preflight_outcome)
                 readiness_outcome["component"] = "readiness"
                 result["component_results"] = {"readiness": readiness_outcome}
+        if report.safety.advisory_level in {
+            AdvisoryLevel.ORANGE,
+            AdvisoryLevel.RED,
+        }:
+            safety_snippet = report.safety.advisory_summary[:500]
+            result["messages"] = [
+                AIMessage(
+                    content=_localized(
+                        state,
+                        "SAFETY WARNING: Official guidance reports a high travel risk. "
+                        "Review the advisory carefully before deciding whether to travel. "
+                        "Planning will continue, but the decision and risk remain yours.\n\n"
+                        f"{safety_snippet}",
+                        "OSTRZEŻENIE DOTYCZĄCE BEZPIECZEŃSTWA: Oficjalne zalecenia "
+                        "wskazują na wysokie ryzyko podróży. Dokładnie zapoznaj się z "
+                        "ostrzeżeniem przed podjęciem decyzji. Planowanie będzie "
+                        "kontynuowane, ale decyzja i ryzyko należą do Ciebie.\n\n"
+                        f"{safety_snippet}",
+                    )
+                )
+            ]
+            result["safety_warning"] = {
+                "advisory_level": str(report.safety.advisory_level),
+                "summary": safety_snippet,
+                "message": _localized(
+                    state,
+                    "Official guidance reports a high travel risk. Planning continues, "
+                    "but the traveler is responsible for the decision to travel.",
+                    "Oficjalne zalecenia wskazują na wysokie ryzyko podróży. Planowanie "
+                    "jest kontynuowane, ale podróżny odpowiada za decyzję o wyjeździe.",
+                ),
+                "non_blocking": True,
+            }
         return result
+
+    def blocked_update(message: str, status: ComponentStatus) -> dict:
+        preflight_outcome = dict(
+            state.get("component_results", {}).get("readiness_preflight", {})
+        )
+        preflight_outcome.update(
+            {
+                "component": "readiness_preflight",
+                "status": status,
+                "message": message,
+            }
+        )
+        return {
+            "messages": [AIMessage(content=message)],
+            "current_agent": "safety_warning",
+            "safety_warning": {},
+            "component_results": {"readiness_preflight": preflight_outcome},
+        }
 
     destination_data = (
         components.get("readiness_preflight") or components.get("readiness") or {}
@@ -436,36 +483,28 @@ async def safety_review_node(state: TravelAgentState) -> dict:
 
     report_data = destination_data.get("data")
     if not report_data:
-        return {
-            "messages": [
-                AIMessage(
-                    content=_localized(
-                        state,
-                        "Official safety evidence could not be validated, so discovery was not started.",
-                        "Nie udało się zweryfikować oficjalnych danych o bezpieczeństwie, więc wyszukiwanie nie zostało uruchomione.",
-                    )
-                )
-            ],
-            "current_agent": "safety_review",
-            "hitl_action": "rejected",
-        }
+        return blocked_update(
+            _localized(
+                state,
+                "Official safety evidence could not be validated, so discovery was not started.",
+                "Nie udało się zweryfikować oficjalnych danych o bezpieczeństwie, więc wyszukiwanie nie zostało uruchomione.",
+            ),
+            ComponentStatus.FAILED,
+        )
     try:
         report = TravelReadinessReport.model_validate(report_data)
     except Exception:
-        _log.warning("Ignoring invalid structured readiness report at safety gate")
-        return {
-            "messages": [
-                AIMessage(
-                    content=_localized(
-                        state,
-                        "Official safety evidence could not be validated, so discovery was not started.",
-                        "Nie udało się zweryfikować oficjalnych danych o bezpieczeństwie, więc wyszukiwanie nie zostało uruchomione.",
-                    )
-                )
-            ],
-            "current_agent": "safety_review",
-            "hitl_action": "rejected",
-        }
+        _log.warning(
+            "Ignoring invalid structured readiness report at safety validation"
+        )
+        return blocked_update(
+            _localized(
+                state,
+                "Official safety evidence could not be validated, so discovery was not started.",
+                "Nie udało się zweryfikować oficjalnych danych o bezpieczeństwie, więc wyszukiwanie nie zostało uruchomione.",
+            ),
+            ComponentStatus.FAILED,
+        )
 
     request_data = state.get("trip_request")
     if request_data:
@@ -480,19 +519,11 @@ async def safety_review_node(state: TravelAgentState) -> dict:
             "readiness", {}
         )
         if preflight_outcome.get("request_fingerprint") != expected_fingerprint:
-            return {
-                "messages": [
-                    AIMessage(
-                        content=(
-                            "The saved safety preflight no longer matches the current "
-                            "destinations, passport, dates, or topics, so discovery "
-                            "was not started."
-                        )
-                    )
-                ],
-                "current_agent": "safety_review",
-                "hitl_action": "rejected",
-            }
+            return blocked_update(
+                "The saved safety preflight no longer matches the current "
+                "destinations, passport, dates, or topics, so discovery was not started.",
+                ComponentStatus.STALE,
+            )
 
     coverage_items = destination_data.get("coverage", {}).get("items", [])
     verified_destinations = {
@@ -502,18 +533,11 @@ async def safety_review_node(state: TravelAgentState) -> dict:
         and item.get("state") == "verified"
     }
     if verified_destinations != set(report.destinations):
-        return {
-            "messages": [
-                AIMessage(
-                    content=(
-                        "An officially grounded advisory was not verified for every "
-                        "destination, so discovery was not started."
-                    )
-                )
-            ],
-            "current_agent": "safety_review",
-            "hitl_action": "rejected",
-        }
+        return blocked_update(
+            "An officially grounded advisory was not verified for every "
+            "destination, so discovery was not started.",
+            ComponentStatus.FAILED,
+        )
 
     advisory_source_ids = report.citations.get("safety.advisory_level", [])
     source_by_id = {source.id: source for source in report.sources}
@@ -527,78 +551,13 @@ async def safety_review_node(state: TravelAgentState) -> dict:
         and all(source_id in source_by_id for source_id in advisory_source_ids)
     )
     if not has_official_advisory:
-        return {
-            "messages": [
-                AIMessage(
-                    content=(
-                        "An officially cited advisory was not verified for every "
-                        "destination, so discovery was not started."
-                    )
-                )
-            ],
-            "current_agent": "safety_review",
-            "hitl_action": "rejected",
-        }
-
-    # Disabling HITL disables only the user interrupt. Evidence validation is
-    # still mandatory before readiness data can reach discovery agents.
-    if not is_hitl_enabled("safety_review"):
-        return approved_update()
-
-    # Only a typed dangerous level with cited official evidence may interrupt.
-    is_dangerous = has_official_advisory and report.safety.advisory_level in {
-        AdvisoryLevel.ORANGE,
-        AdvisoryLevel.RED,
-    }
-
-    if is_dangerous and not state.get("safety_acknowledged"):
-        safety_snippet = report.safety.advisory_summary[:500]
-
-        raw_decision = interrupt(
-            {
-                "type": "safety_warning",
-                "gate": "safety_review",
-                "locale": normalize_locale(state.get("response_locale")),
-                "advisory_level": str(report.safety.advisory_level),
-                "summary": safety_snippet,
-                "message": _localized(
-                    state,
-                    "⚠️ SAFETY ADVISORY: The destination has a high-risk travel advisory. "
-                    "Review the safety information and decide whether to proceed.",
-                    "⚠️ OSTRZEŻENIE: Dla tego miejsca obowiązuje ostrzeżenie o wysokim "
-                    "ryzyku. Sprawdź informacje i zdecyduj, czy kontynuować.",
-                ),
-                "details": safety_snippet,
-                "action_required": _localized(
-                    state,
-                    "Choose whether to continue or cancel.",
-                    "Wybierz, czy kontynuować, czy anulować.",
-                ),
-            }
+        return blocked_update(
+            "An officially cited advisory was not verified for every "
+            "destination, so discovery was not started.",
+            ComponentStatus.FAILED,
         )
-        decision = _normalize_hitl_decision(raw_decision)
 
-        if not decision.get("approved", False):
-            return {
-                "messages": [
-                    AIMessage(
-                        content=_localized(
-                            state,
-                            "🛑 Trip planning cancelled due to the safety advisory. "
-                            "Consider another destination or check again later.",
-                            "🛑 Planowanie zostało anulowane z powodu ostrzeżenia. "
-                            "Rozważ inne miejsce lub sprawdź sytuację później.",
-                        )
-                    )
-                ],
-                "current_agent": "safety_review",
-                "hitl_action": "rejected",
-            }
-
-        return approved_update(safety_acknowledged=True)
-
-    # No safety concern — pass through
-    return approved_update()
+    return completed_update(report)
 
 
 async def budget_review_node(state: TravelAgentState) -> dict:
@@ -969,8 +928,9 @@ async def triage_node(state: TravelAgentState, *, llm) -> dict:
     or can be answered directly (shallow)."""
     last_message = state["messages"][-1]
     latest_text = _extract_text_content(last_message.content)
+    language_text = "" if state.get("service_scope_decision") else latest_text
     resolution = resolve_response_locale(
-        latest_text,
+        language_text,
         ui_locale=state.get("ui_locale", "en"),
         last_clear_locale=state.get("last_clear_locale") or None,
     )
@@ -1042,28 +1002,6 @@ async def supervisor_node(state: TravelAgentState, *, supervisor_agent) -> dict:
     locale_context = build_response_locale_context(state)
     if locale_context:
         existing_summary = f"{locale_context}\n{existing_summary}".strip()
-
-    # Single-agent isolation: skip LLM routing, force to target agent only
-    target = state.get("target_agent", "")
-    if target and target in AGENT_TO_NODE:
-        locale = normalize_locale(state.get("response_locale"))
-        return {
-            "messages": [
-                AIMessage(
-                    content=(
-                        f"Przekazuję do {target}…"
-                        if locale == "pl"
-                        else f"Routing to {target}…"
-                    )
-                )
-            ],
-            "current_agent": "supervisor",
-            "itinerary_components": {
-                **components,
-                "routing": [target],
-                "completed_agents": [],
-            },
-        }
 
     last_message = state["messages"][-1]
     latest_text = _extract_text_content(last_message.content)
@@ -1153,10 +1091,13 @@ async def _run_parallel_agent(
         result = await executor.ainvoke({"messages": enriched})
         new_msgs = result["messages"][len(enriched) :]
         outcome = classify_component_result(agent_name, new_msgs)
+        component_data = dict(result)
+        if outcome.data is not None:
+            component_data["data"] = outcome.data
         return {
             "messages": new_msgs,
             "current_agent": agent_name,
-            "itinerary_components": {agent_name: result},
+            "itinerary_components": {agent_name: component_data},
             "component_results": {
                 agent_name: outcome.model_dump(mode="json"),
             },
@@ -2211,13 +2152,7 @@ async def synthesize_node(state: TravelAgentState, *, llm) -> dict:
 
 
 def route_after_triage(state: TravelAgentState) -> str:
-    """Route shallow queries directly and all planning turns through intake.
-
-    A target_agent still passes through intake so required specialist inputs
-    cannot be bypassed.
-    """
-    if state.get("target_agent"):
-        return "intake"
+    """Route shallow queries directly and all planning turns through intake."""
     if state.get("pending_questions"):
         return "intake"
     agent = state.get("current_agent", "")
@@ -2319,7 +2254,7 @@ def route_after_supervisor(state: TravelAgentState):
         return "readiness"
 
     # Fan-out: one Send per requested discovery agent. LangGraph runs them
-    # concurrently and fans-in automatically before safety_review fires.
+    # concurrently and fans-in automatically before downstream gates.
     parallel_requested = [
         agent
         for agent in routing
@@ -2342,13 +2277,14 @@ def route_after_readiness_preflight(state: TravelAgentState) -> str:
     """Fail closed when official advisory evidence could not be collected."""
     outcome = state.get("component_results", {}).get("readiness_preflight", {})
     if outcome.get("status") == ComponentStatus.COMPLETED:
-        return "safety_review"
+        return "safety_warning"
     return END
 
 
-def route_after_safety_review(state: TravelAgentState):
-    """After acknowledgement, dispatch discovery without repeating preflight."""
-    if state.get("hitl_action") == "rejected":
+def route_after_safety_warning(state: TravelAgentState):
+    """Dispatch discovery after validated safety evidence and any risk warning."""
+    outcome = state.get("component_results", {}).get("readiness_preflight", {})
+    if outcome.get("status") != ComponentStatus.COMPLETED:
         return END
 
     components = state.get("itinerary_components", {})
@@ -2611,7 +2547,7 @@ def create_multiagent_travel_graph(checkpointer=None):
             transportation_node, executor=_executors["TransportationAgent"]
         ),
     )
-    builder.add_node("safety_review", safety_review_node)
+    builder.add_node("safety_warning", safety_warning_node)
     builder.add_node(
         "component_gate",
         functools.partial(
@@ -2654,7 +2590,7 @@ def create_multiagent_travel_graph(checkpointer=None):
     # START -> triage
     builder.add_edge(START, "triage")
 
-    # triage -> shallow_reply | intake | supervisor (developer target override)
+    # triage -> shallow_reply | intake
     builder.add_conditional_edges(
         "triage",
         route_after_triage,
@@ -2680,8 +2616,7 @@ def create_multiagent_travel_graph(checkpointer=None):
 
     # supervisor -> Send() fan-out to parallel agents | sequential | synthesize | END
     # When route_after_supervisor returns [Send("flights", state), Send("hotels", state), ...],
-    # LangGraph dispatches each worker independently.  All workers fan-in to
-    # safety_review once every dispatched instance has completed.
+    # LangGraph dispatches each worker independently before fan-in.
     builder.add_conditional_edges(
         "supervisor",
         route_after_supervisor,
@@ -2701,21 +2636,20 @@ def create_multiagent_travel_graph(checkpointer=None):
         ],
     )
 
-    # Safety preflight is a separate checkpoint so interrupt resume cannot
-    # repeat provider calls.
+    # Safety preflight is separately checkpointed and validated before discovery.
     builder.add_conditional_edges(
         "readiness_preflight",
         route_after_readiness_preflight,
         {
-            "safety_review": "safety_review",
+            "safety_warning": "safety_warning",
             END: END,
         },
     )
 
-    # safety_review dispatches discovery only after acknowledgement.
+    # Safety warnings are informational; validated requests continue downstream.
     builder.add_conditional_edges(
-        "safety_review",
-        route_after_safety_review,
+        "safety_warning",
+        route_after_safety_warning,
         [
             "flights",
             "readiness",

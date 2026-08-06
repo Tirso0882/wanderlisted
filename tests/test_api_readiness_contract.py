@@ -8,12 +8,23 @@ from src.models import SafetyInfo
 from src.readiness import TravelReadinessReport
 
 
-def test_legacy_destination_target_is_rejected():
+def test_target_agent_execution_override_is_rejected():
     with pytest.raises(ValueError):
-        ChatRequest(message="Is Tokyo safe?", target_agent="DestinationAgent")
+        ChatRequest(message="Is Tokyo safe?", target_agent="TravelReadinessAgent")
 
-    request = ChatRequest(message="Is Tokyo safe?", target_agent="TravelReadinessAgent")
-    assert request.target_agent == "TravelReadinessAgent"
+
+def test_chat_request_accepts_typed_service_scope_decision():
+    request = ChatRequest(
+        message="Add activities",
+        service_scope_decision={
+            "action": "include_selected",
+            "selected_capabilities": ["activities"],
+            "request_fingerprint": "scope-fingerprint",
+        },
+    )
+
+    assert request.service_scope_decision is not None
+    assert request.service_scope_decision.action == "include_selected"
 
 
 def test_public_components_keeps_structured_readiness_and_drops_messages():
@@ -26,6 +37,29 @@ def test_public_components_keeps_structured_readiness_and_drops_messages():
     }
     assert _public_components(components) == {
         "readiness": {"data": {"destinations": ["tokyo"], "limitations": []}}
+    }
+
+
+def test_public_components_exposes_non_blocking_safety_warning():
+    warning = {
+        "advisory_level": "red",
+        "summary": "Do not travel.",
+        "message": "Official guidance reports a high travel risk.",
+        "non_blocking": True,
+    }
+
+    assert _public_components({}, safety_warning=warning) == {"safety_warning": warning}
+
+
+def test_public_components_exposes_pending_service_scope_offer():
+    offer = {
+        "selected_capabilities": ["flights", "hotels"],
+        "offered_capabilities": ["restaurants", "activities"],
+        "request_fingerprint": "scope-fingerprint",
+    }
+
+    assert _public_components({}, service_scope_offer=offer) == {
+        "service_scope_offer": offer
     }
 
 

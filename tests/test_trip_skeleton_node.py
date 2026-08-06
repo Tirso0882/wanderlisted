@@ -37,6 +37,52 @@ async def test_exact_dates_build_generic_duration_skeleton_without_flight_eviden
     assert [stay["nights"] for stay in skeleton["stays"]] == [4, 4]
 
 
+async def test_broad_route_goal_cannot_be_allocated_as_a_city():
+    request = TripRequest(
+        scope="full_itinerary",
+        origin_city="wroclaw",
+        route_goal="along the german border to the baltic sea",
+        destinations=[],
+        primary_transport_mode="drive",
+        capability_scope_confirmed=True,
+        date_window={"exact_start": "2026-08-13", "exact_end": "2026-08-16"},
+        travelers={"adults": 2, "children": 1},
+    )
+
+    result = await trip_skeleton_node(
+        {"trip_request": request.model_dump(mode="json"), "itinerary_components": {}}
+    )
+
+    assert result["workflow_status"] == "failed"
+    assert "must be confirmed or explicitly delegated" in result["messages"][0].content
+
+
+async def test_delegated_route_cities_build_exact_stays():
+    request = TripRequest(
+        scope="full_itinerary",
+        origin_city="wroclaw",
+        route_goal="along the german border to the baltic sea",
+        overnight_cities=["zielona gora", "szczecin", "pobierowo"],
+        route_scope_delegated=True,
+        primary_transport_mode="drive",
+        capability_scope_confirmed=True,
+        date_window={"exact_start": "2026-08-13", "exact_end": "2026-08-16"},
+        travelers={"adults": 2, "children": 1, "child_ages": [15]},
+    )
+
+    result = await trip_skeleton_node(
+        {"trip_request": request.model_dump(mode="json"), "itinerary_components": {}}
+    )
+
+    skeleton = result["itinerary_components"]["trip_skeleton_structured"]
+    assert result["workflow_status"] == "skeleton_ready"
+    assert [stay["city"] for stay in skeleton["stays"]] == [
+        "zielona gora",
+        "szczecin",
+        "pobierowo",
+    ]
+
+
 async def test_flexible_skeleton_selects_global_cheapest_gateway_option():
     expensive = FlightWindowSearchResult(
         origin="BOG",

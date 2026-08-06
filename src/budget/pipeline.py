@@ -33,6 +33,8 @@ from src.models import (
     PriceBasis,
     PriceEvidence,
     PriceScope,
+    RequestScope,
+    RequestedCapability,
     SelectionStatus,
 )
 
@@ -181,9 +183,24 @@ class BudgetPipeline:
 
         missing: list[BudgetCategory] = []
         converted_categories = {item.category for item, _ in converted}
-        if BudgetCategory.FLIGHTS not in converted_categories:
+        requested = set(context.request.requested_capabilities) - set(
+            context.request.declined_capabilities
+        )
+        legacy_unscoped = (
+            context.request.scope == RequestScope.UNKNOWN
+            and not context.request.requested_capabilities
+            and not context.request.capability_scope_confirmed
+        )
+        flights_expected = legacy_unscoped or RequestedCapability.FLIGHTS in requested
+        accommodation_expected = (
+            legacy_unscoped or RequestedCapability.HOTELS in requested
+        )
+        if flights_expected and BudgetCategory.FLIGHTS not in converted_categories:
             missing.append(BudgetCategory.FLIGHTS)
-        if BudgetCategory.ACCOMMODATION not in converted_categories:
+        if (
+            accommodation_expected
+            and BudgetCategory.ACCOMMODATION not in converted_categories
+        ):
             missing.append(BudgetCategory.ACCOMMODATION)
         if conversion_failures:
             missing.extend(
@@ -364,7 +381,15 @@ class BudgetPipeline:
             per_person=_as_float(per_person),
             target_budget=_as_float(target_usd),
             currency="USD",
-            summary=self._summary(total, travelers, coverage, verdict, missing),
+            summary=self._summary(
+                display_total,
+                display_currency if display_available else "USD",
+                travelers,
+                coverage,
+                verdict,
+                missing,
+                context.request.locale,
+            ),
             base_currency="USD",
             display_currency=display_currency,
             display_breakdown=display,
@@ -414,8 +439,38 @@ class BudgetPipeline:
         )
 
     @staticmethod
-    def _summary(total, travelers, coverage, verdict, missing) -> str:
-        summary = f"Estimated trip total: USD {_money(total):,.2f} for {travelers} traveler(s)."
+    def _summary(total, currency, travelers, coverage, verdict, missing, locale) -> str:
+        if locale == "pl":
+            summary = (
+                f"Szacowany koszt podróży: {_money(total):,.2f} {currency} "
+                f"dla {travelers} podróżnych."
+            )
+            if coverage == BudgetCoverageStatus.PARTIAL:
+                labels = ", ".join(category.value for category in missing)
+                return f"{summary} Zakres jest częściowy; brakuje: {labels}."
+            if verdict == BudgetVerdict.OVER_BUDGET:
+                return f"{summary} Szacunek przekracza podany budżet."
+            if verdict == BudgetVerdict.WITHIN_BUDGET:
+                return f"{summary} Szacunek mieści się w podanym budżecie."
+            return summary
+        if locale == "es":
+            summary = (
+                f"Coste estimado del viaje: {_money(total):,.2f} {currency} "
+                f"para {travelers} viajeros."
+            )
+            if coverage == BudgetCoverageStatus.PARTIAL:
+                labels = ", ".join(category.value for category in missing)
+                return f"{summary} La cobertura es parcial; falta: {labels}."
+            if verdict == BudgetVerdict.OVER_BUDGET:
+                return f"{summary} La estimación supera el presupuesto indicado."
+            if verdict == BudgetVerdict.WITHIN_BUDGET:
+                return f"{summary} La estimación está dentro del presupuesto indicado."
+            return summary
+
+        summary = (
+            f"Estimated trip total: {_money(total):,.2f} {currency} "
+            f"for {travelers} traveler(s)."
+        )
         if coverage == BudgetCoverageStatus.PARTIAL:
             labels = ", ".join(category.value for category in missing)
             return f"{summary} Coverage is partial; missing: {labels}."

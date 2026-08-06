@@ -29,6 +29,9 @@ def _blocked_message(blocked: list[tuple[str, str, str]], locale: str) -> str:
     if locale == "pl":
         heading = "Nie mogę jeszcze bezpiecznie ukończyć pełnego planu:"
         next_step = "Uzupełnij brakujące dane lub poproś o ponowienie wyszukiwania."
+    elif locale == "es":
+        heading = "Todavía no puedo completar el plan de forma segura:"
+        next_step = "Proporciona los datos que faltan o pídeme que repita la búsqueda."
     else:
         heading = "I cannot safely complete the full plan yet:"
         next_step = "Provide the missing details or ask me to retry the search."
@@ -90,13 +93,14 @@ async def component_gate_node(
         ComponentStatus.FAILED,
     )
     request = TripRequest.model_validate(state.get("trip_request", {}))
+    response_locale = str(state.get("response_locale") or request.locale)
     pending = [
         component
         for component, component_status, _ in blocked
         if component_status == ComponentStatus.NEEDS_USER_INPUT
     ]
     return {
-        "messages": [AIMessage(content=_blocked_message(blocked, request.locale))],
+        "messages": [AIMessage(content=_blocked_message(blocked, response_locale))],
         "current_agent": f"component_gate:{status}",
         "workflow_status": status,
         "pending_questions": pending,

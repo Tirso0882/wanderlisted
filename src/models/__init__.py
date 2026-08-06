@@ -78,11 +78,15 @@ from src.models.trip_request import (  # noqa: E402
     ReadinessTopic,
     RequestScope,
     RequestedCapability,
+    ServiceScopeDecision,
+    ServiceScopeDecisionAction,
+    ServiceScopeOffer,
     TravelerParty,
     TravelerPartyPatch,
     TripRequest,
     TripRequestPatch,
     merge_trip_request,
+    service_scope_fingerprint,
 )
 from src.models.trip_skeleton import (  # noqa: E402
     CityStay,

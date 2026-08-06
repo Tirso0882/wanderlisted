@@ -49,7 +49,7 @@ def _api_key() -> str:
 
 
 def places_photo_url(photo_name: str, max_height: int = 400) -> str:
-    """Convert a Places API (New) photo reference to a displayable image URL.
+    """Convert a Places photo reference to a secret-free app media URL.
 
     Args:
         photo_name: Full photo resource name, e.g.
@@ -59,40 +59,12 @@ def places_photo_url(photo_name: str, max_height: int = 400) -> str:
     Returns:
         URL string that serves the photo directly.
     """
-    key = _api_key()
-    return (
-        f"https://places.googleapis.com/v1/{photo_name}/media"
-        f"?maxHeightPx={max_height}&key={key}"
+    if not photo_name.startswith("places/") or "/photos/" not in photo_name:
+        raise ValueError("invalid Google Places photo resource name")
+    height = max(100, min(int(max_height), 1600))
+    return "/api/v1/media/google-place-photo?" + urlencode(
+        {"name": photo_name, "max_height": height}
     )
-
-
-def directions_embed_url(
-    origin: str,
-    destination: str,
-    waypoints: list[str] | None = None,
-    mode: str = "walking",
-) -> str:
-    """Build a Maps Embed API directions URL showing a route with blue line.
-
-    Args:
-        origin: Starting point (address or lat,lng).
-        destination: End point.
-        waypoints: Optional intermediate stops.
-        mode: Travel mode — walking, driving, transit, bicycling.
-
-    Returns:
-        Embeddable iframe ``src`` URL.
-    """
-    key = _api_key()
-    params: dict[str, str] = {
-        "key": key,
-        "origin": origin,
-        "destination": destination,
-        "mode": mode,
-    }
-    if waypoints:
-        params["waypoints"] = "|".join(waypoints)
-    return f"https://www.google.com/maps/embed/v1/directions?{urlencode(params)}"
 
 
 def lookup_place_photo(place_name: str, city: str = "") -> str | None:

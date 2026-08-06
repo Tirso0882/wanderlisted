@@ -15,7 +15,6 @@ from src.tools.google_maps import (
     _looks_like_latlng,
     _geocode,
     places_photo_url,
-    directions_embed_url,
     lookup_place_photo,
 )
 
@@ -331,6 +330,9 @@ class TestSearchPlacesText:
         assert evidence["website_url"] == "https://museum.example"
         assert evidence["google_maps_url"] == "https://maps.google.com/?cid=123"
         assert evidence["photo_urls"]
+        assert evidence["photo_urls"][0].startswith("/api/v1/media/google-place-photo?")
+        assert "test-key" not in result
+        assert "key=" not in result
         assert (
             "places.regularOpeningHours"
             in route.calls[0].request.headers["x-goog-fieldmask"]
@@ -655,50 +657,22 @@ class TestOptimizeDayRoute:
 
 
 class TestPlacesPhotoUrl:
-    def test_builds_url(self, monkeypatch):
-        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
+    def test_builds_secret_free_app_url(self):
         result = places_photo_url("places/ChIJ123/photos/AU_ZVE456")
-        assert (
-            "places.googleapis.com/v1/places/ChIJ123/photos/AU_ZVE456/media" in result
-        )
-        assert "maxHeightPx=400" in result
-        assert "key=test-key" in result
+        assert result.startswith("/api/v1/media/google-place-photo?")
+        assert "name=places%2FChIJ123%2Fphotos%2FAU_ZVE456" in result
+        assert "max_height=400" in result
+        assert "key=" not in result
 
-    def test_custom_height(self, monkeypatch):
-        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
+    def test_custom_height(self):
         result = places_photo_url("places/X/photos/Y", max_height=200)
-        assert "maxHeightPx=200" in result
+        assert "max_height=200" in result
 
-    def test_missing_key_raises(self, monkeypatch):
-        monkeypatch.delenv("GOOGLE_MAPS_API_KEY", raising=False)
+    def test_invalid_reference_raises(self):
         import pytest
 
-        with pytest.raises(RuntimeError, match="GOOGLE_MAPS_API_KEY"):
-            places_photo_url("places/X/photos/Y")
-
-
-# ── directions_embed_url ─────────────────────────────────────────────────
-
-
-class TestDirectionsEmbedUrl:
-    def test_basic_url(self, monkeypatch):
-        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
-        result = directions_embed_url("Tokyo Station", "Senso-ji Temple")
-        assert "google.com/maps/embed/v1/directions" in result
-        assert "origin=Tokyo+Station" in result
-        assert "destination=Senso-ji+Temple" in result
-        assert "mode=walking" in result
-
-    def test_with_waypoints(self, monkeypatch):
-        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
-        result = directions_embed_url("A", "C", waypoints=["B1", "B2"], mode="driving")
-        assert "waypoints=B1%7CB2" in result
-        assert "mode=driving" in result
-
-    def test_no_waypoints(self, monkeypatch):
-        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
-        result = directions_embed_url("A", "B")
-        assert "waypoints" not in result
+        with pytest.raises(ValueError, match="photo resource"):
+            places_photo_url("https://example.test/photo")
 
 
 # ── lookup_place_photo ───────────────────────────────────────────────────
@@ -723,7 +697,8 @@ class TestLookupPlacePhoto:
         )
         result = lookup_place_photo("Tokyo Tower", "Tokyo")
         assert result is not None
-        assert "places.googleapis.com" in result
+        assert result.startswith("/api/v1/media/google-place-photo?")
+        assert "test-key" not in result
 
     @respx.mock
     def test_no_photos_returns_none(self, monkeypatch):

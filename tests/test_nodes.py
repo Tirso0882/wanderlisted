@@ -54,7 +54,7 @@ from src.agent.stage4_graph import (
     itinerary_node,
     synthesize_node,
     # HITL gate nodes
-    safety_review_node,
+    safety_warning_node,
     budget_review_node,
     human_review_node,
     route_after_triage,
@@ -62,7 +62,7 @@ from src.agent.stage4_graph import (
     route_after_supervisor,
     route_after_readiness_preflight,
     route_after_readiness,
-    route_after_safety_review,
+    route_after_safety_warning,
     route_after_trip_skeleton,
     route_after_hotel_gate,
     route_after_draft_itinerary,
@@ -740,6 +740,8 @@ class TestDraftItineraryNode:
             "trip_request": {
                 "scope": "full_itinerary",
                 "destinations": ["paris"],
+                "requested_capabilities": ["hotels", "activities", "itinerary"],
+                "capability_scope_confirmed": True,
                 "date_window": {
                     "exact_start": "2026-09-01",
                     "exact_end": "2026-09-03",
@@ -891,10 +893,10 @@ class TestSynthesizeNode:
         assert "Based on earlier data" in result["messages"][0].content
 
 
-# ── Safety review node tests ────────────────────────────────────────────────
+# ── Safety warning node tests ───────────────────────────────────────────────
 
 
-class TestSafetyReviewNode:
+class TestSafetyWarningNode:
     async def test_safe_destination_passes_through(self):
         report = TravelReadinessReport(
             destinations=["japan"],
@@ -921,16 +923,15 @@ class TestSafetyReviewNode:
                     "coverage": _verified_safety_coverage("japan"),
                 },
             },
-            "safety_acknowledged": False,
         }
-        result = await safety_review_node(state)
-        assert result["current_agent"] == "safety_review"
-        assert result["hitl_action"] == "approved"
+        result = await safety_warning_node(state)
+        assert result["current_agent"] == "safety_warning"
+        assert result["safety_warning"] == {}
 
     async def test_missing_structured_safety_data_fails_closed(self):
-        state = {"itinerary_components": {}, "safety_acknowledged": False}
-        result = await safety_review_node(state)
-        assert result["hitl_action"] == "rejected"
+        state = {"itinerary_components": {}}
+        result = await safety_warning_node(state)
+        assert result["component_results"]["readiness_preflight"]["status"] == "failed"
 
     async def test_stale_preflight_fingerprint_fails_closed_at_safety_gate(self):
         report = TravelReadinessReport(
@@ -973,37 +974,10 @@ class TestSafetyReviewNode:
             },
         }
 
-        result = await safety_review_node(state)
+        result = await safety_warning_node(state)
 
-        assert result["hitl_action"] == "rejected"
+        assert result["component_results"]["readiness_preflight"]["status"] == "stale"
         assert "no longer matches" in result["messages"][0].content
-
-    async def test_already_acknowledged_passes_through(self):
-        state = TestSafetyReviewInterrupt._state("red", "Level 4: Do not travel")
-        state["safety_acknowledged"] = True
-        result = await safety_review_node(state)
-        assert result["hitl_action"] == "approved"
-
-    async def test_detects_danger_keywords(self):
-        """Verify the danger-detection logic without triggering interrupt()."""
-        danger_texts = [
-            "Level 4: Do not travel",
-            "Do not travel to this area",
-            "Advisory Level: Red zone",
-            "Level 3: Reconsider travel",
-        ]
-        for text in danger_texts:
-            safety_text = text.lower()
-            danger_keywords = [
-                "do not travel",
-                "level 4",
-                "advisory level: red",
-                "reconsider travel",
-                "level 3",
-            ]
-            assert any(kw in safety_text for kw in danger_keywords), (
-                f"Missed danger: {text}"
-            )
 
 
 # ── Budget review node tests ────────────────────────────────────────────────
@@ -1091,10 +1065,6 @@ class TestRouteAfterTriage:
             "current_agent": "triage:shallow",
             "pending_questions": ["origin_city"],
         }
-        assert route_after_triage(state) == "intake"
-
-    def test_target_agent_still_routes_through_required_intake(self):
-        state = {"current_agent": "triage:deep", "target_agent": "FlightsAgent"}
         assert route_after_triage(state) == "intake"
 
 
@@ -1240,9 +1210,9 @@ class TestRouteAfterSupervisor:
 
 
 class TestRouteAfterReadinessPreflight:
-    def test_verified_preflight_continues_to_safety_gate(self):
+    def test_verified_preflight_continues_to_safety_warning(self):
         state = {"component_results": {"readiness_preflight": {"status": "completed"}}}
-        assert route_after_readiness_preflight(state) == "safety_review"
+        assert route_after_readiness_preflight(state) == "safety_warning"
 
     def test_missing_advisory_evidence_fails_closed(self):
         state = {
@@ -1251,44 +1221,46 @@ class TestRouteAfterReadinessPreflight:
         assert route_after_readiness_preflight(state) == END
 
 
-class TestRouteAfterSafetyReview:
-    def test_rejected_ends(self):
-        state = {"hitl_action": "rejected", "itinerary_components": {"routing": []}}
-        assert route_after_safety_review(state) == END
-
-    def test_approved_with_budget_goes_to_budget(self):
+class TestRouteAfterSafetyWarning:
+    def test_failed_validation_ends(self):
         state = {
-            "hitl_action": "approved",
+            "component_results": {"readiness_preflight": {"status": "failed"}},
+            "itinerary_components": {"routing": []},
+        }
+        assert route_after_safety_warning(state) == END
+
+    def test_validated_with_budget_goes_to_budget(self):
+        state = {
+            "component_results": {"readiness_preflight": {"status": "completed"}},
             "itinerary_components": {"routing": ["BudgetAgent"]},
         }
-        assert route_after_safety_review(state) == "budget"
+        assert route_after_safety_warning(state) == "budget"
 
     def test_draft_selection_runs_before_transportation(self):
         state = {
-            "hitl_action": "approved",
+            "component_results": {"readiness_preflight": {"status": "completed"}},
             "itinerary_components": {"routing": ["TransportationAgent", "BudgetAgent"]},
         }
-        assert route_after_safety_review(state) == "trip_skeleton"
+        assert route_after_safety_warning(state) == "trip_skeleton"
 
     def test_approved_with_itinerary_goes_to_itinerary(self):
         state = {
-            "hitl_action": "approved",
+            "component_results": {"readiness_preflight": {"status": "completed"}},
             "itinerary_components": {"routing": ["ItineraryAgent"]},
         }
-        assert route_after_safety_review(state) == "trip_skeleton"
+        assert route_after_safety_warning(state) == "trip_skeleton"
 
     def test_approved_dispatches_requested_parallel_discovery(self):
         state = {
-            "hitl_action": "approved",
+            "component_results": {"readiness_preflight": {"status": "completed"}},
             "itinerary_components": {"routing": ["FlightsAgent"]},
         }
-        result = route_after_safety_review(state)
+        result = route_after_safety_warning(state)
         assert isinstance(result, list)
         assert [send.node for send in result] == ["flights"]
 
     def test_full_trip_runs_readiness_details_before_discovery(self):
         state = {
-            "hitl_action": "approved",
             "trip_request": {"scope": "full_itinerary"},
             "itinerary_components": {
                 "routing": [
@@ -1298,10 +1270,13 @@ class TestRouteAfterSafetyReview:
                 ],
                 "readiness_preflight": {"data": {"destinations": ["tokyo"]}},
             },
-            "component_results": {"readiness": {"status": "completed"}},
+            "component_results": {
+                "readiness_preflight": {"status": "completed"},
+                "readiness": {"status": "completed"},
+            },
         }
 
-        assert route_after_safety_review(state) == "readiness"
+        assert route_after_safety_warning(state) == "readiness"
 
 
 class TestRouteAfterReadiness:
@@ -1501,10 +1476,10 @@ class TestRouteAfterHumanReview:
         assert route_after_human_review(state) == "draft_itinerary"
 
 
-# ── Safety review HITL interrupt paths ───────────────────────────────────────
+# ── Safety warning and validation paths ──────────────────────────────────────
 
 
-class TestSafetyReviewInterrupt:
+class TestSafetyWarning:
     @staticmethod
     def _state(level: str, summary: str, *, official: bool = True) -> dict:
         report = TravelReadinessReport(
@@ -1536,61 +1511,36 @@ class TestSafetyReviewInterrupt:
                     ),
                 }
             },
-            "safety_acknowledged": False,
+            "component_results": {
+                "readiness_preflight": {
+                    "component": "readiness_preflight",
+                    "status": "completed",
+                }
+            },
         }
 
-    @patch("src.agent.stage4_graph.is_hitl_enabled", return_value=True)
-    @patch("src.agent.stage4_graph.interrupt")
-    async def test_dangerous_approved(self, mock_interrupt, _hitl):
-        mock_interrupt.return_value = {"approved": True}
+    async def test_red_advisory_warns_without_blocking(self):
         state = self._state("red", "Level 4: Do not travel to this area")
-        result = await safety_review_node(state)
-        assert result["hitl_action"] == "approved"
-        assert result["safety_acknowledged"] is True
-        mock_interrupt.assert_called_once()
-        payload = mock_interrupt.call_args.args[0]
-        assert payload["gate"] == "safety_review"
-        assert payload["advisory_level"] == "red"
-        assert "Do not travel" in payload["summary"]
+        result = await safety_warning_node(state)
+        assert result["safety_warning"]["non_blocking"] is True
+        assert result["safety_warning"]["advisory_level"] == "red"
+        assert "Do not travel" in result["safety_warning"]["summary"]
+        assert result["component_results"]["readiness"]["status"] == "completed"
 
-    @patch("src.agent.stage4_graph.is_hitl_enabled", return_value=True)
-    @patch("src.agent.stage4_graph.interrupt")
-    async def test_dangerous_rejected(self, mock_interrupt, _hitl):
-        mock_interrupt.return_value = {"approved": False}
-        state = self._state("red", "Level 4: Do not travel")
-        result = await safety_review_node(state)
-        assert result["hitl_action"] == "rejected"
-        assert "cancelled" in result["messages"][0].content.lower()
-
-    @patch("src.agent.stage4_graph.is_hitl_enabled", return_value=True)
-    @patch("src.agent.stage4_graph.interrupt")
-    async def test_reconsider_travel_triggers_interrupt(self, mock_interrupt, _hitl):
-        mock_interrupt.return_value = {"approved": True}
+    async def test_orange_advisory_warns_without_blocking(self):
         state = self._state("orange", "Level 3: Reconsider travel advisory")
-        result = await safety_review_node(state)
-        assert result["hitl_action"] == "approved"
+        result = await safety_warning_node(state)
+        assert result["safety_warning"]["non_blocking"] is True
+        assert result["safety_warning"]["advisory_level"] == "orange"
 
-    @patch("src.agent.stage4_graph.is_hitl_enabled", return_value=True)
-    @patch("src.agent.stage4_graph.interrupt")
-    async def test_nonofficial_dangerous_level_fails_closed(
-        self, mock_interrupt, _hitl
-    ):
+    async def test_nonofficial_dangerous_level_fails_closed(self):
         state = self._state("red", "Do not travel", official=False)
-        result = await safety_review_node(state)
-        assert result["current_agent"] == "safety_review"
-        assert result["hitl_action"] == "rejected"
-        mock_interrupt.assert_not_called()
-
-    @patch("src.agent.stage4_graph.is_hitl_enabled", return_value=False)
-    async def test_disabling_hitl_does_not_disable_evidence_validation(self, _hitl):
-        state = self._state("red", "Do not travel", official=False)
-
-        result = await safety_review_node(state)
-
-        assert result["hitl_action"] == "rejected"
+        result = await safety_warning_node(state)
+        assert result["current_agent"] == "safety_warning"
+        assert result["component_results"]["readiness_preflight"]["status"] == "failed"
 
     async def test_prose_without_structured_data_does_not_trigger(self):
-        """Untrusted prose must never drive the safety gate."""
+        """Untrusted prose must never drive safety validation."""
         state = {
             "itinerary_components": {
                 "readiness_preflight": {
@@ -1599,10 +1549,9 @@ class TestSafetyReviewInterrupt:
                     ],
                 },
             },
-            "safety_acknowledged": False,
         }
-        result = await safety_review_node(state)
-        assert result["hitl_action"] == "rejected"
+        result = await safety_warning_node(state)
+        assert result["component_results"]["readiness_preflight"]["status"] == "failed"
 
 
 # ── Budget review HITL interrupt paths ───────────────────────────────────────

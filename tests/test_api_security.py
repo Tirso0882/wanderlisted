@@ -6,7 +6,9 @@ import asyncio
 import uuid
 from types import SimpleNamespace
 
+import httpx
 import pytest
+import respx
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage
@@ -125,6 +127,60 @@ def test_other_browser_cannot_read_or_resume_known_public_session(isolated_api):
     assert created.status_code == 200
     assert read_attempt.status_code == 404
     assert resume_attempt.status_code == 404
+
+
+@respx.mock
+def test_google_photo_proxy_rejects_invalid_resource_name_without_request(isolated_api):
+    response = TestClient(app).get(
+        "/api/v1/media/google-place-photo",
+        params={"name": "https://attacker.example/photo"},
+    )
+
+    assert response.status_code == 422
+    assert len(respx.calls) == 0
+
+
+def test_google_photo_proxy_fails_closed_without_key(isolated_api, monkeypatch):
+    monkeypatch.delenv("GOOGLE_MAPS_API_KEY", raising=False)
+
+    response = TestClient(app).get(
+        "/api/v1/media/google-place-photo",
+        params={"name": "places/place123/photos/photo456"},
+    )
+
+    assert response.status_code == 503
+
+
+@respx.mock
+def test_google_photo_proxy_returns_image_without_exposing_key(
+    isolated_api, monkeypatch
+):
+    monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "private-google-key")
+    route = respx.get(
+        "https://places.googleapis.com/v1/places/place123/photos/photo456/media"
+    ).mock(
+        return_value=httpx.Response(
+            200,
+            content=b"image-bytes",
+            headers={"content-type": "image/jpeg"},
+        )
+    )
+
+    response = TestClient(app).get(
+        "/api/v1/media/google-place-photo",
+        params={
+            "name": "places/place123/photos/photo456",
+            "max_height": 600,
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.content == b"image-bytes"
+    assert response.headers["content-type"] == "image/jpeg"
+    assert route.calls[0].request.url.params["maxHeightPx"] == "600"
+    assert route.calls[0].request.url.params["key"] == "private-google-key"
+    assert "private-google-key" not in response.text
+    assert "private-google-key" not in str(response.headers)
 
 
 def test_private_thread_id_is_owner_scoped_and_hides_public_identifiers():

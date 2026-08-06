@@ -45,6 +45,8 @@ def _request(*, children: int = 0, accessibility: bool = False) -> TripRequest:
         scope="full_itinerary",
         origin_city="warsaw",
         destinations=["paris"],
+        requested_capabilities=["hotels", "activities", "itinerary"],
+        capability_scope_confirmed=True,
         date_window={
             "exact_start": "2026-09-01",
             "exact_end": "2026-09-03",
@@ -285,6 +287,32 @@ def test_hotel_rate_evidence_uses_only_exact_place_match_for_urls_and_photos():
     assert catalog.hotels["rate-annex"].photo_urls == []
 
 
+def test_catalog_prefers_typed_place_component_data_without_messages():
+    catalog = build_evidence_catalog(
+        {
+            "activities": {
+                "data": {
+                    "places": [
+                        {
+                            "source_id": "museum-1",
+                            "place_id": "museum-1",
+                            "name": "Typed Museum",
+                            "search_context": "museums in paris",
+                            "address": "2 Museum Road, Paris",
+                            "category": "museum",
+                        }
+                    ]
+                }
+            }
+        },
+        _skeleton(),
+    )
+
+    assert set(catalog.places) == {"activities:museum-1"}
+    assert catalog.places["activities:museum-1"].name == "Typed Museum"
+    assert catalog.places["activities:museum-1"].city == "paris"
+
+
 def test_selection_resolves_only_catalog_ids_and_canonical_calendar():
     museum = _place(
         "activities:museum",
@@ -303,6 +331,171 @@ def test_selection_resolves_only_catalog_ids_and_canonical_calendar():
     assert draft.days[1].stops[0].source_id == "activities:museum"
     assert request.destinations == ["paris"]
     assert skeleton.exit_city == "paris"
+
+
+def test_selection_without_hotel_consent_uses_city_anchors():
+    museum = _place("activities:museum", name="Museum")
+    request = _request().model_copy(
+        update={
+            "requested_capabilities": ["activities", "itinerary"],
+            "declined_capabilities": ["hotels"],
+            "capability_scope_confirmed": True,
+        }
+    )
+    catalog = ItineraryEvidenceCatalog(
+        places={museum.source_id: museum},
+        hotels={},
+    )
+    proposal = ItinerarySelectionProposal(
+        accommodations=[],
+        days=[
+            DaySelectionProposal(day_number=1),
+            DaySelectionProposal(
+                day_number=2,
+                stop_source_ids=[museum.source_id],
+                preferred_mode="drive",
+            ),
+            DaySelectionProposal(day_number=3),
+        ],
+    )
+
+    draft = resolve_selection(
+        proposal,
+        ItinerarySelectionContext(
+            request=request,
+            skeleton=_skeleton(),
+            catalog=catalog,
+        ),
+    )
+
+    assert draft.selected_accommodations == []
+    assert len(draft.days) == 3
+    assert {day.start_location.source_id for day in draft.days} == {"city-anchor:paris"}
+    assert all(day.start_location.category == "city_anchor" for day in draft.days)
+    assert "accommodation is not selected or priced" in " ".join(draft.selection_notes)
+
+    plan = (
+        ItineraryPipeline()
+        .run(
+            ItineraryAssemblyContext(
+                request=request,
+                skeleton=_skeleton(),
+                draft=draft,
+                route_plan=None,
+            )
+        )
+        .plan
+    )
+    assert plan.coverage_status == "partial"
+    assert "accommodation_not_selected" in plan.missing_constraints
+
+
+def test_selection_still_requires_hotel_when_search_was_authorized():
+    museum = _place("activities:museum", name="Museum")
+    request = _request().model_copy(
+        update={"requested_capabilities": ["hotels", "activities", "itinerary"]}
+    )
+
+    with pytest.raises(ItineraryValidationError, match="no selected accommodation"):
+        resolve_selection(
+            ItinerarySelectionProposal(
+                accommodations=[],
+                days=[
+                    DaySelectionProposal(
+                        day_number=2,
+                        stop_source_ids=[museum.source_id],
+                    )
+                ],
+            ),
+            ItinerarySelectionContext(
+                request=request,
+                skeleton=_skeleton(),
+                catalog=_catalog(museum),
+            ),
+        )
+
+
+def test_selection_enforces_minimum_beach_days_from_provider_evidence():
+    beach = _place(
+        "activities:beach",
+        name="Provider Beach",
+        category="beach",
+    )
+    museum = _place("activities:museum", name="Museum")
+    request = _request().model_copy(
+        update={
+            "requested_capabilities": ["activities", "itinerary"],
+            "declined_capabilities": ["hotels"],
+            "minimum_beach_days": 1,
+        }
+    )
+    catalog = ItineraryEvidenceCatalog(
+        places={place.source_id: place for place in (beach, museum)},
+        hotels={},
+    )
+    context = ItinerarySelectionContext(
+        request=request,
+        skeleton=_skeleton(),
+        catalog=catalog,
+    )
+
+    with pytest.raises(ItineraryValidationError, match="minimum beach-day"):
+        resolve_selection(
+            ItinerarySelectionProposal(
+                days=[
+                    DaySelectionProposal(
+                        day_number=2,
+                        stop_source_ids=[museum.source_id],
+                    )
+                ]
+            ),
+            context,
+        )
+
+    draft = resolve_selection(
+        ItinerarySelectionProposal(
+            days=[
+                DaySelectionProposal(
+                    day_number=2,
+                    stop_source_ids=[beach.source_id],
+                )
+            ]
+        ),
+        context,
+    )
+    assert draft.days[1].stops[0].source_id == beach.source_id
+
+
+def test_primary_transport_mode_overrides_selection_preference():
+    museum = _place("activities:museum", name="Museum")
+    request = _request().model_copy(
+        update={
+            "requested_capabilities": ["activities", "transportation", "itinerary"],
+            "declined_capabilities": ["hotels", "flights"],
+            "primary_transport_mode": "drive",
+        }
+    )
+    draft = resolve_selection(
+        ItinerarySelectionProposal(
+            days=[
+                DaySelectionProposal(
+                    day_number=2,
+                    stop_source_ids=[museum.source_id],
+                    preferred_mode="transit",
+                )
+            ]
+        ),
+        ItinerarySelectionContext(
+            request=request,
+            skeleton=_skeleton(),
+            catalog=ItineraryEvidenceCatalog(
+                places={museum.source_id: museum},
+                hotels={},
+            ),
+        ),
+    )
+
+    assert {str(day.preferred_mode) for day in draft.days} == {"drive"}
 
 
 @pytest.mark.parametrize(

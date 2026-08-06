@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+import json
 
 from langchain_core.messages import AIMessage, ToolMessage
 
@@ -38,6 +39,39 @@ _CLARIFICATION_MARKERS = (
     "z jakiego miasta",
     "ile osób",
 )
+_PLACE_RESULTS_MARKER = "PLACE_RESULTS_JSON:\n"
+_STRUCTURED_PLACE_COMPONENTS = frozenset({"activities", "restaurants"})
+
+
+def _place_payloads(messages: Iterable) -> list[dict]:
+    decoder = json.JSONDecoder()
+    places: list[dict] = []
+    for message in messages:
+        if not isinstance(message, ToolMessage):
+            continue
+        text = _text_content(message.content)
+        cursor = 0
+        while True:
+            index = text.find(_PLACE_RESULTS_MARKER, cursor)
+            if index < 0:
+                break
+            raw = text[index + len(_PLACE_RESULTS_MARKER) :].lstrip()
+            try:
+                payload, consumed = decoder.raw_decode(raw)
+            except (json.JSONDecodeError, TypeError):
+                cursor = index + len(_PLACE_RESULTS_MARKER)
+                continue
+            for place in payload.get("places", []) if isinstance(payload, dict) else []:
+                if (
+                    isinstance(place, dict)
+                    and isinstance(place.get("source_id"), str)
+                    and place["source_id"].strip()
+                    and isinstance(place.get("name"), str)
+                    and place["name"].strip()
+                ):
+                    places.append(place)
+            cursor = index + len(_PLACE_RESULTS_MARKER) + consumed
+    return places
 
 
 def _text_content(content) -> str:
@@ -105,10 +139,11 @@ def classify_component_result(
             error_detail=detail[:500],
         )
 
+    message_list = list(messages)
     tool_names: list[str] = []
     tool_outputs: list[str] = []
     final_texts: list[str] = []
-    for message in messages:
+    for message in message_list:
         if isinstance(message, AIMessage):
             tool_names.extend(
                 call.get("name", "") for call in message.tool_calls if call.get("name")
@@ -137,6 +172,19 @@ def classify_component_result(
     else:
         status = ComponentStatus.FAILED
 
+    data = None
+    evidence_count = len(tool_outputs)
+    if (
+        component in _STRUCTURED_PLACE_COMPONENTS
+        and status == ComponentStatus.COMPLETED
+    ):
+        places = _place_payloads(message_list)
+        if places:
+            data = {"places": places}
+            evidence_count = len(places)
+        else:
+            status = ComponentStatus.FAILED
+
     category = (
         _error_category(combined)
         if status == ComponentStatus.BLOCKED_EXTERNAL
@@ -145,8 +193,9 @@ def classify_component_result(
     return ComponentResult(
         component=component,
         status=status,
+        data=data,
         message=final_text,
         error_category=category,
         tools_called=tool_names,
-        evidence_count=len(tool_outputs),
+        evidence_count=evidence_count,
     )
