@@ -7,7 +7,6 @@ template into HTML.  Also produces Markdown and JSON exports.
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -423,11 +422,7 @@ class HandbookRenderer:
 
     def render_html(self, handbook: TripHandbook) -> str:
         """Render TripHandbook to a self-contained HTML string."""
-        # Google Maps Embed API key is intentionally passed to the client-side
-        # Maps iframe — this key should be restricted by HTTP Referrer in Google
-        # Cloud Console (not a secret; Maps Embed API is designed for public URLs).
-        maps_key = os.environ.get("GOOGLE_MAPS_API_KEY", "")
-        return self._template.render(handbook=handbook, google_maps_api_key=maps_key)
+        return self._template.render(handbook=handbook)
 
     def render_markdown(self, handbook: TripHandbook) -> str:
         """Render TripHandbook to Markdown."""

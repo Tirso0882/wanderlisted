@@ -22,7 +22,7 @@ The earlier destination pipeline mixed planning readiness with place discovery a
 
 `src/readiness` and `TravelReadinessAgent` are the only current readiness boundary. They own advisory preflight, entry, health, weather, culture, practical preparation, and grounded planning constraints. Activities owns named places/events; inventory specialists own offers; downstream deterministic stages own selection, pricing, and itinerary assembly.
 
-Official critical evidence is required before safety-sensitive discovery. The preflight is fingerprinted and checkpointed before HITL so resume neither accepts stale inputs nor repeats the provider call. Missing critical evidence fails closed with a typed outcome.
+Official critical evidence is required before safety-sensitive discovery. The preflight is fingerprinted and checkpointed so stale inputs are rejected without repeating the provider call. Missing critical evidence fails closed with a typed outcome. Verified orange/red advisories produce a structured warning and do not block downstream planning.
 
 ## Consequences
 

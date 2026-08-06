@@ -9,6 +9,7 @@ import type {
   BudgetBreakdown,
   InterruptData,
   ResumeResponse,
+  ServiceScopeDecision,
   SessionSnapshot,
   StructuredComponents,
   TripHandbook,
@@ -40,7 +41,7 @@ interface ChatState {
   messages: ChatMessage[];
   sessionId: string | null;
   runId: string | null;
-  responseLocale: AppLocale;
+  responseLocale: string;
   isStreaming: boolean;
   streamingContent: string;
   abortController: AbortController | null;
@@ -52,7 +53,11 @@ interface ChatState {
   isMockMode: boolean;
   activeView: ViewMode;
   errorKey: ChatErrorKey;
-  sendMessage: (content: string, uiLocale?: AppLocale) => void;
+  sendMessage: (
+    content: string,
+    uiLocale?: AppLocale,
+    serviceScopeDecision?: ServiceScopeDecision,
+  ) => void;
   stopStreaming: () => void;
   clearChat: () => void;
   goHome: () => void;
@@ -162,7 +167,7 @@ export const useChatStore = create<ChatState>()(
       activeView: "home",
       errorKey: null,
 
-      sendMessage: (content, uiLocale = "en") => {
+      sendMessage: (content, uiLocale = "en", serviceScopeDecision) => {
         const state = get();
         const trimmed = content.trim();
         if (!trimmed || state.isStreaming) return;
@@ -262,7 +267,7 @@ export const useChatStore = create<ChatState>()(
               abortController: null,
               runId: (data.run_id as string | null | undefined) ?? current.runId,
               responseLocale:
-                data.locale === "pl" || data.locale === "en"
+                typeof data.locale === "string" && /^[a-z]{2,3}$/.test(data.locale)
                   ? data.locale
                   : current.responseLocale,
               interruptData:
@@ -288,24 +293,11 @@ export const useChatStore = create<ChatState>()(
           },
         };
 
-        const viewToAgent: Partial<Record<ViewMode, AgentName>> = {
-          flights: "FlightsAgent",
-          hotels: "HotelsAgent",
-          destination: "TravelReadinessAgent",
-          restaurants: "RestaurantsAgent",
-          activities: "ActivitiesAgent",
-          transport: "TransportationAgent",
-          budget: "BudgetAgent",
-          itinerary: "ItineraryAgent",
-        };
-        const freshFullPlan =
-          !state.sessionId && (activeView === "itinerary" || activeView === "full-plan");
-        const targetAgent = freshFullPlan ? undefined : viewToAgent[activeView];
         const controller = streamChat(
           {
             message: trimmed,
             session_id: state.sessionId ?? undefined,
-            target_agent: targetAgent,
+            service_scope_decision: serviceScopeDecision,
             ui_locale: uiLocale,
           },
           callbacks,

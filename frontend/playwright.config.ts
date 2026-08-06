@@ -14,7 +14,7 @@ export default defineConfig({
   ],
   webServer: {
     command:
-      "CHAT_UI_V2_ENABLED=true CLERK_ENABLED=false API_URL=http://127.0.0.1:8999 pnpm dev --webpack --port 3100",
+      "CLERK_ENABLED=false API_URL=http://127.0.0.1:8999 pnpm dev --webpack --port 3100",
     url: "http://localhost:3100",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

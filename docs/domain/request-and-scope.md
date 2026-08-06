@@ -18,10 +18,12 @@ Accumulate user intent across turns into one language-independent `TripRequest`,
 ## Invariants
 
 - Merge only fields explicitly supplied or safely inferred in the current turn; do not erase prior confirmed values with absent patch fields.
-- Exact/flexible dates, traveler occupancy, passport/origin, destinations, requested capabilities, budget, preferences, and constraints remain typed.
+- Exact/flexible dates, traveler occupancy/child ages, passport/origin, confirmed or explicitly delegated city destinations, broad route goals/waypoints, transport mode, requested/declined capabilities, budget, preferences, and constraints such as minimum beach days remain typed.
 - Capability IDs are stable domain names, not graph node/class names.
 - Generic city-break and itinerary requests use the destination-planning bundle. Flights, hotels, travel readiness, and budget are opt-in capabilities with their own input requirements.
-- Incomplete requirements end the turn as `needs_user_input`; the system does not guess critical dates, destination, passport, or occupancy.
+- Naming some services is not an exclusive request. Before provider/model fan-out, intake offers remaining applicable services unless the traveler explicitly confirms that the named services are the complete scope.
+- Broad regions, borders, corridors, coastlines, and seas are route goals, not overnight cities. Exact route endpoints and overnight cities are traveler-confirmed or produced as a bounded proposal after the traveler explicitly delegates the choice; the typed resolution is required before discovery and skeleton allocation.
+- Incomplete requirements end the turn as `needs_user_input`; the system does not guess critical dates, destination, route cities, passport, occupancy, transport mode, or service consent.
 
 ## Outputs and collaborators
 

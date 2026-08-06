@@ -10,6 +10,8 @@ import httpx
 from langchain_core.tools import tool
 from tenacity import retry, stop_after_attempt, wait_exponential
 
+from src.tools.google_maps import places_photo_url
+
 # Google Places "included types" — mapped from user-friendly category names.
 # Ref: https://developers.google.com/maps/documentation/places/web-service/place-types
 _CATEGORY_TYPES: dict[str, list[str]] = {
@@ -73,14 +75,10 @@ async def _search_places_api(
 
 def _photo_url(photo: dict, max_width: int = 400) -> str:
     """Build a Google Places photo URL from a photo resource name."""
-    api_key = os.environ["GOOGLE_MAPS_API_KEY"]
     name = photo.get("name", "")
     if not name:
         return ""
-    return (
-        f"https://places.googleapis.com/v1/{name}/media"
-        f"?maxWidthPx={max_width}&key={api_key}"
-    )
+    return places_photo_url(name, max_height=max_width)
 
 
 @tool

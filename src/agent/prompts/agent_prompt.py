@@ -36,7 +36,8 @@ SHALLOW_REPLY_SYSTEM_PROMPT = (
 )
 
 INTAKE_SYSTEM_PROMPT = """Extract ONLY the travel-request information stated in
-the latest user message into the TripRequestPatch schema. You receive the current
+the latest user message into the TripRequestPatch schema, except for the bounded
+route proposal allowed after explicit delegation below. You receive the current
 canonical request separately so a short follow-up can update it.
 
 Rules:
@@ -46,6 +47,14 @@ Rules:
 - requested_capabilities uses only: flights, hotels, travel_readiness, restaurants,
   activities, transportation, budget, itinerary. Treat this list as execution
   consent, not a wishlist of everything that could be useful.
+- Mentioning services does not make them exclusive. Set capability_scope_confirmed=true
+  only when the user explicitly says the named services are all they need, accepts
+  all offered services, or chooses among a pending offer. Put explicitly rejected
+  services in declined_capabilities. "Only" and "just" (or equivalent Polish
+  wording such as "tylko") also set capability_scope_exclusive=true. Otherwise
+  leave capability_scope_exclusive=false.
+- For a follow-up to a service offer, add accepted services to requested_capabilities
+  and rejected services to declined_capabilities. Preserve earlier selections.
 - A generic request such as "plan my trip", "plan a city break", or "build an
   itinerary" defaults to destination planning: restaurants, activities,
   transportation, and itinerary. Do NOT add flights, hotels, travel_readiness,
@@ -59,6 +68,10 @@ Rules:
   "en").
 - A country of departure is not an origin city. "From Colombia" sets only
   origin_country; never invent Bogota or another airport.
+- Extract primary_transport_mode when explicitly stated. Use drive for a private-car
+  road trip. Do not add flights for a confirmed drive-only trip.
+- Extract minimum_beach_days when the traveler requires a minimum number of full
+  or partial beach days, for example "at least one day at the coast" means 1.
 - Do not infer adults from first-person grammar. Set travelers.adults only when
   a count is stated explicitly.
 - For a flexible window plus trip length, set earliest_start, latest_end,
@@ -69,15 +82,28 @@ Rules:
   focused date question.
 - If the user omits the year, choose the next occurrence consistent with the
   current date supplied in context. Never choose a past year.
-- Destinations should contain requested cities, not a country when specific
-  cities are available. Do not invent an optional city that the user left open.
+- Destinations should contain exact requested cities, not a country, region,
+  coastline, sea, border corridor, or broad route goal. Put broad geography such
+  as "along the German border to the Baltic Sea" in route_goal instead. Never put
+  "Baltic Sea" or another non-city region into destinations or overnight_cities.
+- Put explicitly named route stops in route_waypoints and exact confirmed lodging
+  cities in overnight_cities. Set route_scope_confirmed=true only when the user
+  supplied or approved the endpoint and overnight cities.
+- If the canonical request has a broad route_goal and the user explicitly asks
+  you to recommend, choose, or decide the endpoint and overnight cities, treat
+  that as route-scope delegation. Propose a practical ordered list of exact city
+  or municipality names in overnight_cities, set route_scope_delegated=true, and
+  leave route_scope_confirmed=false. Use only the canonical origin, dates,
+  duration, route goal, waypoints, and preferences. Do not claim live
+  availability, exact times, distances, prices, or sourced facts; later stages
+  validate those. Without explicit delegation, do not invent optional route cities.
 - Extract budget_amount and budget_currency only from an explicit target/maximum.
   Put an explicitly stated booked or known component price in known_costs with
   its category, amount, currency, and scope. Never convert it during intake.
 - Extract contingency_percent only when the traveler explicitly supplies it.
 - Omit fields not supplied in this turn by leaving them null. Never erase prior
-  confirmed values and never fabricate a budget, preference, date, traveler,
-  airport, destination, or capability.
+  confirmed values. Outside the bounded delegated route proposal, never fabricate
+  a budget, preference, date, traveler, airport, destination, or capability.
 """
 
 INTAKE_CONTEXT_PROMPT = (
@@ -679,6 +705,9 @@ OWNERSHIP BOUNDARY:
   searches Hotelbeds only after exact city stay dates have been allocated.
 - For a multi-city trip, search activities in EVERY canonical destination city;
   do not stop after the first one or two cities.
+- When minimum_beach_days is positive, search for provider-backed beach places in
+  the confirmed coastal destination. Return those places as evidence, but do not
+  schedule days or claim water/weather conditions.
 
 Your expertise:
 - Find attractions using search_places_nearby and search_places_text tools
@@ -823,7 +852,9 @@ Return only the ItinerarySelectionProposal structured output. The supplied
 TripSkeleton and evidence catalog are authoritative.
 
 Rules:
-- For every city stay, choose exactly one listed hotel rate_key.
+- When the evidence catalog contains hotel rates, choose exactly one listed
+  rate_key for every city stay. When the catalog has no hotels because hotel
+  search was not authorized, leave accommodations empty; never invent lodging.
 - Assign only listed, exact place source_id values to canonical day numbers.
 - Never output a name, date, city, address, coordinate, price, duration, or route.
 - Use at most five total activity and restaurant source IDs per day.

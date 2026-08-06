@@ -194,7 +194,7 @@ User → Supervisor (LLM classification + user profiling)
 
 1. **Typed conversational intake** — Every planning turn is merged into a canonical `TripRequest`. A deterministic scope-aware policy asks only for fields required by the requested capability and stops before paid fan-out while information is missing.
 
-2. **Safety-first discovery** — Official advisory preflight runs before paid discovery. Orange/red advisories interrupt for acknowledgement; after approval, Flights, non-safety Readiness, Restaurants, and Activities run concurrently via LangGraph `Send()`. `TripSkeleton` then allocates all nights before one exact Hotelbeds search runs per city stay.
+2. **Safety-first discovery** — Official advisory preflight runs before paid discovery. Missing, invalid, or stale critical evidence fails closed; verified orange/red advisories are shown as non-blocking warnings while Flights, non-safety Readiness, Restaurants, and Activities continue via LangGraph `Send()`. `TripSkeleton` then allocates all nights before one exact Hotelbeds search runs per city stay.
 
 3. **Two completion gates** — Initial discovery and post-allocation Hotels are validated separately. A typed draft then selects exact places, Transportation computes `RoutePlan`, and Budget and Itinerary consume the resulting artifacts.
 

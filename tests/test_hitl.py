@@ -12,7 +12,6 @@ async def test_state_has_hitl_fields():
     for field in (
         "human_feedback",
         "hitl_action",
-        "safety_acknowledged",
         "budget_adjustment_accepted",
     ):
         assert field in annotations, f"Missing HITL field: {field}"
@@ -24,53 +23,11 @@ async def test_state_hitl_fields_are_writable():
         messages=[],
         human_feedback="reduce budget by 20%",
         hitl_action="edited",
-        safety_acknowledged=True,
         budget_adjustment_accepted=True,
     )
     assert state["human_feedback"] == "reduce budget by 20%"
     assert state["hitl_action"] == "edited"
-    assert state["safety_acknowledged"] is True
     assert state["budget_adjustment_accepted"] is True
-
-
-# ── Safety keyword detection tests ───────────────────────────────────────────
-
-_DANGER_KEYWORDS = [
-    "do not travel",
-    "level 4",
-    "advisory level: red",
-    "reconsider travel",
-    "level 3",
-]
-
-
-def _has_danger(text: str) -> bool:
-    """Replicate the safety_review_node logic for testability."""
-    text_lower = text.lower()
-    return any(kw in text_lower for kw in _DANGER_KEYWORDS)
-
-
-async def test_safety_detection_safe_destination():
-    """Safe destinations should not trigger danger detection."""
-    safe_texts = [
-        "Japan is one of the safest travel destinations worldwide.",
-        "Level 1: Exercise Normal Precautions. No travel advisories.",
-        "Barcelona has a generally safe environment for tourists.",
-    ]
-    for text in safe_texts:
-        assert not _has_danger(text), f"False positive on: {text}"
-
-
-async def test_safety_detection_dangerous_destination():
-    """Dangerous advisory levels should be detected."""
-    dangerous_texts = [
-        "Level 4: Do Not Travel to this region due to armed conflict.",
-        "The State Department advises: do not travel to the area.",
-        "Advisory Level: Red — reconsider travel plans.",
-        "Level 3: Reconsider Travel due to civil unrest.",
-    ]
-    for text in dangerous_texts:
-        assert _has_danger(text), f"Missed danger in: {text}"
 
 
 # ── Budget overspend detection tests ─────────────────────────────────────────
@@ -120,17 +77,6 @@ async def test_hitl_edited_action_with_feedback():
 
 
 # ── Interrupt payload format tests ───────────────────────────────────────────
-
-
-async def test_safety_interrupt_payload_format():
-    """Safety interrupt produces the expected payload structure."""
-    payload = {
-        "type": "safety_warning",
-        "message": "SAFETY ADVISORY: high-risk travel advisory.",
-        "action_required": "Respond with {'approved': true} to proceed or {'approved': false} to cancel.",
-    }
-    assert payload["type"] == "safety_warning"
-    assert "action_required" in payload
 
 
 async def test_budget_interrupt_payload_format():

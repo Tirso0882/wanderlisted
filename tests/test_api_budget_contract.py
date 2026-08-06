@@ -59,6 +59,14 @@ def test_legacy_approved_resume_decision_remains_supported():
     assert request.decision.approved is True
 
 
+def test_removed_safety_resume_decision_is_rejected():
+    with pytest.raises(ValidationError):
+        ResumeRequest(
+            session_id="session",
+            decision={"gate": "safety_review", "approved": True},
+        )
+
+
 @patch("src.agent.stage4_graph.is_hitl_enabled", return_value=True)
 @patch("src.agent.stage4_graph.interrupt")
 async def test_gate_interrupts_at_inclusive_material_threshold(interrupt_mock, _hitl):

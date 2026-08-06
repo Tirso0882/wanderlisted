@@ -24,6 +24,7 @@ import { useChatStore } from "@/stores/chat-store";
 import type {
   AgentName,
   AgentStatus,
+  SafetyWarning,
   TravelReadinessReport,
 } from "@/lib/types";
 import { useTranslations } from "next-intl";
@@ -83,6 +84,8 @@ export function ResultsPanel() {
       | { data?: TravelReadinessReport }
       | undefined)?.data;
   const safety = readiness?.safety ?? handbook?.safety ?? null;
+  const safetyWarning =
+    (components?.safety_warning as SafetyWarning | undefined) ?? null;
   const culture = readiness?.culture ?? handbook?.culture ?? null;
   const weather =
     readiness?.weather ??
@@ -172,6 +175,7 @@ export function ResultsPanel() {
           <TabsContent value="destination" className="mt-0">
             <DestinationTab
               safety={safety}
+              safetyWarning={safetyWarning}
               culture={culture}
               weather={weather}
               readiness={readiness}

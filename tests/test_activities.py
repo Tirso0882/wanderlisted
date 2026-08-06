@@ -76,7 +76,8 @@ class TestActivitiesMocked:
         )
 
         assert "Photo:" in result
-        assert "places/abc/photos/xyz" in result
+        assert "name=places%2Fabc%2Fphotos%2Fxyz" in result
+        assert "key=" not in result
 
     @respx.mock
     async def test_no_results(self, monkeypatch):

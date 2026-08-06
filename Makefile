@@ -47,7 +47,7 @@ install:
 	uv sync --frozen --all-groups
 
 dev:
-	HITL_SAFETY_REVIEW=false HITL_HUMAN_REVIEW=false \
+	HITL_HUMAN_REVIEW=false \
 	.venv/bin/python -m uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
 
 studio:

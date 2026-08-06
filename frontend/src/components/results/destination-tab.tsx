@@ -18,6 +18,7 @@ import { Separator } from "@/components/ui/separator";
 import { localeTag, type AppLocale } from "@/i18n/config";
 import type {
   SafetyInfo,
+  SafetyWarning,
   CultureGuide,
   DayWeather,
   TravelReadinessReport,
@@ -264,11 +265,13 @@ function CultureCard({ culture }: { culture: CultureGuide }) {
 
 export function DestinationTab({
   safety,
+  safetyWarning = null,
   culture,
   weather = [],
   readiness = null,
 }: {
   safety: SafetyInfo | null;
+  safetyWarning?: SafetyWarning | null;
   culture: CultureGuide | null;
   weather?: DayWeather[];
   readiness?: TravelReadinessReport | null;
@@ -278,7 +281,7 @@ export function DestinationTab({
   const numberFormatter = new Intl.NumberFormat(localeTag(locale), {
     maximumFractionDigits: 0,
   });
-  if (!safety && !culture && weather.length === 0 && !readiness) {
+  if (!safety && !safetyWarning && !culture && weather.length === 0 && !readiness) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <MapPin className="mb-3 h-8 w-8 text-muted-foreground/40" />
@@ -291,6 +294,22 @@ export function DestinationTab({
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
+      {safetyWarning && (
+        <div
+          role="alert"
+          className={`flex gap-3 rounded-md border p-4 lg:col-span-2 ${
+            safetyWarning.advisory_level === "red"
+              ? "border-red-300 bg-red-50 text-red-950 dark:border-red-800 dark:bg-red-950/30 dark:text-red-100"
+              : "border-orange-300 bg-orange-50 text-orange-950 dark:border-orange-800 dark:bg-orange-950/30 dark:text-orange-100"
+          }`}
+        >
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
+          <div className="space-y-1">
+            <p className="text-sm font-semibold">{t("warningTitle")}</p>
+            <p className="text-sm">{safetyWarning.message}</p>
+          </div>
+        </div>
+      )}
       {readiness?.summary && (
         <Card className="lg:col-span-2">
           <CardHeader className="pb-3">

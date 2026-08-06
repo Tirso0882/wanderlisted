@@ -55,21 +55,18 @@ def test_frontend_api_target_is_runtime_configuration():
     assert 'export const dynamic = "force-dynamic"' in route_handler
 
 
-def test_bilingual_workspace_and_clerk_rollout_are_disabled_by_default():
+def test_atlas_workspace_is_canonical_and_clerk_rollout_is_disabled_by_default():
     template = _read("infra/main.bicep")
     test_parameters = _read("infra/parameters.test.bicepparam")
     prod_parameters = _read("infra/parameters.prod.bicepparam")
 
-    assert "param chatUiV2Enabled bool = false" in template
     assert "param clerkEnabled bool = false" in template
-    assert "{ name: 'CHAT_UI_V2_ENABLED', value: string(chatUiV2Enabled) }" in template
+    assert "CHAT_UI_V2_ENABLED" not in template
     assert "{ name: 'CLERK_ENABLED', value: string(clerkEnabled) }" in template
     assert "CONSULTATION_URL_EN" in template
     assert "CONSULTATION_URL_PL" in template
     assert "CLERK_SECRET_KEY', secretRef: 'clerk-secret-key" in template
-    assert "param chatUiV2Enabled = false" in test_parameters
     assert "param clerkEnabled = false" in test_parameters
-    assert "param chatUiV2Enabled = false" in prod_parameters
     assert "param clerkEnabled = false" in prod_parameters
 
 

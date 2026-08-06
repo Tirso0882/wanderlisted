@@ -4,7 +4,7 @@ features:
   - id: FEAT-ORCH
     document: docs/features/stage4-orchestration/FEATURE.md
     domains: [docs/domain/request-and-scope.md, docs/domain/orchestration.md]
-    rules: [BR-INT-001, BR-INT-002, BR-INT-003, BR-INT-004, BR-HITL-001, BR-HITL-002, BR-HITL-003]
+    rules: [BR-INT-001, BR-INT-002, BR-INT-003, BR-INT-004, BR-RDY-003, BR-RDY-005, BR-HITL-002, BR-HITL-003]
     implementation: [src/agent/stage4_graph.py, src/agent/state.py, src/agent/localization.py, src/api/main.py, src/api/auth.py, src/api/checkpointing.py, src/api/rate_limit.py, src/api/clerk_auth.py, src/api/clerk_webhooks.py, src/api/session_registry.py, frontend/src/components/workspace, frontend/src/i18n, frontend/src/proxy.ts]
     tests: [tests/test_nodes.py, tests/test_component_gate.py, tests/test_checkpointing.py, tests/test_api_security.py, tests/test_api_observability.py, tests/test_system_resilience.py, tests/test_focused_budget_flow.py, tests/test_localization.py, tests/test_clerk_auth.py, tests/test_session_registry.py, tests/test_integration.py, frontend/src/i18n/catalogs.test.ts, frontend/src/components/workspace/workspace.test.tsx, frontend/e2e/atlas-workspace.spec.ts]
     edd: []
@@ -82,6 +82,6 @@ rule_mappings:
     evidence: [tests/test_itinerary_pipeline.py, tests/test_itinerary_renderer.py, tests/test_edd_itinerary.py]
 
   - document: docs/rules/hitl-and-external-calls.md
-    ids: [BR-HITL-001, BR-HITL-002, BR-HITL-003, BR-HITL-004, BR-HITL-005]
+    ids: [BR-HITL-002, BR-HITL-003, BR-HITL-004, BR-HITL-005]
     implementation: [src/agent/stage4_graph.py, src/api/main.py, edd, .github/workflows]
     evidence: [tests/test_nodes.py, tests/test_checkpointing.py, tests/test_api_security.py, tests/test_api_budget_contract.py, tests/test_api_itinerary_contract.py, tests/test_edd_runtime.py, tests/test_ci_contract.py]

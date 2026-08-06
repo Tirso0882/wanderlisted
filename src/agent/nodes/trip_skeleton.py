@@ -199,7 +199,11 @@ async def trip_skeleton_node(state: TravelAgentState) -> dict:
 
         if duration_days is None:
             raise ValueError("trip duration is required")
-        cities = list(request.destinations)
+        if request.route_goal and not request.route_scope_resolved:
+            raise ValueError(
+                "route endpoint and overnight cities must be confirmed or explicitly delegated before allocation"
+            )
+        cities = list(request.overnight_cities or request.destinations)
         return_to_entry = False
         if selected_flight is not None:
             gateway_index = next(

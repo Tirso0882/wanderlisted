@@ -29,9 +29,6 @@ param sessionRegistryDatabaseUrl string = ''
 @description('At least 32 bytes used to sign anonymous browser-principal cookies')
 param sessionSigningKey string
 
-@description('Enable the Atlas Sunrise bilingual workspace')
-param chatUiV2Enabled bool = false
-
 @description('Enable Clerk account authentication after every required Clerk value is configured')
 param clerkEnabled bool = false
 
@@ -312,7 +309,6 @@ resource frontendApp 'Microsoft.App/containerApps@2024-03-01' = {
           }
           env: concat([
             { name: 'API_URL', value: 'https://${apiApp.properties.configuration.ingress.fqdn}' }
-            { name: 'CHAT_UI_V2_ENABLED', value: string(chatUiV2Enabled) }
             { name: 'CLERK_ENABLED', value: string(clerkEnabled) }
             { name: 'CLERK_PUBLISHABLE_KEY', value: clerkPublishableKey }
             { name: 'CONSULTATION_URL_EN', value: consultationUrlEn }

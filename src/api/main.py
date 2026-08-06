@@ -7,6 +7,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated, Callable, Literal
 
 from dotenv import load_dotenv
+import httpx
 from fastapi import FastAPI, Depends, HTTPException, Path, Query, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
@@ -54,7 +55,7 @@ from src.api.session_registry import (
     SessionRegistrySettings,
     open_session_registry,
 )
-from src.models import BudgetBreakdown, BudgetReviewDecision
+from src.models import BudgetBreakdown, BudgetReviewDecision, ServiceScopeDecision
 import config as app_config
 
 # Explicit process/CI settings must win over developer-local .env values so
@@ -106,9 +107,39 @@ def _extract_text_content(content) -> str:
     return str(content or "")
 
 
+_INTERNAL_MESSAGE_MARKERS = (
+    "PLACE_RESULTS_JSON:",
+    "HOTEL_RESULTS_JSON:",
+    "HOTEL_PRICING_JSON:",
+    "FLIGHT_WINDOW_RESULT_JSON:",
+    "FLIGHT_PRICING_JSON:",
+    "TRIP_SKELETON_JSON:",
+    "DRAFT_ITINERARY_JSON:",
+    "ROUTE_PLAN_JSON:",
+)
+
+
+def _public_response_message(values: dict) -> str:
+    """Return the final traveler-facing message, excluding orchestration artifacts."""
+    for message in reversed(values.get("messages", [])):
+        if not isinstance(message, AIMessage):
+            continue
+        text = _extract_text_content(message.content).strip()
+        if not text:
+            continue
+        if text.startswith("Routing to ") or text.startswith("Przekazuję do "):
+            continue
+        if any(marker in text for marker in _INTERNAL_MESSAGE_MARKERS):
+            continue
+        return text
+    return ""
+
+
 def _public_components(
     components: dict | None,
     component_results: dict | None = None,
+    safety_warning: dict | None = None,
+    service_scope_offer: dict | None = None,
 ) -> dict | None:
     """Expose structured component data without serializing chat transcripts."""
     public: dict = {}
@@ -124,6 +155,10 @@ def _public_components(
         public[key] = jsonable_encoder(value)
     if component_results:
         public["component_results"] = jsonable_encoder(component_results)
+    if safety_warning:
+        public["safety_warning"] = jsonable_encoder(safety_warning)
+    if service_scope_offer:
+        public["service_scope_offer"] = jsonable_encoder(service_scope_offer)
     return public or None
 
 
@@ -484,6 +519,8 @@ app.add_middleware(
 
 # ── Request / Response models ──────────────────────────────────────────────
 class ChatRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     message: str = Field(..., min_length=1, max_length=2000)
     session_id: str | None = Field(
         default=None,
@@ -492,15 +529,9 @@ class ChatRequest(BaseModel):
         pattern=r"^[A-Za-z0-9_-]+$",
         description="Session ID for conversation continuity. Omit to start a new session.",
     )
-    target_agent: str | None = Field(
+    service_scope_decision: ServiceScopeDecision | None = Field(
         default=None,
-        description=(
-            "Isolate a single agent after structured intake validates its "
-            "required inputs. "
-            "Valid: FlightsAgent, HotelsAgent, TravelReadinessAgent, "
-            "RestaurantsAgent, ActivitiesAgent, TransportationAgent, "
-            "BudgetAgent, ItineraryAgent."
-        ),
+        description="Typed response to the current fingerprinted service-scope offer.",
     )
     ui_locale: Literal["en", "pl"] | None = Field(
         default=None,
@@ -517,27 +548,6 @@ class ChatRequest(BaseModel):
         if not stripped:
             raise ValueError("message must contain non-whitespace characters")
         return stripped
-
-    @field_validator("target_agent")
-    @classmethod
-    def validate_target_agent(cls, v: str | None) -> str | None:
-        if v is None:
-            return v
-        valid = {
-            "FlightsAgent",
-            "HotelsAgent",
-            "TravelReadinessAgent",
-            "RestaurantsAgent",
-            "ActivitiesAgent",
-            "TransportationAgent",
-            "BudgetAgent",
-            "ItineraryAgent",
-        }
-        if v not in valid:
-            raise ValueError(
-                f"Invalid target_agent '{v}'. Must be one of: {', '.join(sorted(valid))}"
-            )
-        return v
 
 
 class ChatResponse(BaseModel):
@@ -563,8 +573,9 @@ class ChatResponse(BaseModel):
         default=None,
         description="All structured agent results (flights, hotels, restaurants, etc.).",
     )
-    locale: Literal["en", "pl"] = Field(
+    locale: str = Field(
         default="en",
+        pattern=r"^[a-z]{2,3}$",
         description="Resolved assistant response locale for this turn.",
     )
 
@@ -622,21 +633,66 @@ class ClaimSessionsResponse(BaseModel):
     claimed: int
 
 
+@app.get("/api/v1/media/google-place-photo")
+async def google_place_photo(
+    name: str = Query(
+        ...,
+        min_length=10,
+        max_length=500,
+        pattern=r"^places/[A-Za-z0-9._~-]+/photos/[A-Za-z0-9._~-]+$",
+    ),
+    max_height: int = Query(default=400, ge=100, le=1600),
+    owner_id: str = Depends(_owner_id),
+    rate_limiter: RateLimiter = Depends(_rate_limiter_dep),
+):
+    """Resolve one bounded Google Places photo without exposing credentials."""
+    await _enforce_rate_limit(rate_limiter, owner_id)
+    api_key = os.environ.get("GOOGLE_MAPS_API_KEY", "")
+    if not api_key:
+        raise HTTPException(status_code=503, detail="Place photos are unavailable")
+
+    url = f"https://places.googleapis.com/v1/{name}/media"
+    try:
+        async with httpx.AsyncClient(follow_redirects=True) as client:
+            upstream = await client.get(
+                url,
+                params={"maxHeightPx": max_height, "key": api_key},
+                timeout=10,
+            )
+        upstream.raise_for_status()
+    except httpx.HTTPError as exc:
+        logger.warning("Google Places photo proxy failed: %s", type(exc).__name__)
+        raise HTTPException(status_code=502, detail="Place photo unavailable") from exc
+
+    content_type = upstream.headers.get("content-type", "application/octet-stream")
+    if not content_type.startswith("image/"):
+        raise HTTPException(status_code=502, detail="Invalid place photo response")
+    if len(upstream.content) > 10_000_000:
+        raise HTTPException(status_code=502, detail="Place photo response is too large")
+    return Response(
+        content=upstream.content,
+        media_type=content_type,
+        headers={"Cache-Control": "private, max-age=3600"},
+    )
+
+
 # ── Core graph runner ──────────────────────────────────────────────────────
 @traceable(run_type="chain", name="wanderlisted_chat")
 async def _run_agent(
     message: str,
     thread_id: str,
     graph: CompiledStateGraph,
-    target_agent: str | None = None,
+    service_scope_decision: ServiceScopeDecision | None = None,
     ui_locale: Literal["en", "pl"] | None = None,
 ) -> dict:
     """Run the multi-agent supervisor graph and return response data."""
     run_id = _current_langsmith_run_id()
 
     graph_input: dict = {"messages": [HumanMessage(content=message)]}
-    if target_agent:
-        graph_input["target_agent"] = target_agent
+    if service_scope_decision:
+        graph_input["service_scope_decision"] = service_scope_decision.model_dump(
+            mode="json"
+        )
     if ui_locale:
         graph_input["ui_locale"] = ui_locale
 
@@ -649,7 +705,12 @@ async def _run_agent(
     )
     components = result.get("itinerary_components", {})
 
-    exposed = _public_components(components, result.get("component_results"))
+    exposed = _public_components(
+        components,
+        result.get("component_results"),
+        result.get("safety_warning"),
+        result.get("service_scope_offer"),
+    )
 
     # Check for HITL interrupts
     interrupts = result.get("__interrupt__", [])
@@ -663,9 +724,7 @@ async def _run_agent(
         )
 
     return {
-        "message": _extract_text_content(result["messages"][-1].content)
-        if result.get("messages")
-        else "",
+        "message": _public_response_message(result),
         "run_id": run_id,
         "interrupted": interrupted,
         "interrupt_data": interrupt_data if isinstance(interrupt_data, dict) else None,
@@ -713,7 +772,7 @@ async def chat(
             request.message,
             thread_id,
             graph,
-            target_agent=request.target_agent,
+            service_scope_decision=request.service_scope_decision,
             ui_locale=request.ui_locale,
         )
     except asyncio.TimeoutError:
@@ -797,8 +856,10 @@ async def chat_stream(
                 graph_input: dict = {
                     "messages": [HumanMessage(content=request.message)]
                 }
-                if request.target_agent:
-                    graph_input["target_agent"] = request.target_agent
+                if request.service_scope_decision:
+                    graph_input["service_scope_decision"] = (
+                        request.service_scope_decision.model_dump(mode="json")
+                    )
                 if request.ui_locale:
                     graph_input["ui_locale"] = request.ui_locale
 
@@ -826,10 +887,6 @@ async def chat_stream(
                             )
                         messages = update.get("messages", [])
                         for msg in messages:
-                            if isinstance(msg, AIMessage) and msg.content:
-                                await queue.put(
-                                    f"data: {json.dumps({'type': 'token', 'token': _extract_text_content(msg.content)})}\n\n"
-                                )
                             if isinstance(msg, AIMessage) and msg.tool_calls:
                                 for tc in msg.tool_calls:
                                     await queue.put(
@@ -889,6 +946,9 @@ async def chat_stream(
                         break
             yield f"data: {json.dumps({'type': 'interrupt', 'gate': state.next[0] if state.next else '', 'data': interrupt_payload})}\n\n"
         values = state.values if state else {}
+        final_message = _public_response_message(values)
+        if final_message:
+            yield f"data: {json.dumps({'type': 'token', 'token': final_message})}\n\n"
         components = values.get("itinerary_components", {})
         done_payload = {
             "type": "done",
@@ -899,7 +959,10 @@ async def chat_stream(
             ),
             "budget": jsonable_encoder(components.get("budget_structured")),
             "components": _public_components(
-                components, values.get("component_results")
+                components,
+                values.get("component_results"),
+                values.get("safety_warning"),
+                values.get("service_scope_offer"),
             ),
             "locale": values.get("response_locale", request.ui_locale or "en"),
         }
@@ -1045,7 +1108,10 @@ async def get_session_snapshot(
         "interrupt_data": interrupt_data,
         "budget": jsonable_encoder(components.get("budget_structured")),
         "components": _public_components(
-            components, state.values.get("component_results")
+            components,
+            state.values.get("component_results"),
+            state.values.get("safety_warning"),
+            state.values.get("service_scope_offer"),
         ),
         "locale": state.values.get(
             "response_locale", record.locale if record else "en"
@@ -1197,11 +1263,6 @@ async def readiness(
 # ── HITL: Resume interrupted graph execution ────────────────────────────────
 
 
-class SafetyResumeDecision(BaseModel):
-    gate: Literal["safety_review"]
-    approved: bool
-
-
 class HumanResumeDecision(BaseModel):
     gate: Literal["human_review"]
     action: Literal["approved", "edited", "rejected"]
@@ -1211,14 +1272,14 @@ class HumanResumeDecision(BaseModel):
 class LegacyResumeDecision(BaseModel):
     """Backward-compatible decision accepted from older persisted clients."""
 
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="forbid")
 
     approved: bool
     feedback: str = Field(default="", max_length=2000)
 
 
 TypedResumeDecision = Annotated[
-    BudgetReviewDecision | SafetyResumeDecision | HumanResumeDecision,
+    BudgetReviewDecision | HumanResumeDecision,
     Field(discriminator="gate"),
 ]
 
@@ -1233,7 +1294,7 @@ class ResumeRequest(BaseModel):
     )
     decision: TypedResumeDecision | LegacyResumeDecision = Field(
         ...,
-        description="Typed safety, budget, or itinerary-review decision.",
+        description="Typed budget or itinerary-review decision.",
     )
     ui_locale: Literal["en", "pl"] | None = None
 
@@ -1246,7 +1307,7 @@ class ResumeResponse(BaseModel):
     interrupt_data: dict | None = None
     budget: BudgetBreakdown | None = None
     components: dict | None = None
-    locale: Literal["en", "pl"] = "en"
+    locale: str = Field(default="en", pattern=r"^[a-z]{2,3}$")
 
 
 @app.post("/api/v1/chat/resume", response_model=ResumeResponse)
@@ -1258,9 +1319,8 @@ async def resume_chat(
 ):
     """Resume an interrupted graph execution with a human decision.
 
-    Use this endpoint after the graph pauses at a HITL gate (safety_review,
-    budget_review, or human_review). The decision dict is passed back via
-    Command(resume=decision).
+    Use this endpoint after the graph pauses at budget_review or human_review.
+    The decision dict is passed back via Command(resume=decision).
     """
     from langgraph.types import Command
 
@@ -1311,7 +1371,12 @@ async def resume_chat(
             interrupts[0].value if hasattr(interrupts[0], "value") else None
         )
     components = result.get("itinerary_components", {})
-    exposed = _public_components(components, result.get("component_results"))
+    exposed = _public_components(
+        components,
+        result.get("component_results"),
+        result.get("safety_warning"),
+        result.get("service_scope_offer"),
+    )
     response_locale = result.get(
         "response_locale",
         state.values.get("response_locale", request.ui_locale or "en"),

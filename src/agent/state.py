@@ -43,6 +43,9 @@ class TravelAgentState(MessagesState):
 
     # Machine-readable outcomes are separate from agent conversation transcripts.
     component_results: Annotated[dict[str, Any], _merge_components] = {}
+    safety_warning: Annotated[dict[str, Any], _last_value] = {}
+    service_scope_offer: Annotated[dict[str, Any], _last_value] = {}
+    service_scope_decision: Annotated[dict[str, Any], _last_value] = {}
 
     # Per-stay hotel fan-out uses unique keys, then aggregates into `hotels`.
     hotel_search_results: Annotated[dict[str, Any], _merge_components] = {}
@@ -60,12 +63,7 @@ class TravelAgentState(MessagesState):
     # Handbook output paths (populated by render_handbook node)
     handbook_paths: dict[str, str] = {}  # {"html": "outputs/handbook.html", ...}
 
-    # Single-agent isolation: when set, bypass triage/supervisor
-    # and route directly to this agent only
-    target_agent: str = ""  # e.g. "FlightsAgent", "HotelsAgent"
-
     # HITL (Human-in-the-Loop) — Phase 4
     human_feedback: str = ""  # Free-text feedback from user
     hitl_action: str = ""  # proceed, cancel, approved, rejected, edited, adjust_target
-    safety_acknowledged: bool = False  # User acknowledged safety advisory
     budget_adjustment_accepted: bool = False  # User accepted budget adjustment

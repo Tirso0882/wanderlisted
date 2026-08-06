@@ -13,8 +13,8 @@ shaped the coordination design:
    dominated by external-API and LLM latency.
 2. **Real dependencies:** budget needs flight and hotel prices first; the itinerary needs *everything*. These
    cannot run in parallel with the workers.
-3. **Human oversight:** some outcomes (a "do not travel" safety advisory, a large budget overspend, a final
-   itinerary) warrant a human gate before proceeding.
+3. **Human oversight:** a large budget overspend and the final itinerary warrant a human gate before
+  proceeding. High-risk safety advisories remain visible but do not pause planning.
 
 A single ReAct agent calling all tools sequentially could not exploit the independence, and a flat tool loop
 gave no place to insert human-in-the-loop gates or per-agent isolation.
@@ -28,7 +28,8 @@ Adopt a **supervisor-routed hybrid** graph in [../../src/agent/stage4_graph.py](
   `Send("<node>", state)` objects — one per requested worker — via `route_after_supervisor`.
 - **Six parallel worker nodes** run as *independent graph nodes* (not tool calls). Each worker gets
   per-agent checkpointing, state isolation, and independent failure handling.
-- Workers **fan in** to a `safety_review` HITL gate, then run the **sequential finishers**
+- Official safety preflight validates before discovery and emits non-blocking orange/red warnings. Workers
+  then **fan in** before the **sequential finishers**
   `budget → budget_review → itinerary → human_review → render_handbook`.
 
 Each worker executes through the `_run_parallel_agent` helper, which **catches exceptions and returns a

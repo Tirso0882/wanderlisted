@@ -348,7 +348,40 @@ async def test_currency_conversion_uses_one_fetch_per_distinct_pair():
     assert run.report.total == 1100
     assert run.report.display_breakdown is not None
     assert run.report.display_breakdown.total == 990
+    assert "990.00 EUR" in run.report.summary
+    assert "USD" not in run.report.summary
     assert run.report.verdict == BudgetVerdict.WITHIN_BUDGET
+
+
+async def test_car_trip_budget_does_not_report_unrequested_flights_or_hotels_missing():
+    rates = FakeRates({("PLN", "USD"): "0.25", ("USD", "PLN"): "4"})
+    request = _request(target=3000, currency="PLN").model_copy(
+        update={
+            "scope": "full_itinerary",
+            "locale": "pl",
+            "requested_capabilities": [
+                "restaurants",
+                "activities",
+                "transportation",
+                "budget",
+                "itinerary",
+            ],
+            "declined_capabilities": ["flights", "hotels"],
+            "capability_scope_confirmed": True,
+            "primary_transport_mode": "drive",
+        }
+    )
+
+    run = await BudgetPipeline(rates).run(BudgetContext(request, _skeleton(), None, {}))
+
+    assert BudgetCategory.FLIGHTS not in run.report.missing_categories
+    assert BudgetCategory.ACCOMMODATION not in run.report.missing_categories
+    assert run.report.coverage_status == BudgetCoverageStatus.COMPLETE_WITH_ESTIMATES
+    assert run.report.display_breakdown is not None
+    assert run.report.display_breakdown.currency == "PLN"
+    assert "PLN" in run.report.summary
+    assert "USD" not in run.report.summary
+    assert "brakuje: flights" not in run.report.summary
 
 
 async def test_target_adjustment_reuses_stored_evidence_and_rates():

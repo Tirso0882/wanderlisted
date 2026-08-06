@@ -3,6 +3,7 @@
 from datetime import date
 from unittest.mock import MagicMock
 
+from src.agent.renderer import HandbookRenderer
 from src.agent.stage4_graph import render_handbook_node
 from src.itinerary import ItineraryAssemblyContext, ItineraryPipeline
 from src.models import (
@@ -27,6 +28,8 @@ def _typed_state() -> dict:
         scope="full_itinerary",
         origin_city="warsaw",
         destinations=["paris"],
+        requested_capabilities=["hotels", "activities", "itinerary"],
+        capability_scope_confirmed=True,
         date_window={
             "exact_start": "2026-09-01",
             "exact_end": "2026-09-03",
@@ -197,6 +200,18 @@ def _typed_state() -> dict:
             "itinerary_structured": plan.model_dump(mode="json"),
         },
     }
+
+
+def test_rendered_html_never_contains_google_api_key(monkeypatch):
+    monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "private-render-key")
+    renderer = HandbookRenderer()
+    handbook = renderer.build_handbook(_typed_state())
+
+    html = renderer.render_html(handbook)
+
+    assert "private-render-key" not in html
+    assert "maps/embed/v1/place?key=" not in html
+    assert "maps/search/?api=1" in html
 
 
 async def test_renderer_fails_closed_without_typed_plan():

@@ -31,12 +31,48 @@ export interface ComponentOutcome {
   request_fingerprint?: string;
 }
 
+export interface SafetyWarning {
+  advisory_level: "orange" | "red";
+  summary: string;
+  message: string;
+  non_blocking: true;
+}
+
+export type RequestedCapability =
+  | "flights"
+  | "hotels"
+  | "travel_readiness"
+  | "restaurants"
+  | "activities"
+  | "transportation"
+  | "budget"
+  | "itinerary";
+
+export interface ServiceScopeOffer {
+  selected_capabilities: RequestedCapability[];
+  offered_capabilities: RequestedCapability[];
+  request_fingerprint: string;
+}
+
+export type ServiceScopeDecision =
+  | {
+      action: "include_all" | "selected_only";
+      request_fingerprint: string;
+    }
+  | {
+      action: "include_selected";
+      selected_capabilities: RequestedCapability[];
+      request_fingerprint: string;
+    };
+
 export interface StructuredComponents extends Record<string, unknown> {
   itinerary_structured?: ItineraryPlan | null;
   handbook_structured?: TripHandbook | null;
   budget_structured?: BudgetBreakdown | null;
   readiness?: { data?: TravelReadinessReport | null };
   readiness_preflight?: { data?: TravelReadinessReport | null };
+  safety_warning?: SafetyWarning;
+  service_scope_offer?: ServiceScopeOffer;
   component_results?: Record<string, ComponentOutcome>;
 }
 
@@ -45,7 +81,7 @@ export interface StructuredComponents extends Record<string, unknown> {
 export interface ChatRequest {
   message: string;
   session_id?: string;
-  target_agent?: string;
+  service_scope_decision?: ServiceScopeDecision;
   ui_locale?: AppLocale;
 }
 
@@ -57,13 +93,13 @@ export interface ChatResponse {
   interrupt_data: InterruptData | null;
   budget: BudgetBreakdown | null;
   components: StructuredComponents | null;
-  locale: AppLocale;
+  locale: string;
 }
 
 // ── HITL ────────────────────────────────────────────────────────────────
 
 export interface InterruptData {
-  gate: "safety_review" | "budget_review" | "human_review";
+  gate: "budget_review" | "human_review";
   summary: string;
   [key: string]: unknown;
 }
@@ -75,7 +111,6 @@ export interface ResumeRequest {
 }
 
 export type ResumeDecision =
-  | { gate: "safety_review"; approved: boolean }
   | {
       gate: "human_review";
       action: "approved" | "edited" | "rejected";
@@ -97,7 +132,7 @@ export interface ResumeResponse {
   interrupt_data: InterruptData | null;
   budget: BudgetBreakdown | null;
   components: StructuredComponents | null;
-  locale: AppLocale;
+  locale: string;
 }
 
 // ── Session ─────────────────────────────────────────────────────────────
@@ -128,7 +163,7 @@ export interface SessionSnapshot {
   interrupt_data: InterruptData | null;
   budget: BudgetBreakdown | null;
   components: StructuredComponents | null;
-  locale: AppLocale;
+  locale: string;
 }
 
 export interface AccountPreferencesResponse {

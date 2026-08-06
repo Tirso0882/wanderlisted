@@ -1,0 +1,113 @@
+{
+  "artifact_sha256": "8aa6f54b7255964391804032a68d5468c6d94ca52d67a8d19629d34663f88629",
+  "baseline_name": "2026-08-05-safety-warning-only-v1",
+  "cache_status": "not_used",
+  "commands": [
+    "python -m pytest tests/test_edd_readiness.py -q"
+  ],
+  "component": "readiness",
+  "created_at": "2026-08-06T11:58:19.849233+00:00",
+  "dataset_case_count": 24,
+  "dataset_version": "2.1.0",
+  "evidence_kind": "evaluator_contract_only",
+  "external_calls": 0,
+  "kind": "edd-offline-contract-baseline",
+  "metrics": {
+    "contract_tests_failed": 0,
+    "contract_tests_passed": 19,
+    "dataset_cases_executed": null,
+    "dataset_cases_passed": null
+  },
+  "model_quality_claim": false,
+  "schema_version": 1,
+  "sources": [
+    {
+      "path": "edd/offline_baselines.py",
+      "sha256": "74bedc6fdf609f7e3eae0ed0d9b8f321927ef41270a36ede13d171514c2b560e"
+    },
+    {
+      "path": "pyproject.toml",
+      "sha256": "73c33e44ba435e5652fdf81645451314b20f8a087329196677f763ed1ea78278"
+    },
+    {
+      "path": "uv.lock",
+      "sha256": "bf593afeed76ba288579160b87be49e1bbae31bf20b2033185358bb6c35585ce"
+    },
+    {
+      "path": "tests/test_edd_readiness.py",
+      "sha256": "61d3ce6591125f160ac2dd415840734c3a4bf60b890ad860a927669cfff87ec5"
+    },
+    {
+      "path": "edd/readiness/l1_dataset.py",
+      "sha256": "9c173a74ff90c80891613c953db6ac0d7138cf5b31d038656c49e975736da04f"
+    },
+    {
+      "path": "edd/readiness/l1_evaluate.py",
+      "sha256": "a3f4262fa2d9a200fea2060ef41ea70d11d966eeea6d316bd06b2f51d3e36295"
+    },
+    {
+      "path": "edd/baseline_config.py",
+      "sha256": "70751b65946c5fe472f797b340343f50ad510e8703243176429298e7d5875c8f"
+    },
+    {
+      "path": "edd/readiness/run_utils.py",
+      "sha256": "64f5330826405d6624ac83ef8529eec8370a8a5212f9642c4bc02ac82b86e0ee"
+    },
+    {
+      "path": "edd/harness.py",
+      "sha256": "31b73fe1de12617e1c6626ee5f43286583d0857f2442302f7f2a7a37dc254a21"
+    },
+    {
+      "path": "src/agent/llm.py",
+      "sha256": "17fde43f0108fd33cbf92b568351b9ba7b2b9bfc02f6347395e5f42472a84397"
+    },
+    {
+      "path": "src/agent/prompts/agent_prompt.py",
+      "sha256": "b13d7835e375daee7f4d0b7353b183e9cd58d68480943d9948b20d32c60856ab"
+    },
+    {
+      "path": "src/agent/agents/travel_readiness_agent.py",
+      "sha256": "208dad10f1a944fb8ccd1f6d33373173c6aec7a8557d5530b066c7a2a59d6d3b"
+    },
+    {
+      "path": "src/readiness/models.py",
+      "sha256": "6a43e4bbd42a02753b387a3d3feb70ad7f16c2925c8e3a1989139aa6ddff0f33"
+    },
+    {
+      "path": "src/readiness/planning.py",
+      "sha256": "da19aa398f6d1a92199c40c12c9df1812610d49b197da33afc23dd79110c7146"
+    },
+    {
+      "path": "src/readiness/retrieval.py",
+      "sha256": "88f15deba62b40365c39eb328e59868b138cae1b99ea93a5d697d2a0f877221f"
+    },
+    {
+      "path": "src/readiness/synthesis.py",
+      "sha256": "15c0243efb76678ab923a2f3c89cb0b7e5e573cc29f9fb1cd3975bcc91d242db"
+    },
+    {
+      "path": "src/readiness/grounding.py",
+      "sha256": "0ff776f58c8f270bd44294384cf6cf091dc76684b193db0b9dd451e1d6f6946b"
+    },
+    {
+      "path": "src/readiness/assembly.py",
+      "sha256": "6d73a1f8b19491974d8086bf4c1a07689b527da2fc364875f858d1d4102fa205"
+    },
+    {
+      "path": "src/readiness/pipeline.py",
+      "sha256": "bd1c77687321272b2ae873d4cbf880b67d88deeac15de35a300d35f30bc9c3fb"
+    },
+    {
+      "path": "src/readiness/weather.py",
+      "sha256": "dd61b7d0390024c4bfa91b97d040fc3e2f83fa718065446db16eeffdc94ef789"
+    },
+    {
+      "path": "src/tools/tavily.py",
+      "sha256": "58b18b65ae537d19835c0309afcc5738ded3093a320273bccbfa0a2e25438c25"
+    },
+    {
+      "path": "config/config.yaml",
+      "sha256": "3ad0ff552065725101e6969eb9eff6233a0a377c007bc3c535a18919a04cbaf1"
+    }
+  ]
+}

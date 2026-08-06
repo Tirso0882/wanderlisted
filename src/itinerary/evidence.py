@@ -134,6 +134,36 @@ def build_evidence_catalog(
     warnings: list[str] = []
 
     for component in ("activities", "restaurants"):
+        component_data = components.get(component, {}).get("data", {})
+        structured_places = (
+            component_data.get("places", []) if isinstance(component_data, dict) else []
+        )
+        for raw_place in structured_places:
+            try:
+                raw = dict(raw_place)
+                provider_id = raw.get("source_id")
+                if not isinstance(provider_id, str) or not provider_id.strip():
+                    raise ValueError("place evidence requires a stable source ID")
+                provider_id = provider_id.strip()
+                source_id = f"{component}:{provider_id}"
+                raw.update(
+                    source_id=source_id,
+                    source_component=component,
+                    city=_canonical_city(
+                        " ".join(
+                            str(raw.get(key, ""))
+                            for key in ("search_context", "address")
+                        ),
+                        skeleton,
+                    ),
+                )
+                places[source_id] = PlaceEvidence.model_validate(raw)
+            except (TypeError, ValueError):
+                warnings.append(f"invalid {component} place evidence ignored")
+
+        if structured_places:
+            continue
+
         for message in components.get(component, {}).get("messages", []):
             if not isinstance(message, (AIMessage, ToolMessage)):
                 continue

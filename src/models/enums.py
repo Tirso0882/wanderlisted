@@ -57,6 +57,7 @@ class TransitMode(StrEnum):
             aliases = {
                 "walking": cls.WALK,
                 "driving": cls.DRIVE,
+                "car": cls.DRIVE,
                 "cycling": cls.BICYCLE,
             }
             hit = aliases.get(_normalise(value))
