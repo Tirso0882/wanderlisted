@@ -155,6 +155,7 @@
   },
   "destinationDetails": {
     "safetyTitle": "Bezpieczeństwo i ostrzeżenia dla podróżnych",
+    "warningTitle": "Ostrzeżenie o wysokim ryzyku podróży",
     "visa": "Wiza",
     "languages": "Języki",
     "currency": "Waluta",
@@ -262,12 +263,6 @@
   },
   "gates": {
     "inlineLabel": "Potrzebuję Twojej decyzji",
-    "safety": {
-      "title": "Ostrzeżenie dotyczące bezpieczeństwa",
-      "level": "Poziom ostrzeżenia",
-      "continue": "Rozumiem, kontynuuj",
-      "cancel": "Anuluj tę podróż"
-    },
     "budget": {
       "title": "Sprawdź budżet",
       "proceed": "Kontynuuj",
@@ -287,6 +282,29 @@
     },
     "unknown": "Ten etap akceptacji nie jest obsługiwany.",
     "resumeError": "Nie udało się wznowić przeglądu. Spróbuj ponownie."
+  },
+  "serviceScope": {
+    "eyebrow": "Potwierdź zakres podróży",
+    "title": "Dodać więcej usług planowania?",
+    "body": "Wybrane usługi są już uwzględnione. Zaznacz pozostałe usługi przed rozpoczęciem wyszukiwania.",
+    "addSelected": "Dodaj wybrane",
+    "addAll": "Dodaj wszystkie",
+    "currentOnly": "Tylko obecne usługi",
+    "services": {
+      "flights": "Loty",
+      "hotels": "Hotele",
+      "travel_readiness": "Przygotowanie do podróży",
+      "restaurants": "Restauracje",
+      "activities": "Atrakcje",
+      "transportation": "Transport lokalny",
+      "budget": "Plan budżetu",
+      "itinerary": "Plan dzień po dniu"
+    },
+    "messages": {
+      "include_all": "Uwzględnij wszystkie proponowane usługi.",
+      "include_selected": "Uwzględnij wybrane usługi.",
+      "selected_only": "Kontynuuj tylko z obecnie wybranymi usługami."
+    }
   },
   "locale": {
     "label": "Język",

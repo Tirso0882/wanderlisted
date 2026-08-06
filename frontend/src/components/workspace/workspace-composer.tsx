@@ -6,6 +6,7 @@ import { useCallback, useRef, useState } from "react";
 import type { AppLocale } from "@/i18n/config";
 import { useChatStore } from "@/stores/chat-store";
 import { SuggestionChips } from "./suggestion-chips";
+import { ServiceScopeCard } from "./service-scope-card";
 
 export function WorkspaceComposer() {
   const locale = useLocale() as AppLocale;
@@ -26,6 +27,7 @@ export function WorkspaceComposer() {
 
   return (
     <div className="atlas-composer-wrap">
+      <ServiceScopeCard />
       <SuggestionChips />
       <div className="atlas-composer">
         <textarea

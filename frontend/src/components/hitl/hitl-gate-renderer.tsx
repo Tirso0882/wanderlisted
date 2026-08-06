@@ -1,7 +1,6 @@
 "use client";
 
 import { useChatStore } from "@/stores/chat-store";
-import { SafetyReviewGate } from "./safety-review-gate";
 import { BudgetReviewGate } from "./budget-review-gate";
 import { HumanReviewGate } from "./human-review-gate";
 
@@ -10,8 +9,6 @@ export function HitlGateRenderer() {
   if (!interruptData) return null;
 
   switch (interruptData.gate) {
-    case "safety_review":
-      return <SafetyReviewGate data={interruptData} />;
     case "budget_review":
       return <BudgetReviewGate data={interruptData} />;
     case "human_review":

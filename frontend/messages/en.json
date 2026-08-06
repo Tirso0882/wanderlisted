@@ -155,6 +155,7 @@
   },
   "destinationDetails": {
     "safetyTitle": "Safety and travel advisory",
+    "warningTitle": "High-risk travel advisory",
     "visa": "Visa",
     "languages": "Languages",
     "currency": "Currency",
@@ -262,12 +263,6 @@
   },
   "gates": {
     "inlineLabel": "Your decision is required",
-    "safety": {
-      "title": "Safety advisory",
-      "level": "Advisory level",
-      "continue": "I understand, continue",
-      "cancel": "Cancel this trip"
-    },
     "budget": {
       "title": "Budget review",
       "proceed": "Continue",
@@ -287,6 +282,29 @@
     },
     "unknown": "This review step is not supported.",
     "resumeError": "The review could not be resumed. Try again."
+  },
+  "serviceScope": {
+    "eyebrow": "Confirm your trip scope",
+    "title": "Add more planning services?",
+    "body": "Your requested services are selected. Choose any other services you want before searches begin.",
+    "addSelected": "Add selected",
+    "addAll": "Add all",
+    "currentOnly": "Current services only",
+    "services": {
+      "flights": "Flights",
+      "hotels": "Hotels",
+      "travel_readiness": "Travel readiness",
+      "restaurants": "Restaurants",
+      "activities": "Activities",
+      "transportation": "Local transportation",
+      "budget": "Budget planning",
+      "itinerary": "Day-by-day itinerary"
+    },
+    "messages": {
+      "include_all": "Include all offered services.",
+      "include_selected": "Include the selected services.",
+      "selected_only": "Continue with my current services only."
+    }
   },
   "locale": {
     "label": "Language",

@@ -5,9 +5,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import en from "../../../messages/en.json";
 import pl from "../../../messages/pl.json";
 import { MessageBubble } from "@/components/chat/message-bubble";
+import { DestinationTab } from "@/components/results/destination-tab";
 import { INITIAL_AGENTS, useChatStore } from "@/stores/chat-store";
-import { InlineHitlCard } from "./inline-hitl-card";
 import { LocaleSwitcher } from "./locale-switcher";
+import { ServiceScopeCard } from "./service-scope-card";
 import { SuggestionChips } from "./suggestion-chips";
 import { TruthfulLoading } from "./truthful-loading";
 
@@ -53,6 +54,42 @@ describe("Atlas chat primitives", () => {
     expect(within(region).getAllByRole("button")).toHaveLength(3);
   });
 
+  it("renders and submits a typed Polish service-scope offer", async () => {
+    const sendMessage = vi.fn();
+    useChatStore.setState({
+      sendMessage,
+      components: {
+        service_scope_offer: {
+          selected_capabilities: ["flights", "hotels"],
+          offered_capabilities: ["restaurants", "activities", "budget"],
+          request_fingerprint: "scope-fingerprint",
+        },
+      },
+    });
+
+    renderIntl(<ServiceScopeCard />, "pl");
+    const user = userEvent.setup();
+
+    expect(screen.getByRole("heading", { name: /Dodać więcej usług/i })).toBeVisible();
+    expect(screen.getByRole("checkbox", { name: "Restauracje" })).toBeVisible();
+    expect(screen.getByRole("checkbox", { name: "Atrakcje" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Dodaj wszystkie" })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Tylko obecne usługi" }),
+    ).toBeVisible();
+    await user.click(screen.getByRole("checkbox", { name: "Atrakcje" }));
+    await user.click(screen.getByRole("button", { name: "Dodaj wybrane" }));
+    expect(sendMessage).toHaveBeenCalledWith(
+      "Uwzględnij wybrane usługi.",
+      "pl",
+      {
+        action: "include_selected",
+        selected_capabilities: ["activities"],
+        request_fingerprint: "scope-fingerprint",
+      },
+    );
+  });
+
   it("right-aligns user messages by role", () => {
     const { container } = renderIntl(
       <MessageBubble
@@ -90,18 +127,24 @@ describe("Atlas chat primitives", () => {
     });
   });
 
-  it("restores an inline HITL card with Polish controls", () => {
-    useChatStore.setState({
-      sessionId: "session-1",
-      interruptData: {
-        gate: "safety_review",
-        summary: "Sprawdź oficjalne ostrzeżenie.",
-        advisory_level: "orange",
-      },
-    });
-    renderIntl(<InlineHitlCard />, "pl");
-    expect(screen.getByText("Potrzebuję Twojej decyzji")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Rozumiem, kontynuuj/i })).toBeVisible();
+  it("renders a high-risk advisory as a passive warning", () => {
+    renderIntl(
+      <DestinationTab
+        safety={null}
+        safetyWarning={{
+          advisory_level: "red",
+          summary: "Do not travel.",
+          message: "Official guidance reports a high travel risk.",
+          non_blocking: true,
+        }}
+        culture={null}
+      />,
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Official guidance reports a high travel risk.",
+    );
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
   it("persists a guest language selection in the locale cookie", async () => {

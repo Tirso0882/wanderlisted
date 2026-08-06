@@ -5,8 +5,6 @@ import {
   CircleDollarSign,
   ClipboardCheck,
   Pencil,
-  ShieldAlert,
-  X,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
@@ -53,42 +51,6 @@ export function InlineHitlCard() {
   const commonHeader = (
     <div className="atlas-gate-eyebrow">{t("inlineLabel")}</div>
   );
-
-  if (interrupt.gate === "safety_review") {
-    const level = String(interrupt.advisory_level ?? "unknown");
-    return (
-      <section className="atlas-gate-card" aria-labelledby="safety-gate-title">
-        {commonHeader}
-        <div className="atlas-gate-title-row">
-          <ShieldAlert className="h-5 w-5 text-[var(--atlas-coral)]" />
-          <h3 id="safety-gate-title">{t("safety.title")}</h3>
-          <span className="atlas-gate-badge">
-            {t("safety.level")}: {level.toUpperCase()}
-          </span>
-        </div>
-        {summary && <p className="atlas-gate-summary">{summary}</p>}
-        {error && <p className="atlas-form-error">{t("resumeError")}</p>}
-        <div className="atlas-gate-actions">
-          <button
-            type="button"
-            className="atlas-primary-button"
-            disabled={submitting}
-            onClick={() => void submit({ gate: "safety_review", approved: true })}
-          >
-            <Check className="h-4 w-4" /> {t("safety.continue")}
-          </button>
-          <button
-            type="button"
-            className="atlas-secondary-button"
-            disabled={submitting}
-            onClick={() => void submit({ gate: "safety_review", approved: false })}
-          >
-            <X className="h-4 w-4" /> {t("safety.cancel")}
-          </button>
-        </div>
-      </section>
-    );
-  }
 
   if (interrupt.gate === "budget_review") {
     const display = (interrupt.display_breakdown as BudgetAmounts | undefined) ??
