@@ -73,7 +73,7 @@ The API uses PostgreSQL checkpoints whenever `CHECKPOINT_BACKEND=postgres`; prod
 
 Deployed environments require the stable session-signing secret, PostgreSQL session registry, and Redis-backed rate limiting. Redis decisions are atomic across workers/replicas and fail closed on backend errors, so the API may scale horizontally. Direct development may use bounded in-process implementations. Anonymous browser ownership remains the base identity; cross-device history exists only after explicit session claiming into an enabled Clerk account. The internal single-replica Redis container is still an availability dependency and should be replaced or given an explicit recovery owner before a high-availability claim.
 
-Clerk application setup, keys, passwordless email and Google connections, allowed origins, webhook delivery, consultation URLs, and production enablement are external rollout prerequisites. `CHAT_UI_V2_ENABLED` and `CLERK_ENABLED` default off in deployed parameter files.
+Atlas Sunrise is the single frontend experience in every environment. Clerk application setup, keys, passwordless email and Google connections, allowed origins, webhook delivery, consultation URLs, and production enablement are external rollout prerequisites. `CLERK_ENABLED` defaults off in deployed parameter files.
 
 ## Change protocol
 

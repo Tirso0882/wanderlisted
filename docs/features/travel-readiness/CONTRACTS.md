@@ -17,7 +17,7 @@ Each source has a canonical ID/URL, topic/destination scope, authority status, a
 
 ## Fingerprint contract
 
-The request fingerprint covers normalized destinations, passport, date window, and selected topics. Preflight/details/safety routes compare it before reuse.
+The request fingerprint covers normalized destinations, passport, date window, and selected topics. Preflight, details, and safety-warning validation compare it before reuse.
 
 ## Stage ownership
 

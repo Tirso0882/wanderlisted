@@ -20,7 +20,7 @@ source_paths: [.github/workflows/ci.yml, .github/workflows/deploy-prod.yml, infr
 - [ ] Bicep/workflow diff and environment target are reviewed; no secret values appear.
 - [ ] API/frontend contract compatibility and persistence/rate-limit implications are assessed.
 - [ ] `CHECKPOINT_DATABASE_URL` and a 32-byte-or-longer `SESSION_SIGNING_KEY` are present as masked environment secrets; database and Redis recovery ownership is confirmed.
-- [ ] `CHAT_UI_V2_ENABLED` and `CLERK_ENABLED` are reviewed independently. When Clerk is enabled, issuer/JWKS/authorized parties and publishable/server/owner/webhook keys are complete and masked as appropriate.
+- [ ] Atlas Sunrise is the only frontend path. When Clerk is enabled, issuer/JWKS/authorized parties and publishable/server/owner/webhook keys are complete and masked as appropriate.
 - [ ] Expected provider/model traffic and cost impact are documented.
 
 ## Test environment
@@ -30,7 +30,7 @@ source_paths: [.github/workflows/ci.yml, .github/workflows/deploy-prod.yml, infr
 - [ ] SSE failure/partial payloads retain completed evidence and expose structured status without leaking provider errors; bounded concurrent-limit evidence passes.
 - [ ] Logs show no startup/import/config failure.
 - [ ] Approved smoke cases cover changed capability, HITL/resume, partial/failure path, and frontend delivery as applicable.
-- [ ] Bilingual rollout order is UI, then Clerk/history, then each configured consultation CTA; guest chat and flag rollback are checked between phases.
+- [ ] Bilingual guest chat is verified before Clerk/history and each configured consultation CTA; Clerk rollback is checked between phases.
 - [ ] Metrics/error/cost signals remain within agreed bounds.
 
 ## Production and aftercare

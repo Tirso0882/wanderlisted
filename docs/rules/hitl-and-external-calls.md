@@ -11,13 +11,6 @@ source_paths: [src/agent/stage4_graph.py, src/api/main.py, edd, .github/workflow
 
 # HITL and external-call rules
 
-## BR-HITL-001 — Safety acknowledgement is checkpointed
-
-- **Rule:** Required safety acknowledgement pauses after persisted preflight and resumes from the checkpoint.
-- **Reason:** Human consent must be explicit without repeating provider work.
-- **Failure:** Rejection ends the flow; stale preflight cannot resume.
-- **Evidence:** Interrupt payload, checkpoint, typed decision.
-
 ## BR-HITL-002 — Budget decisions are typed
 
 - **Rule:** Budget review accepts the discriminated proceed/cancel/adjust-target contract; supported legacy decisions remain bounded at the API edge.

@@ -19,11 +19,10 @@ The graph checkpoint/session-registry database is an externally managed PostgreS
 
 ## Bilingual account rollout
 
-1. Deploy with `CHAT_UI_V2_ENABLED=false` and `CLERK_ENABLED=false`; verify the legacy path, API compatibility, persistence, and rollback.
-2. Enable `CHAT_UI_V2_ENABLED` in test only; verify EN/PL UI, locale cookie, chat/typed results, mobile panes, HITL, partial outcomes, and external booking boundaries.
-3. After Clerk application, email-code/Google, allowed-origin, JWKS, webhook, secret, and deletion checks are approved, enable `CLERK_ENABLED` in test; verify explicit claiming and cross-device history.
-4. Configure and verify each locale's consultation URL independently; an empty URL must keep that CTA hidden.
-5. Promote the same sequence to production through the protected environment. Never combine first-time UI, Clerk/history, and CTA enablement in one change.
+1. Deploy Atlas Sunrise with `CLERK_ENABLED=false`; verify EN/PL UI, locale cookie, chat/typed results, mobile panes, HITL, partial outcomes, persistence, and external booking boundaries.
+2. After Clerk application, email-code/Google, allowed-origin, JWKS, webhook, secret, and deletion checks are approved, enable `CLERK_ENABLED` in test; verify explicit claiming and cross-device history.
+3. Configure and verify each locale's consultation URL independently; an empty URL must keep that CTA hidden.
+4. Promote the same sequence to production through the protected environment. Never combine first-time Clerk/history and CTA enablement in one change.
 
 ## Mutating-action boundary
 

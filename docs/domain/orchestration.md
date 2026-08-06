@@ -21,7 +21,7 @@ Sequence independent and dependent capabilities, merge state safely, checkpoint 
 - Readiness/preflight precedes discovery when required.
 - Parallel workers write reducer-safe unique component keys and fan into a structured gate.
 - Hotels depend on exact city stays; routes depend on validated draft selections; budget and itinerary depend on typed evidence.
-- Safety, budget, and human review decisions are typed and checkpointed. Resume must not repeat pre-interrupt provider work.
+- Safety warnings are typed and non-blocking. Budget and human review decisions are typed and checkpointed; resume must not repeat pre-interrupt provider work.
 - Routes inspect statuses/fingerprints, never prose.
 
 ## Failure behavior

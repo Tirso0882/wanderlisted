@@ -23,9 +23,10 @@ boundaries.
 
 - UI locale precedence is saved account preference, locale cookie, browser
   language (`pl*` selects Polish), then English. URLs are not locale-prefixed.
-- A clearly Polish or English user turn selects the assistant response language.
-  Ambiguous turns retain the last clear conversation language, then fall back to
-  the selected UI locale. Intake changes `TripRequest.locale` only for a clear turn.
+- A clearly detected user turn selects the assistant response language, including
+  languages beyond the English/Polish UI catalogs. Ambiguous turns retain the last
+  clear conversation language, then fall back to the selected UI locale. Intake
+  changes `TripRequest.locale` only for a clear turn.
 - Anonymous browser ownership remains valid. Clerk adds an account identity but
   never stores passwords, email addresses, bearer tokens, or raw Clerk subjects in
   the session registry.
@@ -34,8 +35,8 @@ boundaries.
   authoritative for messages, structured artifacts, and interrupts.
 - Saving claims only explicitly selected guest sessions. Cross-device history is
   account-scoped; deleting a session removes its registry entry and checkpoint.
-- Clerk and the UI ship behind `CLERK_ENABLED` and `CHAT_UI_V2_ENABLED`. Missing
-  locale-specific consultation URLs hide the CTA.
+- Atlas Sunrise is the single frontend experience. Clerk remains behind
+  `CLERK_ENABLED`; missing locale-specific consultation URLs hide the CTA.
 
 ## Protected work
 
@@ -58,10 +59,11 @@ screenshots, credentials, caches, or personal files.
 
 ## Verification evidence
 
-- Backend coverage includes deterministic locale resolution, ambiguous turns,
-  language switching, API `ui_locale`, JWT
-  validation failures, guest/account isolation, claim/list/snapshot/delete,
-  pagination, retention, webhook deletion, and localized HITL restoration.
+- Backend coverage includes deterministic locale resolution, mixed-language place
+  names, English/Polish/Spanish turns, ambiguous turns, language switching, API
+  `ui_locale`, JWT validation failures, guest/account isolation,
+  claim/list/snapshot/delete, pagination, retention, webhook deletion, and localized
+  HITL restoration.
 - Frontend coverage includes catalog parity, locale persistence, Polish copy/diacritics, exactly
   three suggestions, message alignment, honest loading/stop behavior, responsive
   panes, history/auth gates, accessibility, and reduced motion.

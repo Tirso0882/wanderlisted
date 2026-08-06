@@ -29,7 +29,7 @@ source_paths: [src/models]
 | Itinerary plan | Deterministically compiled day/time blocks, feasibility, costs, limitations, and fingerprint. |
 | Handbook | Deterministic delivery artifact rendered as HTML, Markdown, and JSON from validated typed inputs. |
 | EDD | Evaluation-driven development: datasets, deterministic checks, judges, pairwise comparison, and calibration. |
-| HITL | Checkpointed human-in-the-loop safety, budget, or final-plan decision. |
+| HITL | Checkpointed human-in-the-loop budget or final-plan decision. |
 | Partial | Usable bounded result with declared missing information; not silent success. |
 | Blocked external | Work could not complete because an external provider/infrastructure boundary failed. |
 | Stale | Artifact fingerprint no longer matches its current canonical inputs. |
