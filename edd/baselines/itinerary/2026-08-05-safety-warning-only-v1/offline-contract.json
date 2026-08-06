@@ -1,0 +1,110 @@
+{
+  "artifact_sha256": "09f3086919365de845ce96da7835c4bea87b587449450e9a6b865bd73de7553d",
+  "baseline_name": "2026-08-05-safety-warning-only-v1",
+  "cache_status": "not_used",
+  "commands": [
+    "python -m pytest tests/test_edd_itinerary.py -q",
+    "python -m edd.itinerary.l1_run"
+  ],
+  "component": "itinerary",
+  "created_at": "2026-08-06T11:58:24.080689+00:00",
+  "dataset_case_count": 16,
+  "dataset_version": "1.0.0",
+  "evidence_kind": "deterministic_pipeline",
+  "external_calls": 0,
+  "kind": "edd-offline-contract-baseline",
+  "metrics": {
+    "contract_tests_failed": 0,
+    "contract_tests_passed": 5,
+    "dataset_cases_executed": 16,
+    "dataset_cases_passed": 16
+  },
+  "model_quality_claim": false,
+  "schema_version": 1,
+  "sources": [
+    {
+      "path": "edd/offline_baselines.py",
+      "sha256": "74bedc6fdf609f7e3eae0ed0d9b8f321927ef41270a36ede13d171514c2b560e"
+    },
+    {
+      "path": "pyproject.toml",
+      "sha256": "73c33e44ba435e5652fdf81645451314b20f8a087329196677f763ed1ea78278"
+    },
+    {
+      "path": "uv.lock",
+      "sha256": "bf593afeed76ba288579160b87be49e1bbae31bf20b2033185358bb6c35585ce"
+    },
+    {
+      "path": "tests/test_edd_itinerary.py",
+      "sha256": "1a611b5ae6108d93c40d6dbd2567bdf70060147d26e61deeaae550afbd240de5"
+    },
+    {
+      "path": "edd/itinerary/l1_dataset.py",
+      "sha256": "a35a9fdacf6758927e8f804be9516515a0b6577c614189414692940c10ee79bb"
+    },
+    {
+      "path": "edd/itinerary/l1_evaluate.py",
+      "sha256": "0ce2ddaaa4f9204cc9b054ab657088b8368938f30e6d04f99aeff32808b38a30"
+    },
+    {
+      "path": "edd/baseline_config.py",
+      "sha256": "70751b65946c5fe472f797b340343f50ad510e8703243176429298e7d5875c8f"
+    },
+    {
+      "path": "edd/itinerary/run_utils.py",
+      "sha256": "e77ba046930fe2e8af64f649e7020c8fe47ae4236bfef9f4fad046577a9f7cf4"
+    },
+    {
+      "path": "edd/harness.py",
+      "sha256": "31b73fe1de12617e1c6626ee5f43286583d0857f2442302f7f2a7a37dc254a21"
+    },
+    {
+      "path": "src/agent/llm.py",
+      "sha256": "17fde43f0108fd33cbf92b568351b9ba7b2b9bfc02f6347395e5f42472a84397"
+    },
+    {
+      "path": "src/agent/prompts/agent_prompt.py",
+      "sha256": "b13d7835e375daee7f4d0b7353b183e9cd58d68480943d9948b20d32c60856ab"
+    },
+    {
+      "path": "src/agent/agents/itinerary_agent.py",
+      "sha256": "d429e3530b2a647bd0356150dd12f9e57596c0f05de9ec6efa2582875ab9caac"
+    },
+    {
+      "path": "src/agent/stage4_graph.py",
+      "sha256": "96a920c31438c528ee7bd033eec1b285e2d9d8df183c297de413337c08a7609b"
+    },
+    {
+      "path": "src/agent/renderer.py",
+      "sha256": "e86962dec8523366df0cfc21943688ed932bd5542083e7e953d974acf98bdcbd"
+    },
+    {
+      "path": "src/itinerary/evidence.py",
+      "sha256": "5ba6dd73ba0dbd64b8256cbf571d2cae3b9323828434edbb0abf1d469b7b4d22"
+    },
+    {
+      "path": "src/itinerary/pipeline.py",
+      "sha256": "09c4a27df41c39932ddd9d8ec2a539dbf8bd018e55bd7dc8f726c961af8eded3"
+    },
+    {
+      "path": "src/models/itinerary.py",
+      "sha256": "09fed81fc078d5f84dc6c86792c2631967718501bdb3a6dba8dcaed89c0e679e"
+    },
+    {
+      "path": "src/models/trip_skeleton.py",
+      "sha256": "d8d9dd9038aee6f17bfeaed8fa654f812811ac56c2c3bd8ce50d347c349f72f1"
+    },
+    {
+      "path": "src/tools/google_maps.py",
+      "sha256": "9bcffec5134a1cc49a362ed3c1ae83dca4265b323a057694b12480ff7a2641cc"
+    },
+    {
+      "path": "src/tools/hotels_hotelbeds.py",
+      "sha256": "d48ff8e6d0a05690ec7e4508763d464778ef2fa207d550e197149b77fedbe75c"
+    },
+    {
+      "path": "config/config.yaml",
+      "sha256": "3ad0ff552065725101e6969eb9eff6233a0a377c007bc3c535a18919a04cbaf1"
+    }
+  ]
+}

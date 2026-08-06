@@ -1,0 +1,110 @@
+{
+  "artifact_sha256": "57c012ef57a14a4fe9aaeea3693ad8ca15127ab40eec6897b11e77c127a4187b",
+  "baseline_name": "2026-08-06-capability-scope-offline-v2",
+  "cache_status": "not_used",
+  "commands": [
+    "python -m pytest tests/test_edd_itinerary.py -q",
+    "python -m edd.itinerary.l1_run"
+  ],
+  "component": "itinerary",
+  "created_at": "2026-08-06T18:03:51.174027+00:00",
+  "dataset_case_count": 16,
+  "dataset_version": "1.0.0",
+  "evidence_kind": "deterministic_pipeline",
+  "external_calls": 0,
+  "kind": "edd-offline-contract-baseline",
+  "metrics": {
+    "contract_tests_failed": 0,
+    "contract_tests_passed": 5,
+    "dataset_cases_executed": 16,
+    "dataset_cases_passed": 16
+  },
+  "model_quality_claim": false,
+  "schema_version": 1,
+  "sources": [
+    {
+      "path": "edd/offline_baselines.py",
+      "sha256": "74bedc6fdf609f7e3eae0ed0d9b8f321927ef41270a36ede13d171514c2b560e"
+    },
+    {
+      "path": "pyproject.toml",
+      "sha256": "39d11a23cf73c3bd3e2a5bd9976fe5e8e902415f10b5064651402f3ce9d8ae0f"
+    },
+    {
+      "path": "uv.lock",
+      "sha256": "644cfab6cc306d3e652df7c2a5b5b72ed50da1c6ada7bf69e7212bc5f95fd343"
+    },
+    {
+      "path": "tests/test_edd_itinerary.py",
+      "sha256": "1a611b5ae6108d93c40d6dbd2567bdf70060147d26e61deeaae550afbd240de5"
+    },
+    {
+      "path": "edd/itinerary/l1_dataset.py",
+      "sha256": "a35a9fdacf6758927e8f804be9516515a0b6577c614189414692940c10ee79bb"
+    },
+    {
+      "path": "edd/itinerary/l1_evaluate.py",
+      "sha256": "0ce2ddaaa4f9204cc9b054ab657088b8368938f30e6d04f99aeff32808b38a30"
+    },
+    {
+      "path": "edd/baseline_config.py",
+      "sha256": "70751b65946c5fe472f797b340343f50ad510e8703243176429298e7d5875c8f"
+    },
+    {
+      "path": "edd/itinerary/run_utils.py",
+      "sha256": "e77ba046930fe2e8af64f649e7020c8fe47ae4236bfef9f4fad046577a9f7cf4"
+    },
+    {
+      "path": "edd/harness.py",
+      "sha256": "31b73fe1de12617e1c6626ee5f43286583d0857f2442302f7f2a7a37dc254a21"
+    },
+    {
+      "path": "src/agent/llm.py",
+      "sha256": "17fde43f0108fd33cbf92b568351b9ba7b2b9bfc02f6347395e5f42472a84397"
+    },
+    {
+      "path": "src/agent/prompts/agent_prompt.py",
+      "sha256": "5a581d8c75e5bebf087a8745828dc60fbc4e71684f54da1c3bc2cbd1b15da62b"
+    },
+    {
+      "path": "src/agent/agents/itinerary_agent.py",
+      "sha256": "c01b30f6662eab05731cba07c54b761c01dde6b0015b694d84bf5f5af4a177d2"
+    },
+    {
+      "path": "src/agent/stage4_graph.py",
+      "sha256": "e290bbe12e0fc3a103f70dbabf006c3934fa92ba315e96b505a98a9e05e98e35"
+    },
+    {
+      "path": "src/agent/renderer.py",
+      "sha256": "2148f6e6d5407f185708568007eacd8192529e4662586fe3f72a36654957c269"
+    },
+    {
+      "path": "src/itinerary/evidence.py",
+      "sha256": "eb66c68682e0b5636ad4f2d0f65292644ea3629487fe05d562ff790d232f76b8"
+    },
+    {
+      "path": "src/itinerary/pipeline.py",
+      "sha256": "835eccc31671342aea526638b1049184c6b107726afcd50eeb0246998870bd83"
+    },
+    {
+      "path": "src/models/itinerary.py",
+      "sha256": "09fed81fc078d5f84dc6c86792c2631967718501bdb3a6dba8dcaed89c0e679e"
+    },
+    {
+      "path": "src/models/trip_skeleton.py",
+      "sha256": "d8d9dd9038aee6f17bfeaed8fa654f812811ac56c2c3bd8ce50d347c349f72f1"
+    },
+    {
+      "path": "src/tools/google_maps.py",
+      "sha256": "5c3b090d16b175552270987641e216ffd166652ba89024970cc519961b979564"
+    },
+    {
+      "path": "src/tools/hotels_hotelbeds.py",
+      "sha256": "d48ff8e6d0a05690ec7e4508763d464778ef2fa207d550e197149b77fedbe75c"
+    },
+    {
+      "path": "config/config.yaml",
+      "sha256": "3ad0ff552065725101e6969eb9eff6233a0a377c007bc3c535a18919a04cbaf1"
+    }
+  ]
+}

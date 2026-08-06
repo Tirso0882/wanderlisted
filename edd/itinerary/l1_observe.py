@@ -39,6 +39,8 @@ def _request(*, destinations=None, duration=4, children=0) -> TripRequest:
         scope="full_itinerary",
         origin_city="warsaw",
         destinations=destinations or ["paris"],
+        requested_capabilities=["hotels", "activities", "itinerary"],
+        capability_scope_confirmed=True,
         date_window={
             "exact_start": START.isoformat(),
             "exact_end": (START + timedelta(days=duration - 1)).isoformat(),

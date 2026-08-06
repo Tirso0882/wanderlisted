@@ -1,0 +1,102 @@
+{
+  "artifact_sha256": "3f540a05820a81cafa759e2289010e4eed18b83946ec4d931afa282657325059",
+  "baseline_name": "2026-08-06-capability-scope-offline-v2",
+  "cache_status": "not_used",
+  "commands": [
+    "python -m pytest tests/test_edd_budget.py -q",
+    "python -m edd.budget.l1_run"
+  ],
+  "component": "budget",
+  "created_at": "2026-08-06T18:03:48.992917+00:00",
+  "dataset_case_count": 16,
+  "dataset_version": "1.0.0",
+  "evidence_kind": "deterministic_pipeline",
+  "external_calls": 0,
+  "kind": "edd-offline-contract-baseline",
+  "metrics": {
+    "contract_tests_failed": 0,
+    "contract_tests_passed": 5,
+    "dataset_cases_executed": 16,
+    "dataset_cases_passed": 16
+  },
+  "model_quality_claim": false,
+  "schema_version": 1,
+  "sources": [
+    {
+      "path": "edd/offline_baselines.py",
+      "sha256": "74bedc6fdf609f7e3eae0ed0d9b8f321927ef41270a36ede13d171514c2b560e"
+    },
+    {
+      "path": "pyproject.toml",
+      "sha256": "39d11a23cf73c3bd3e2a5bd9976fe5e8e902415f10b5064651402f3ce9d8ae0f"
+    },
+    {
+      "path": "uv.lock",
+      "sha256": "644cfab6cc306d3e652df7c2a5b5b72ed50da1c6ada7bf69e7212bc5f95fd343"
+    },
+    {
+      "path": "tests/test_edd_budget.py",
+      "sha256": "88670549eaf5ac08c4a80a5aed2adc97c5c9b104f3be1cf16cf50d4a3dea7e17"
+    },
+    {
+      "path": "edd/budget/l1_dataset.py",
+      "sha256": "6d1ef039677da3ebaf4a288b96248701194382030775ef7521916db17dad3296"
+    },
+    {
+      "path": "edd/budget/l1_evaluate.py",
+      "sha256": "a97d036c319090630e76ea621f461574a84eaafb6147ea6815ac9ba1300668fa"
+    },
+    {
+      "path": "edd/baseline_config.py",
+      "sha256": "70751b65946c5fe472f797b340343f50ad510e8703243176429298e7d5875c8f"
+    },
+    {
+      "path": "edd/budget/run_utils.py",
+      "sha256": "59f39275a0628f841c69ef5c5f70bbd6dde2d732056c76c330bbc3d50ba06f27"
+    },
+    {
+      "path": "edd/harness.py",
+      "sha256": "31b73fe1de12617e1c6626ee5f43286583d0857f2442302f7f2a7a37dc254a21"
+    },
+    {
+      "path": "src/agent/llm.py",
+      "sha256": "17fde43f0108fd33cbf92b568351b9ba7b2b9bfc02f6347395e5f42472a84397"
+    },
+    {
+      "path": "src/agent/prompts/agent_prompt.py",
+      "sha256": "5a581d8c75e5bebf087a8745828dc60fbc4e71684f54da1c3bc2cbd1b15da62b"
+    },
+    {
+      "path": "src/agent/agents/budget_agent.py",
+      "sha256": "bcb98db8f84d181a2f60082934a68518d045810bb994eab22d06b2b8921c6eca"
+    },
+    {
+      "path": "src/budget/currency.py",
+      "sha256": "d107ceddb893535e678044b47be0f80125443c3285a838f82417d77551210496"
+    },
+    {
+      "path": "src/budget/estimates.py",
+      "sha256": "1ab410ed5a68c1544cc8b537bea2fd4ab29003440a4a047fddca502fa6dba97d"
+    },
+    {
+      "path": "src/budget/evidence.py",
+      "sha256": "4a282c320a23f741445edeac540be8bb0b4e57c11f06a7ea88902711761d93cf"
+    },
+    {
+      "path": "src/budget/pipeline.py",
+      "sha256": "96773784485a4fe5fd8b80ca20a1c52685487b699888bd6e0e9063af5c30b98a"
+    },
+    {
+      "path": "src/models/budget.py",
+      "sha256": "44f8a755daff39fd5b8551630b35e02bd81503c9cb180fe86f36c2651809c41b"
+    },
+    {
+      "path": "src/models/pricing.py",
+      "sha256": "2373bec5ec3a5eb3f39af4f527abb787c08ed0017af0b1db2d9ef383e3c37a47"
+    },
+    {
+      "path": "config/config.yaml",
+      "sha256": "3ad0ff552065725101e6969eb9eff6233a0a377c007bc3c535a18919a04cbaf1"
+    }
+  ]
+}
