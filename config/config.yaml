@@ -84,11 +84,9 @@ timeouts:
   currency: 10
 
 # ── HITL Gates ───────────────────────────────────────────────────────────
-# Toggle human-in-the-loop interrupt gates. The web app supports safety
-# acknowledgement and therefore keeps safety_review enabled.
-# Override per-gate via env: HITL_SAFETY_REVIEW=false, HITL_BUDGET_REVIEW=false, etc.
+# Toggle human-in-the-loop interrupt gates.
+# Override per-gate via env: HITL_BUDGET_REVIEW=false, HITL_HUMAN_REVIEW=false.
 hitl:
-  safety_review: true
   budget_review: true
   human_review: false
 
