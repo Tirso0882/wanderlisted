@@ -24,6 +24,8 @@ Every node has an explicit inbound path, outbound route/edge, failure/terminal b
 
 ## Public API contract
 
+The graph turn-input schema requires only `messages`; `ui_locale`, a typed `service_scope_decision`, and checkpoint-owned workflow fields are optional. API clients submit only the public turn fields, while Studio may inspect internal fields without being forced to reset them.
+
 `POST /api/v1/chat` and `/chat/stream` share a validated public session ID. A signed HttpOnly browser-principal cookie owns that ID, and every checkpoint/history/resume lookup uses a derived opaque internal thread ID. Traced chat responses and SSE `done` events return the actual enclosing LangSmith run ID; when tracing is disabled they return `null`, never a fabricated identifier. Chat accepts a typed fingerprinted `service_scope_decision`; stale decisions fail without execution. `/chat/resume` accepts discriminated budget or human-review decisions, with a bounded legacy approval shape. Structured service offers and safety warnings are public components. Internal identities, messages, routing prose, marker JSON, provider payloads, and credentials are not public components or stream tokens. Google media references are same-origin and credentials are added only inside the validated, rate-limited proxy. `/health` is liveness; `/ready` confirms graph initialization and reports only non-secret checkpoint/rate-limit backend names.
 
 ## Frontend contract

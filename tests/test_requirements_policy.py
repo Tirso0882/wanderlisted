@@ -9,6 +9,7 @@ from src.agent.policies.requirements import (
     effective_capabilities,
     missing_required_fields,
     offered_capabilities,
+    resolve_service_scope_reply,
     requested_agents,
 )
 from src.models import (
@@ -17,6 +18,7 @@ from src.models import (
     RequestScope,
     RequestedCapability,
     ServiceScopeDecision,
+    ServiceScopeDecisionAction,
     TravelerParty,
     TripRequest,
 )
@@ -180,6 +182,95 @@ def test_service_scope_decision_supports_selective_additions():
         RequestedCapability.ITINERARY,
     }
     assert offered_capabilities(resolved) == set()
+
+
+@pytest.mark.parametrize(
+    ("reply", "expected_action"),
+    [
+        ("Continue with the current scope only", "selected_only"),
+        ("No, don't add travel readiness", "selected_only"),
+        ("I don't need travel readiness", "selected_only"),
+        ("Add all", "include_all"),
+        ("Yes", "include_all"),
+        ("Yes, please include it", "include_all"),
+        ("Travel readiness", "include_selected"),
+        ("Pozostań przy obecnym zakresie", "selected_only"),
+        ("Uwzględnij wszystkie usługi", "include_all"),
+        ("Preparación para el viaje", "include_selected"),
+    ],
+)
+def test_free_text_service_scope_choices_resolve_deterministically(
+    reply: str,
+    expected_action: ServiceScopeDecisionAction,
+):
+    request = TripRequest(
+        scope=RequestScope.FULL_ITINERARY,
+        destinations=["tokyo"],
+        requested_capabilities=[
+            "flights",
+            "hotels",
+            "restaurants",
+            "activities",
+            "transportation",
+            "budget",
+            "itinerary",
+        ],
+        date_window=DateWindow(
+            exact_start="2026-10-08",
+            exact_end="2026-10-10",
+        ),
+        travelers=TravelerParty(adults=2),
+        origin_city="warsaw",
+    )
+
+    decision = resolve_service_scope_reply(request, reply)
+
+    assert decision is not None
+    assert decision.action == expected_action
+    assert (
+        decision.request_fingerprint
+        == build_service_scope_offer(request).request_fingerprint
+    )
+
+
+def test_ambiguous_affirmation_does_not_authorize_multiple_offered_services():
+    request = TripRequest(
+        scope=RequestScope.FOCUSED,
+        destinations=["tokyo"],
+        requested_capabilities=["flights"],
+    )
+
+    assert resolve_service_scope_reply(request, "yes") is None
+
+    selected = resolve_service_scope_reply(request, "Hotels and travel readiness")
+
+    assert selected is not None
+    assert selected.action == ServiceScopeDecisionAction.INCLUDE_SELECTED
+    assert selected.selected_capabilities == [
+        RequestedCapability.HOTELS,
+        RequestedCapability.TRAVEL_READINESS,
+    ]
+
+
+def test_uncertain_single_service_reply_remains_unresolved():
+    request = TripRequest(
+        scope=RequestScope.FULL_ITINERARY,
+        destinations=["tokyo"],
+        requested_capabilities=[
+            "flights",
+            "hotels",
+            "restaurants",
+            "activities",
+            "transportation",
+            "budget",
+            "itinerary",
+        ],
+    )
+
+    assert (
+        resolve_service_scope_reply(request, "Not sure about travel readiness") is None
+    )
+    assert resolve_service_scope_reply(request, "What is travel readiness?") is None
 
 
 def test_explicit_only_services_override_accidental_full_itinerary_scope():

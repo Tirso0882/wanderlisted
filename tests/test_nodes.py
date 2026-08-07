@@ -35,6 +35,7 @@ from src.models import (
 )
 from src.budget import BudgetRun
 from src.agent.stage4_graph import (
+    graph,
     # Helpers
     build_user_profile_context,
     build_context_messages,
@@ -1045,6 +1046,15 @@ class TestHumanReviewNode:
 
 
 # ── Routing function tests ──────────────────────────────────────────────────
+
+
+def test_graph_turn_input_requires_only_messages():
+    schema = graph.get_input_jsonschema()
+
+    assert schema["required"] == ["messages"]
+    assert "service_scope_decision" in schema["properties"]
+    assert "ui_locale" in schema["properties"]
+    assert "trip_request" in schema["properties"]
 
 
 class TestRouteAfterTriage:

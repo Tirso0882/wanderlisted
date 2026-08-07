@@ -4,8 +4,12 @@ from unittest.mock import AsyncMock, MagicMock
 
 from langchain_core.messages import HumanMessage
 from langchain_core.utils.function_calling import convert_to_openai_tool
+from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.graph import END, START, StateGraph
 
 from src.agent.nodes.intake import intake_node
+from src.agent.stage4_graph import route_after_intake
+from src.agent.state import TravelAgentState
 from src.models import (
     DateWindowPatch,
     RequestScope,
@@ -326,6 +330,144 @@ async def test_typed_scope_decision_is_applied_without_llm_call():
         capability.value for capability in RequestedCapability
     }
     structured.ainvoke.assert_not_awaited()
+
+
+async def test_free_text_current_scope_reply_converges_without_repeating_offer():
+    llm, structured = _mock_llm(TripRequestPatch())
+    state = {
+        "messages": [HumanMessage(content="Continue with the current scope only")],
+        "trip_request": {
+            "scope": "full_itinerary",
+            "destinations": ["tokyo"],
+            "requested_capabilities": [
+                "flights",
+                "hotels",
+                "restaurants",
+                "activities",
+                "transportation",
+                "budget",
+                "itinerary",
+            ],
+            "date_window": {
+                "exact_start": "2026-10-08",
+                "exact_end": "2026-10-10",
+            },
+            "travelers": {"adults": 2},
+            "origin_city": "warsaw",
+        },
+        "pending_questions": ["service_scope_confirmation"],
+        "request_revision": 1,
+    }
+
+    result = await intake_node(state, llm=llm)
+
+    assert result["workflow_status"] == "ready"
+    assert result["pending_questions"] == []
+    assert result["service_scope_offer"] == {}
+    assert result["request_revision"] == 2
+    assert result["trip_request"]["capability_scope_confirmed"] is True
+    assert result["trip_request"]["declined_capabilities"] == ["travel_readiness"]
+    assert "messages" not in result
+    structured.ainvoke.assert_not_awaited()
+
+
+async def test_scope_choice_and_other_missing_details_merge_in_one_turn():
+    llm, structured = _mock_llm(
+        TripRequestPatch(
+            date_window=DateWindowPatch(
+                exact_start="2026-10-08",
+                exact_end="2026-10-10",
+            ),
+            requested_capabilities=[RequestedCapability.TRAVEL_READINESS],
+        )
+    )
+    state = {
+        "messages": [
+            HumanMessage(content="No thanks. Travel dates are October 8 to 10, 2026.")
+        ],
+        "trip_request": {
+            "scope": "full_itinerary",
+            "destinations": ["tokyo"],
+            "requested_capabilities": [
+                "flights",
+                "hotels",
+                "restaurants",
+                "activities",
+                "transportation",
+                "budget",
+                "itinerary",
+            ],
+            "travelers": {"adults": 2},
+            "origin_city": "warsaw",
+        },
+        "pending_questions": ["service_scope_confirmation", "date_window"],
+    }
+
+    result = await intake_node(state, llm=llm)
+
+    assert result["workflow_status"] == "ready"
+    assert result["pending_questions"] == []
+    assert result["trip_request"]["date_window"]["exact_start"] == "2026-10-08"
+    assert result["trip_request"]["declined_capabilities"] == ["travel_readiness"]
+    assert "travel_readiness" not in result["trip_request"]["requested_capabilities"]
+    structured.ainvoke.assert_awaited_once()
+
+
+async def test_checkpointed_scope_reply_reaches_supervisor_on_the_next_turn():
+    llm, structured = _mock_llm(
+        TripRequestPatch(
+            scope=RequestScope.FULL_ITINERARY,
+            destinations=["tokyo"],
+            requested_capabilities=[
+                "flights",
+                "hotels",
+                "restaurants",
+                "activities",
+                "transportation",
+                "budget",
+                "itinerary",
+            ],
+            origin_city="warsaw",
+            date_window=DateWindowPatch(
+                exact_start="2026-10-08",
+                exact_end="2026-10-10",
+            ),
+            travelers=TravelerPartyPatch(adults=2),
+        )
+    )
+
+    async def supervisor_reached(_state: TravelAgentState) -> dict:
+        return {"current_agent": "supervisor:reached"}
+
+    async def run_intake(state: TravelAgentState) -> dict:
+        return await intake_node(state, llm=llm)
+
+    builder = StateGraph(TravelAgentState)
+    builder.add_node("intake", run_intake)
+    builder.add_node("supervisor", supervisor_reached)
+    builder.add_edge(START, "intake")
+    builder.add_conditional_edges(
+        "intake",
+        route_after_intake,
+        {"supervisor": "supervisor", END: END},
+    )
+    builder.add_edge("supervisor", END)
+    checkpointed_graph = builder.compile(checkpointer=InMemorySaver())
+    config = {"configurable": {"thread_id": "scope-convergence"}}
+
+    first = await checkpointed_graph.ainvoke(
+        {"messages": [HumanMessage(content="Plan my Tokyo trip")]},
+        config,
+    )
+    second = await checkpointed_graph.ainvoke(
+        {"messages": [HumanMessage(content="Continue with the current scope only")]},
+        config,
+    )
+
+    assert first["pending_questions"] == ["service_scope_confirmation"]
+    assert second["pending_questions"] == []
+    assert second["current_agent"] == "supervisor:reached"
+    assert structured.ainvoke.await_count == 1
 
 
 async def test_explicit_route_delegation_resolves_recommendation_loop():
