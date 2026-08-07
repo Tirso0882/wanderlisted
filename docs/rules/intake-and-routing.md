@@ -38,6 +38,7 @@ source_paths: [src/agent/nodes/intake.py, src/agent/policies/requirements.py, sr
 ## BR-INT-004 — Named services are not implicitly exclusive
 
 - **Rule:** When a traveler names some services, intake offers the remaining applicable services before external work. A typed fingerprinted decision may include all, include selected additions, or confirm the current services only.
+- **Rule:** Explicit free-text choices made against the current offer are normalized into the same fingerprinted decision. Ambiguous replies do not authorize additional services.
 - **Rule:** Explicit exclusivity such as “only flights and hotels,” “that is all,” or an equivalent localized statement confirms the named scope without another offer. Confirmed focused work runs only its selected capabilities and prerequisites.
 - **Rule:** Generic planning language is not implicit consent for bookable inventory, personalized entry research, or budget calculation.
 - **Reason:** Limit latency, cost, and unwanted output.

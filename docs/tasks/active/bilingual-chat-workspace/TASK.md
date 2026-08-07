@@ -53,6 +53,9 @@ screenshots, credentials, caches, or personal files.
 - Locale resolution, canonical prompt context, Clerk JWT/webhook validation,
   opaque guest/account ownership, PostgreSQL session metadata, preferences,
   claiming, pagination, snapshot/deletion, and retention are implemented.
+- LangGraph Studio requires only a message instead of forcing internal state
+  values, and explicit free-text service-scope choices converge through the same
+  fingerprinted decision policy as the web controls.
 - Next.js removes browser authorization before proxying and forwards only its
   server-obtained Clerk token. Both rollout flags remain disabled in Bicep
   parameter files; secret values and external resources were not created.
@@ -64,6 +67,8 @@ screenshots, credentials, caches, or personal files.
   `ui_locale`, JWT validation failures, guest/account isolation,
   claim/list/snapshot/delete, pagination, retention, webhook deletion, and localized
   HITL restoration.
+- Intake coverage includes multilingual scope-choice resolution, ambiguous-choice
+  rejection, one-turn clarification convergence, and the public Studio input schema.
 - Frontend coverage includes catalog parity, locale persistence, Polish copy/diacritics, exactly
   three suggestions, message alignment, honest loading/stop behavior, responsive
   panes, history/auth gates, accessibility, and reduced motion.

@@ -21,7 +21,7 @@ def _last_value(existing: Any, new: Any) -> Any:
     return new
 
 
-class TravelAgentState(MessagesState):
+class TravelAgentState(MessagesState, total=False):
     """State for the travel agent. Extends MessagesState with session tracking."""
 
     session_id: str = ""

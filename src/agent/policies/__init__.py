@@ -8,6 +8,7 @@ from src.agent.policies.requirements import (
     effective_capabilities,
     missing_required_fields,
     offered_capabilities,
+    resolve_service_scope_reply,
     requested_agents,
 )
 
@@ -19,5 +20,6 @@ __all__ = [
     "effective_capabilities",
     "missing_required_fields",
     "offered_capabilities",
+    "resolve_service_scope_reply",
     "requested_agents",
 ]

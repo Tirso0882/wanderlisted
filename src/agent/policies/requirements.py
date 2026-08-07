@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+import re
+import unicodedata
 
 from src.models.trip_request import (
     ReadinessTopic,
@@ -89,6 +91,151 @@ _CAPABILITY_LABELS = {
     },
 }
 
+_CAPABILITY_EXTRA_ALIASES = {
+    RequestedCapability.FLIGHTS: ("flight",),
+    RequestedCapability.HOTELS: ("hotel", "accommodation", "noclegi", "alojamiento"),
+    RequestedCapability.TRAVEL_READINESS: ("readiness",),
+    RequestedCapability.RESTAURANTS: ("restaurant",),
+    RequestedCapability.ACTIVITIES: ("activity",),
+    RequestedCapability.TRANSPORTATION: ("transportation",),
+    RequestedCapability.BUDGET: ("budget",),
+    RequestedCapability.ITINERARY: ("itinerary",),
+}
+
+_SELECTED_ONLY_REPLIES = frozenset(
+    {
+        "continue",
+        "continue as is",
+        "current only",
+        "no",
+        "no thanks",
+        "no thank you",
+        "nie",
+        "nie dziekuje",
+        "kontynuuj",
+        "no gracias",
+        "continuar",
+    }
+)
+_SELECTED_ONLY_PHRASES = (
+    "current scope",
+    "current services only",
+    "selected services only",
+    "only selected services",
+    "no thanks",
+    "no thank you",
+    "no extras",
+    "nothing else",
+    "do not add",
+    "dont add",
+    "do not include",
+    "keep it as is",
+    "obecnym zakresie",
+    "aktualnym zakresie",
+    "tylko wybrane uslugi",
+    "nic wiecej",
+    "nie dodawaj",
+    "alcance actual",
+    "solo los servicios seleccionados",
+    "sin extras",
+    "nada mas",
+    "no anadas",
+    "no incluyas",
+)
+_INCLUDE_ALL_REPLIES = frozenset(
+    {
+        "all",
+        "add all",
+        "include all",
+        "everything",
+        "wszystkie",
+        "dodaj wszystkie",
+        "uwzglednij wszystkie",
+        "wszystko",
+        "todos",
+        "anade todos",
+        "incluye todos",
+        "todo",
+    }
+)
+_INCLUDE_ALL_PHRASES = (
+    "add all",
+    "include all",
+    "all services",
+    "include everything",
+    "add everything",
+    "dodaj wszystkie",
+    "uwzglednij wszystkie",
+    "wszystkie uslugi",
+    "anade todos",
+    "incluye todos",
+    "todos los servicios",
+)
+_SINGLE_OFFER_AFFIRMATIONS = frozenset(
+    {"yes", "yes please", "ok", "okay", "sure", "tak", "jasne", "si", "vale"}
+)
+_SINGLE_OFFER_ACCEPT_PHRASES = (
+    "yes please",
+    "yes include",
+    "yes add",
+    "please include it",
+    "please add it",
+    "tak dodaj",
+    "si incluyelo",
+)
+_SINGLE_OFFER_DECLINE_PHRASES = (
+    "dont need",
+    "do not need",
+    "dont want",
+    "do not want",
+    "skip it",
+    "leave it out",
+    "nie potrzebuje",
+    "nie chce",
+    "pomin",
+    "no necesito",
+    "no quiero",
+    "omitelo",
+)
+_NEGATION_MARKERS = (
+    "no ",
+    "not ",
+    "dont ",
+    "do not ",
+    "without ",
+    "nie ",
+    "bez ",
+    "sin ",
+)
+_CAPABILITY_DECLINE_PREFIXES = (
+    "no",
+    "without",
+    "do not add",
+    "dont add",
+    "do not include",
+    "nie",
+    "bez",
+    "sin",
+    "no anadas",
+    "no incluyas",
+)
+_CAPABILITY_SELECTION_MARKERS = (
+    "add",
+    "include",
+    "choose",
+    "select",
+    "want",
+    "dodaj",
+    "uwzglednij",
+    "wybieram",
+    "chce",
+    "anade",
+    "incluye",
+    "elijo",
+    "quiero",
+)
+_CAPABILITY_REPLY_FILLERS = frozenset({"and", "plus", "please", "i", "oraz", "y"})
+
 
 def _ordered_capabilities(
     capabilities: Iterable[RequestedCapability],
@@ -145,6 +292,143 @@ def build_service_scope_offer(request: TripRequest) -> ServiceScopeOffer | None:
         offered_capabilities=_ordered_capabilities(offered),
         request_fingerprint=service_scope_fingerprint(request),
     )
+
+
+def _normalise_scope_reply(text: str) -> str:
+    folded = unicodedata.normalize("NFKD", text.casefold())
+    without_marks = "".join(
+        character for character in folded if not unicodedata.combining(character)
+    )
+    without_marks = without_marks.translate(str.maketrans({"ł": "l"}))
+    normalised = re.sub(r"[^a-z0-9]+", " ", without_marks).strip()
+    return normalised.replace("don t", "dont")
+
+
+def _contains_phrase(text: str, phrase: str) -> bool:
+    return f" {phrase} " in f" {text} "
+
+
+def _capability_reply_aliases(capability: RequestedCapability) -> tuple[str, ...]:
+    labels = (_CAPABILITY_LABELS[locale][capability] for locale in _CAPABILITY_LABELS)
+    raw_aliases = (
+        capability.value.replace("_", " "),
+        *labels,
+        *_CAPABILITY_EXTRA_ALIASES[capability],
+    )
+    return tuple(dict.fromkeys(_normalise_scope_reply(alias) for alias in raw_aliases))
+
+
+def _explicitly_declines_capability(text: str, aliases: tuple[str, ...]) -> bool:
+    return any(
+        _contains_phrase(text, f"{prefix} {alias}")
+        for prefix in _CAPABILITY_DECLINE_PREFIXES
+        for alias in aliases
+    )
+
+
+def _explicitly_selects_capabilities(
+    text: str,
+    capabilities: list[RequestedCapability],
+) -> bool:
+    if any(_contains_phrase(text, marker) for marker in _CAPABILITY_SELECTION_MARKERS):
+        return True
+
+    remainder = f" {text} "
+    aliases = {
+        alias
+        for capability in capabilities
+        for alias in _capability_reply_aliases(capability)
+    }
+    for alias in sorted(aliases, key=len, reverse=True):
+        remainder = re.sub(
+            rf"(?<![a-z0-9]){re.escape(alias)}(?![a-z0-9])",
+            " ",
+            remainder,
+        )
+    return set(remainder.split()).issubset(_CAPABILITY_REPLY_FILLERS)
+
+
+def resolve_service_scope_reply(
+    request: TripRequest,
+    text: str,
+) -> ServiceScopeDecision | None:
+    """Convert an explicit free-text offer choice into a fingerprinted decision.
+
+    This bounded parser supports Studio and other chat clients that cannot submit
+    the structured control used by the web UI. Ambiguous replies remain unresolved.
+    """
+    offer = build_service_scope_offer(request)
+    normalised = _normalise_scope_reply(text)
+    if offer is None or not normalised:
+        return None
+
+    if normalised in _SELECTED_ONLY_REPLIES or any(
+        _contains_phrase(normalised, phrase) for phrase in _SELECTED_ONLY_PHRASES
+    ):
+        return ServiceScopeDecision(
+            action=ServiceScopeDecisionAction.SELECTED_ONLY,
+            request_fingerprint=offer.request_fingerprint,
+        )
+
+    if len(offer.offered_capabilities) == 1 and any(
+        _contains_phrase(normalised, phrase) for phrase in _SINGLE_OFFER_DECLINE_PHRASES
+    ):
+        return ServiceScopeDecision(
+            action=ServiceScopeDecisionAction.SELECTED_ONLY,
+            request_fingerprint=offer.request_fingerprint,
+        )
+
+    if normalised in _INCLUDE_ALL_REPLIES or any(
+        _contains_phrase(normalised, phrase) for phrase in _INCLUDE_ALL_PHRASES
+    ):
+        return ServiceScopeDecision(
+            action=ServiceScopeDecisionAction.INCLUDE_ALL,
+            request_fingerprint=offer.request_fingerprint,
+        )
+
+    if len(offer.offered_capabilities) == 1 and (
+        normalised in _SINGLE_OFFER_AFFIRMATIONS
+        or any(
+            _contains_phrase(normalised, phrase)
+            for phrase in _SINGLE_OFFER_ACCEPT_PHRASES
+        )
+    ):
+        return ServiceScopeDecision(
+            action=ServiceScopeDecisionAction.INCLUDE_ALL,
+            request_fingerprint=offer.request_fingerprint,
+        )
+
+    selected = [
+        capability
+        for capability in offer.offered_capabilities
+        if any(
+            _contains_phrase(normalised, alias)
+            for alias in _capability_reply_aliases(capability)
+        )
+    ]
+    if (
+        selected
+        and not any(marker in f"{normalised} " for marker in _NEGATION_MARKERS)
+        and _explicitly_selects_capabilities(normalised, selected)
+    ):
+        return ServiceScopeDecision(
+            action=ServiceScopeDecisionAction.INCLUDE_SELECTED,
+            selected_capabilities=selected,
+            request_fingerprint=offer.request_fingerprint,
+        )
+    if (
+        len(offer.offered_capabilities) == 1
+        and selected
+        and _explicitly_declines_capability(
+            normalised,
+            _capability_reply_aliases(offer.offered_capabilities[0]),
+        )
+    ):
+        return ServiceScopeDecision(
+            action=ServiceScopeDecisionAction.SELECTED_ONLY,
+            request_fingerprint=offer.request_fingerprint,
+        )
+    return None
 
 
 def apply_service_scope_decision(
