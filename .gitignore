@@ -249,3 +249,7 @@ tsconfig.tsbuildinfo
 scripts/.eval_cache.json
 
 .DS_Store
+
+
+# Scripts
+scripts/publish-via-github-api.sh

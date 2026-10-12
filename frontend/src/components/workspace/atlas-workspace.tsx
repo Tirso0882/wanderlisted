@@ -12,26 +12,53 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { HistoryPanel } from "./history-panel";
+import {
+  PrototypeSwitcher,
+  type PrototypeVariant,
+} from "./prototype-switcher";
 import { TripWorkspacePanel } from "./trip-workspace-panel";
 import { WorkspaceChat } from "./workspace-chat";
 import { WorkspaceHeader } from "./workspace-header";
 
 type MobilePane = "chat" | "trip";
 
-export function AtlasWorkspace({ consultationUrl }: { consultationUrl?: string }) {
+// Three variants of the live chat workspace, switchable via ?variant= on the existing route.
+export function AtlasWorkspace({
+  consultationUrl,
+  prototypeVariant = "A",
+}: {
+  consultationUrl?: string;
+  prototypeVariant?: PrototypeVariant;
+}) {
   const t = useTranslations();
   const [mobilePane, setMobilePane] = useState<MobilePane>("chat");
   const [historyOpen, setHistoryOpen] = useState(false);
 
   return (
-    <div className="atlas-workspace" data-testid="atlas-workspace">
+    <div
+      className={`atlas-workspace atlas-prototype-${prototypeVariant.toLowerCase()}`}
+      data-testid="atlas-workspace"
+      data-prototype-variant={prototypeVariant}
+    >
       <WorkspaceHeader onOpenHistory={() => setHistoryOpen(true)} />
       <div className="atlas-workspace-grid">
-        <HistoryPanel className="atlas-history-desktop" />
-        <main className={cn("atlas-mobile-pane", mobilePane !== "chat" && "atlas-mobile-hidden")}>
+        {prototypeVariant !== "C" && (
+          <HistoryPanel className="atlas-history-desktop atlas-prototype-history" />
+        )}
+        <main
+          className={cn(
+            "atlas-mobile-pane atlas-prototype-chat",
+            mobilePane !== "chat" && "atlas-mobile-hidden",
+          )}
+        >
           <WorkspaceChat />
         </main>
-        <div className={cn("atlas-mobile-pane", mobilePane !== "trip" && "atlas-mobile-hidden")}>
+        <div
+          className={cn(
+            "atlas-mobile-pane atlas-prototype-trip",
+            mobilePane !== "trip" && "atlas-mobile-hidden",
+          )}
+        >
           <TripWorkspacePanel consultationUrl={consultationUrl} />
         </div>
       </div>
@@ -62,6 +89,8 @@ export function AtlasWorkspace({ consultationUrl }: { consultationUrl?: string }
           <HistoryPanel onClose={() => setHistoryOpen(false)} />
         </SheetContent>
       </Sheet>
+
+      <PrototypeSwitcher current={prototypeVariant} />
     </div>
   );
 }

@@ -54,3 +54,17 @@ Do not weaken TLS, safety gates, validation, or tests to make a check pass. Do n
 ## Review rules
 
 Review behavior and evidence before style. Trace inputs through routing, reducers, typed models, API consumers, frontend rendering, tests, and EDD. Treat missing evidence, stale fingerprints, unsafe fallbacks, uncontrolled fan-out, and hidden external spend as blocking issues.
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked in this repository's GitHub Issues. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The default five-label triage vocabulary is used. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+This repository uses a multi-context layout under `docs/domain/`. See `docs/agents/domain.md`.
